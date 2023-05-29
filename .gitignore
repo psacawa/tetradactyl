@@ -59,6 +59,10 @@ dkms.conf
 .gdb_history
 .cache
 compile_commands.json
+
 glib-demo
 gtk-demo
 keypress-demo
+tetradactyl-gtk-demo
+gio-demo
+gobject-demo

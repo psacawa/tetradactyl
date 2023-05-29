@@ -1,7 +1,7 @@
-#include <glib.h>
+#include <glib-2.0/glib.h>
+#include <stdio.h>
 
 int main(int argc, char *argv[]) {
-  GMainContext *context = g_main_context_new();
-  GMainLoop *loop = g_main_loop_new(context, FALSE);
-  g_main_loop_run(loop);
+  printf("glib\n");
+  return 0;
 }

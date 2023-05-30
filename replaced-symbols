@@ -1,0 +1,5 @@
+MACRO(gtk_init)
+MACRO(gtk_application_new)
+MACRO(gtk_window_new)
+MACRO(gtk_window_new)
+MACRO(gtk_window_set_child)

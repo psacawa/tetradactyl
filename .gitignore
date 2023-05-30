@@ -60,9 +60,9 @@ dkms.conf
 .cache
 compile_commands.json
 
-glib-demo
+glib-demo*
+keypress-demo*
+gio-demo*
+gobject-demo*
+tetradactyl-gtk-demo*
 gtk-demo
-keypress-demo
-tetradactyl-gtk-demo
-gio-demo
-gobject-demo

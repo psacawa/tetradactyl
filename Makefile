@@ -10,6 +10,11 @@ libtetradactyl-gtk.so: ./tetradactyl-gtk.c
 %: %.c
 	gcc -g $< -o $@ $(shell pkg-config --cflags --libs gtk4)
 
+gtk-demo: gtk-demo.c
+	gcc -g $< -o $@ $(shell pkg-config --cflags --libs gtk4)
+
+
+
 gobject-demo: gobject-demo.c
 	gcc -g $< -o $@ $(shell pkg-config --cflags --libs gobject-2.0)
 

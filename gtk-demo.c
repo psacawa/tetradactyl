@@ -4,6 +4,7 @@
 
 void greet_button_cb(GtkWidget *widget, gpointer user_data) {
   printf("button%d\n", GPOINTER_TO_INT(user_data));
+  GtkWidget *dummy = gtk_grid_new();
 }
 
 void app_activate_cb(GtkApplication *app) {

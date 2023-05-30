@@ -27,3 +27,16 @@ glib-demo: glib-demo.c
 
 run:
 	LD_PRELOAD=./libtetradactyl-gtk.so  ./gtk-demo	
+
+interactive:
+	GTK_DEBUG=interactive ./gtk-demo	
+
+
+debug:
+	gdb ./gtk-demo -x /dev/stdin <<EOF 
+		set environment LD_PRELOAD=./libtetradactyl-gtk.so 
+		break main
+		run
+	EOF
+
+.PHONY: run debug

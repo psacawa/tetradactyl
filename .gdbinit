@@ -6,9 +6,11 @@ dashboard stack -style limit 20
 define interactive
 set environment GTK_DEBUG=interactive
 end
-
 define preload
 set environment LD_PRELOAD=./libtetradactyl-gtk.so
+end
+define debug
+set environment LD_LIBRARY_PATH=/usr/local/libd
 end
 
 define print_G_OBJECT_TYPE_NAME

@@ -19,7 +19,6 @@ enum {
 GtkApplication *app;
 
 #define NUM_BUTTONS 3
-#define print_tree(w) print_tree_rec(w, 0)
 
 #define TETRADACTYL_HINT_KEY GDK_KEY_f
 #define TETRADACTYL_FOLLOW_KEY GDK_KEY_f
@@ -44,12 +43,14 @@ typedef struct hintiter {
   unsigned int hintidx;
 } hintiter;
 
-void print_tree_rec(GtkWidget *widget, int rec);
 void hint_overlay_for_active_window();
 void clear_hints_for_active_window();
 gboolean follow_hint(guint keyval, GdkKeyEvent *event);
 void hint_overlay_rec(GtkOverlay *overlay, GtkWidget *widget, hintiter *iter,
                       GArray *hint_widgets);
+
+gboolean key_pressed_cb(GtkEventController *controller, guint keyval,
+                        guint keycode, GdkModifierType state);
 GtkOverlay *get_active_overlay(GtkApplication *app);
 
 char *hint_next(hintiter *iter) {
@@ -79,8 +80,6 @@ void button_press_cb(GtkWidget *receiver) {
   }
 }
 
-void render_hint(GtkOverlay *root, char *hintchar, GtkAllocation *allocation) {}
-
 gboolean get_child_position_cb(GtkWidget *overlay, GtkWidget *hint,
                                GdkRectangle *allocation, gpointer user_data) {
   gtk_demo_info(
@@ -107,18 +106,29 @@ gboolean get_child_position_cb(GtkWidget *overlay, GtkWidget *hint,
   return TRUE;
 }
 
-GtkOverlay *init_overlay(GtkWindow *win) {
+GtkOverlay *init_tetradactyl(GtkWindow *win) {
+
   GtkWidget *child = gtk_window_get_child(win);
   if (GTK_IS_OVERLAY(child)) {
     return GTK_OVERLAY(child);
   }
-  gtk_demo_debug("injecting overlay");
+  gtk_demo_debug("initializing tetradactyl");
   GtkWidget *overlay = gtk_overlay_new();
   gtk_window_set_child(win, overlay);
   gtk_overlay_set_child(GTK_OVERLAY(overlay), child);
 
   g_signal_connect(overlay, "get-child-position",
                    G_CALLBACK(get_child_position_cb), NULL);
+
+  /* capture */
+  GtkEventController *key_capture_controller = gtk_event_controller_key_new();
+  gtk_event_controller_set_propagation_phase(key_capture_controller,
+                                             GTK_PHASE_CAPTURE);
+  g_signal_connect_object(key_capture_controller, "key-pressed",
+                          G_CALLBACK(key_pressed_cb), NULL, 0);
+  gtk_event_controller_set_name(key_capture_controller,
+                                "tetradactyl-controller");
+  gtk_widget_add_controller(overlay, key_capture_controller);
 
   return GTK_OVERLAY(overlay);
 }
@@ -212,6 +222,10 @@ gboolean key_pressed_cb(GtkEventController *controller, guint keyval,
                 "keyval=%#x=%d=%c "
                 "state=%d",
                 keyval, keyval, keyval, state);
+  /* escape -> kill hints */
+  /* tab -> iterate hints */
+  /* alpha -> select hints */
+  /* enter -> actvate hint */
   if (tetradactyl_mode == TETRADACTYL_MODE_NORMAL) {
     if (keyval == TETRADACTYL_HINT_KEY &&
         (state & (GDK_SHIFT_MASK | GDK_CONTROL_MASK | GDK_ALT_MASK)) == 0) {
@@ -225,50 +239,8 @@ gboolean key_pressed_cb(GtkEventController *controller, guint keyval,
     } else if (ishint_keyval(keyval)) {
       follow_hint(toupper(keyval), orig_event);
     }
-    /* escape -> kill hints */
-    /* tab -> iterate hints */
-    /* alpha -> select hints */
-    /* enter -> actvate hint */
   }
   return FALSE;
-}
-
-gboolean generic_event_cb(GtkEventController *ctrl, GdkEvent *event) {
-  GtkWidget *widget = gtk_event_controller_get_widget(ctrl);
-  GtkPropagationPhase phase = gtk_event_controller_get_propagation_phase(ctrl);
-  printf("%8s %d %s\n",
-         phase == GTK_PHASE_CAPTURE  ? "CAPTURE"
-         : phase == GTK_PHASE_TARGET ? "TARGET"
-         : phase == GTK_PHASE_BUBBLE ? "BUBBLE"
-                                     : "unknown",
-         gdk_event_get_event_type(event), gtk_widget_get_name(widget));
-  /* return phase == GTK_PHASE_TARGET; */
-  return FALSE;
-}
-
-void add_generic_controllers_rec(GtkWidget *root) {
-  for (int phase = 1; phase <= 3; ++phase) {
-    /* key-pressed */
-    GtkEventController *controller = gtk_event_controller_legacy_new();
-    gtk_event_controller_set_propagation_phase(controller, phase);
-    /* g_signal_connect_object(controller, "key-pressed",
-     * G_CALLBACK(generic_event_cb), NULL, 0); */
-    g_signal_connect_object(controller, "event", G_CALLBACK(generic_event_cb),
-                            NULL, 0);
-    gtk_widget_add_controller(root, controller);
-
-    /* [> button-pressed <] */
-    /* GtkEventController *controller = gtk_event_controller_key_new(); */
-    /* gtk_event_controller_set_propagation_phase(controller, phase); */
-    /* g_signal_connect_object(controller, "key-pressed", */
-    /*                         G_CALLBACK(generic_event_cb), NULL, 0); */
-    /* gtk_widget_add_controller(root, controller); */
-  }
-  GtkWidget *child = gtk_widget_get_first_child(root);
-  while (child != NULL) {
-    add_generic_controllers_rec(child);
-    child = gtk_widget_get_next_sibling(child);
-  }
 }
 
 void activate_cb(GtkApplication *app, gpointer *data) {
@@ -279,16 +251,6 @@ void activate_cb(GtkApplication *app, gpointer *data) {
   GtkWidget *buttons[NUM_BUTTONS];
 
   window = gtk_application_window_new(app);
-
-  /* capture */
-  GtkEventController *key_capture_controller = gtk_event_controller_key_new();
-  gtk_event_controller_set_propagation_phase(key_capture_controller,
-                                             GTK_PHASE_CAPTURE);
-  g_signal_connect_object(key_capture_controller, "key-pressed",
-                          G_CALLBACK(key_pressed_cb), NULL, 0);
-  gtk_event_controller_set_name(key_capture_controller,
-                                "tetradactyl-controller");
-  gtk_widget_add_controller(window, key_capture_controller);
   gtk_window_set_title(GTK_WINDOW(window), "my window");
 
   grid = gtk_grid_new();
@@ -312,23 +274,8 @@ void activate_cb(GtkApplication *app, gpointer *data) {
   gtk_style_context_add_provider_for_display(display,
                                              GTK_STYLE_PROVIDER(provider), 0);
 
-  /* add_generic_controllers_rec(window); */
-
   gtk_window_present(GTK_WINDOW(window));
-  init_overlay(GTK_WINDOW(window));
-}
-
-void print_tree_rec(GtkWidget *widget, int rec) {
-  char pad[128];
-  int padlen = 2 * rec;
-  memset(pad, ' ', padlen);
-  pad[padlen] = '\0';
-  gtk_demo_info("%s%s\n", pad, gtk_widget_get_name(widget));
-  GtkWidget *child = gtk_widget_get_first_child(widget);
-  while (child != NULL) {
-    print_tree_rec(child, rec + 1);
-    child = gtk_widget_get_next_sibling(child);
-  }
+  init_tetradactyl(GTK_WINDOW(window));
 }
 
 int main(int argc, char *argv[]) {

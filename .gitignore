@@ -66,3 +66,4 @@ gio-demo*
 gobject-demo*
 tetradactyl-gtk-demo*
 gtk-demo
+*.log

@@ -5,8 +5,8 @@
 
 #define ARRAY_LEN(arr) sizeof(arr) / sizeof(arr[0])
 
-#define DECLARE_ORIG_LOC_PTR(sym) typeof((sym)) *orig_##sym;
 #define DECLARE_ORIG_LOC_PTR_EXTERN(sym) extern typeof((sym)) *orig_##sym;
+#define DEFINE_ORIG_LOC_PTR(sym) typeof((sym)) *orig_##sym;
 #define SYMBOL_MAP_ENTRY(sym) {(#sym), &(orig_##sym)},
 #define orig(sym) orig##(sym)
 
@@ -27,6 +27,14 @@
 
 /* DECLARATIONS */
 
+/* obrzydliwy wzór c spotykany choćby w glibc */
+/* nie da się tego włożyć do nagłówki ze względu na problem wielu definicji */
+#define MACRO DECLARE_ORIG_LOC_PTR_EXTERN
+#include "replaced-symbols"
+#undef MACRO
+
+extern GtkApplication *gtk_app;
+
 typedef struct hintiter hintiter;
 
 void hint_overlay_for_active_window();
@@ -38,9 +46,10 @@ void hint_overlay_rec(GtkOverlay *overlay, GtkWidget *widget, hintiter *iter,
 gboolean key_pressed_cb(GtkEventController *controller, guint keyval,
                         guint keycode, GdkModifierType state);
 GtkOverlay *get_active_overlay(GtkApplication *app);
-void init_tetradactyl_key_capture(GtkApplication *app);
+void init_tetradactyl_key_capture(GtkWindow *window);
 void init_tetradactyl_overlay_for_active_window();
 void init_css();
 void clear_tetradactyl_overlay_for_active_window();
+void update_tetradactyl_key_capture(GtkApplication *app);
 
 #endif /* ifndef TETRADACTYL_H */

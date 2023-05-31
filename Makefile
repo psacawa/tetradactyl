@@ -1,4 +1,5 @@
-all: libtetradactyl-gtk.so tetradactyl-gtk-demo gtk-demo gobject-demo gio-demo glib-demo
+compile:
+	meson compile -C build
 
 %.o: %.c
 	gcc -c -g $< -o $@ $(shell pkg-config --cflags --libs gtk4)
@@ -16,7 +17,7 @@ glib-demo: glib-demo.c
 	gcc -g $< -o $@ $(shell pkg-config --cflags --libs glib-2.0)
 
 run:
-	LD_PRELOAD=./build/libtetradactyl-gtk.so  ./build/gtk-demo	
+	LD_PRELOAD=./build/libtetradactyl-gtk.so ./build/gtk-demo	
 
 interactive:
 	GTK_DEBUG=interactive ./gtk-demo	

@@ -7,7 +7,7 @@ define interactive
 set environment GTK_DEBUG=interactive
 end
 define preload
-set environment LD_PRELOAD=./libtetradactyl-gtk.so
+set environment LD_PRELOAD=./build/libtetradactyl-gtk.so
 end
 define debug
 set environment LD_LIBRARY_PATH=/usr/local/libd

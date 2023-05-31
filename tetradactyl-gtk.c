@@ -1,3 +1,4 @@
+#define G_LOG_USE_STRUCTURED
 #include <ctype.h>
 #include <dlfcn.h>
 #include <gtk/gtk.h>
@@ -5,12 +6,6 @@
 #include <stdlib.h>
 
 #include "tetradactyl.h"
-
-/* obrzydliwy wzór c spotykany choćby w glibc */
-/* nie da się tego włożyć do nagłówki ze względu na problem wielu definicji */
-#define MACRO DECLARE_ORIG_LOC_PTR
-#include "replaced-symbols"
-#undef MACRO
 
 /* DEFINITIONS */
 
@@ -26,8 +21,8 @@ enum {
 
 /* ponieważ okna są wejściem do przechwytania wydarzeń musimy replikować zbiór
  * okien z libgtk w tetradactyl */
-GList *apps = NULL;
-GList *windows = NULL;
+GtkApplication *gtk_app = NULL;
+GList *cached_windows = NULL;
 
 const char hintchars[] = "ASDFGHJKLQWERTYUIOPZXCVBNM";
 #define NUMHINTS sizeof(hintchars)
@@ -56,6 +51,10 @@ GtkOverlay *get_active_overlay(GtkApplication *app) {
   GtkWidget *overlay = gtk_widget_get_first_child(GTK_WIDGET(window));
   return GTK_OVERLAY(overlay);
 }
+
+#define MACRO DEFINE_ORIG_LOC_PTR
+#include "replaced-symbols"
+#undef MACRO
 
 typedef struct symbol_map_entry_t {
   char *symbol_name;
@@ -147,7 +146,7 @@ gboolean key_pressed_cb(GtkEventController *controller, guint keyval,
 }
 
 void hint_overlay_for_active_window() {
-  GtkOverlay *overlay = get_active_overlay(apps->data);
+  GtkOverlay *overlay = get_active_overlay(gtk_app);
 
   /* spis elementów na overlay, skoro gtk nie udostępnia te dane?? */
   GArray *hint_widgets = g_object_get_data(G_OBJECT(overlay), "hint-widgets");
@@ -188,7 +187,7 @@ void hint_overlay_rec(GtkOverlay *overlay, GtkWidget *widget, hintiter *iter,
 }
 
 void clear_hints_for_active_window() {
-  GtkOverlay *overlay = get_active_overlay(apps->data);
+  GtkOverlay *overlay = get_active_overlay(gtk_app);
   GArray *hint_widgets = g_object_get_data(G_OBJECT(overlay), "hint-widgets");
   for (int i = 0; i != hint_widgets->len; ++i) {
     GtkWidget *widget = g_array_index(hint_widgets, GtkWidget *, i);
@@ -206,7 +205,7 @@ void send_synthetic_click_event(GtkWidget *hint) {
 gboolean follow_hint(guint keyval, GdkKeyEvent *orig_event) {
   tetradactyl_info(__FUNCTION__);
   g_assert(tetradactyl_mode == TETRADACTYL_MODE_HINT);
-  GtkOverlay *overlay = get_active_overlay(apps->data);
+  GtkOverlay *overlay = get_active_overlay(gtk_app);
   GArray *hint_widgets = g_object_get_data(G_OBJECT(overlay), "hint-widgets");
   for (int i = 0; i != hint_widgets->len; ++i) {
     GtkWidget *hint = g_array_index(hint_widgets, GtkWidget *, i);
@@ -226,25 +225,34 @@ gboolean follow_hint(guint keyval, GdkKeyEvent *orig_event) {
  * intercepted libgtk routine. Hot path must be fast. */
 void update_tetradactyl_key_capture(GtkApplication *app) {
   GList *app_windows = gtk_application_get_windows(app);
-  while (app_windows != NULL) {
-    GtkWindow *win = app_windows->data;
-    /* oddly, gkt_main_do_event will create a GtkTooltip(Window) on the first
-     * event  */
-    /* FIXME 31/05/20 psacawa: implement properly */
-    if (!GTK_IS_WINDOW(win) && g_list_find(windows, win) == NULL) {
-      windows = g_list_append(windows, app_windows->data);
-      init_tetradactyl_key_capture(app_windows->data);
+  if (g_list_length(app_windows) != g_list_length(cached_windows)) {
+    /* cold path - search for new window and possibly add controllers */
+    while (app_windows) {
+      GtkWindow *win = app_windows->data;
+      /* oddly, gkt_main_do_event will create a GtkTooltip(Window) on the first
+       * event. For now, only create controller on first window */
+      /* FIXME 31/05/20 psacawa: implement properly */
+      if (g_list_length(app_windows) <= 1 &&
+          g_list_find(cached_windows, win) == NULL) {
+        cached_windows = g_list_append(cached_windows, app_windows->data);
+        init_tetradactyl_key_capture(app_windows->data);
+      }
+      app_windows = app_windows->next;
     }
+  }
+
+  /* check if display manager has a display. if so, setup css */
+  /* can be moved to a colder, earlier path once startup is better understood */
+  GdkDisplayManager *dm = gdk_display_manager_get();
+  GdkDisplay *display = gdk_display_manager_get_default_display(dm);
+  if (display) {
+    init_css();
   }
 }
 
 /* capture */
-void init_tetradactyl_key_capture(GtkApplication *application) {
+void init_tetradactyl_key_capture(GtkWindow *window) {
   tetradactyl_info("initalizing tetradactyl key capture on window");
-  GtkWindow *window = gtk_application_get_active_window(application);
-  if (!window) {
-    tetradactyl_error("no active window for application");
-  }
   GtkEventController *key_capture_controller = gtk_event_controller_key_new();
   gtk_event_controller_set_propagation_phase(key_capture_controller,
                                              GTK_PHASE_CAPTURE);
@@ -257,7 +265,7 @@ void init_tetradactyl_key_capture(GtkApplication *application) {
 
 void init_tetradactyl_overlay_for_active_window() {
   /* TODO 30/05/20 psacawa: one app? */
-  GtkWindow *window = gtk_application_get_active_window(apps->data);
+  GtkWindow *window = gtk_application_get_active_window(gtk_app);
   GtkWidget *child = gtk_window_get_child(window);
   tetradactyl_debug("initializing tetradactyl");
   GtkWidget *overlay = gtk_overlay_new();
@@ -271,12 +279,13 @@ void init_css() {
   GtkCssProvider *provider = gtk_css_provider_new();
   gtk_css_provider_load_from_path(provider, "./hints.css");
   GdkDisplay *display = gdk_display_get_default();
+  tetradactyl_info("display %p", display);
   gtk_style_context_add_provider_for_display(display,
                                              GTK_STYLE_PROVIDER(provider), 0);
 }
 
 void clear_tetradactyl_overlay_for_active_window() {
-  GtkWindow *window = gtk_application_get_active_window(apps->data);
+  GtkWindow *window = gtk_application_get_active_window(gtk_app);
   GtkWidget *overlay = gtk_window_get_child(window);
   if (!GTK_IS_OVERLAY(overlay)) {
     tetradactyl_error(

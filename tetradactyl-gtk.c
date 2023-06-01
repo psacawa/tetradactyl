@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "gtk-utils.h"
 #include "tetradactyl.h"
 
 /* DEFINITIONS */
@@ -22,6 +23,7 @@ enum {
 /* ponieważ okna są wejściem do przechwytania wydarzeń musimy replikować zbiór
  * okien z libgtk w tetradactyl */
 GtkApplication *gtk_app = NULL;
+GtkWindow *main_window = NULL;
 GList *cached_windows = NULL;
 
 const char hintchars[] = "ASDFGHJKLQWERTYUIOPZXCVBNM";
@@ -33,7 +35,9 @@ int ishint_keyval(guint keyval) {
          (keyval >= GDK_KEY_A && keyval <= GDK_KEY_Z);
 }
 
-int is_hintable(GtkWidget *widget) { return GTK_IS_BUTTON(widget); }
+int is_hintable(GtkWidget *widget) {
+  return GTK_IS_BUTTON(widget) || GTK_IS_CHECK_BUTTON(widget);
+}
 
 char *hint_next(hintiter *iter) {
   char *ret = malloc(2);
@@ -48,8 +52,16 @@ char *hint_next(hintiter *iter) {
 
 GtkOverlay *get_active_overlay(GtkApplication *app) {
   GtkWindow *window = gtk_application_get_active_window(app);
-  GtkWidget *overlay = gtk_widget_get_first_child(GTK_WIDGET(window));
-  return GTK_OVERLAY(overlay);
+  GtkWidget *child = gtk_widget_get_first_child(GTK_WIDGET(window));
+  while (child) {
+    if (GTK_IS_OVERLAY(child)) {
+      return GTK_OVERLAY(child);
+    }
+    child = gtk_widget_get_next_sibling(child);
+  }
+  tetradactyl_error("active window of type %s had no GtkOverlay child",
+                    gtk_widget_get_name(GTK_WIDGET(window)));
+  return NULL;
 }
 
 #define MACRO DEFINE_ORIG_LOC_PTR
@@ -129,6 +141,8 @@ gboolean key_pressed_cb(GtkEventController *controller, guint keyval,
       init_tetradactyl_overlay_for_active_window();
       hint_overlay_for_active_window();
       return TRUE;
+    } else if (keyval == 't') {
+      print_gobject_types_tree(TRUE);
     }
   } else if (tetradactyl_mode == TETRADACTYL_MODE_HINT) {
     if (keyval == TETRADACTYL_ESCAPE_KEY) {
@@ -136,6 +150,7 @@ gboolean key_pressed_cb(GtkEventController *controller, guint keyval,
       clear_tetradactyl_overlay_for_active_window();
     } else if (ishint_keyval(keyval)) {
       follow_hint(toupper(keyval), orig_event);
+      clear_tetradactyl_overlay_for_active_window();
     }
     /* escape -> kill hints */
     /* tab -> iterate hints */
@@ -225,19 +240,20 @@ gboolean follow_hint(guint keyval, GdkKeyEvent *orig_event) {
  * intercepted libgtk routine. Hot path must be fast. */
 void update_tetradactyl_key_capture(GtkApplication *app) {
   GList *app_windows = gtk_application_get_windows(app);
-  if (g_list_length(app_windows) != g_list_length(cached_windows)) {
-    /* cold path - search for new window and possibly add controllers */
-    while (app_windows) {
-      GtkWindow *win = app_windows->data;
-      /* oddly, gkt_main_do_event will create a GtkTooltip(Window) on the first
-       * event. For now, only create controller on first window */
-      /* FIXME 31/05/20 psacawa: implement properly */
-      if (g_list_length(app_windows) <= 1 &&
-          g_list_find(cached_windows, win) == NULL) {
-        cached_windows = g_list_append(cached_windows, app_windows->data);
-        init_tetradactyl_key_capture(app_windows->data);
+  if (g_list_length(app_windows) <= 1) {
+    if (g_list_length(app_windows) != g_list_length(cached_windows)) {
+      /* cold path - search for new window and possibly add controllers */
+      while (app_windows) {
+        GtkWindow *win = app_windows->data;
+        /* oddly, gkt_main_do_event will create a GtkTooltip(Window) on the
+         * first event. For now, only create controller on first window */
+        /* FIXME 31/05/20 psacawa: implement properly */
+        if (g_list_find(cached_windows, win) == NULL) {
+          cached_windows = g_list_append(cached_windows, app_windows->data);
+          init_tetradactyl_key_capture(app_windows->data);
+        }
+        app_windows = app_windows->next;
       }
-      app_windows = app_windows->next;
     }
   }
 
@@ -293,5 +309,6 @@ void clear_tetradactyl_overlay_for_active_window() {
     return;
   }
   GtkWidget *child = gtk_overlay_get_child(GTK_OVERLAY(overlay));
+  gtk_overlay_set_child(GTK_OVERLAY(overlay), NULL);
   gtk_window_set_child(window, child);
 }

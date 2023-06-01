@@ -4,7 +4,7 @@ compile:
 %.o: %.c
 	gcc -c -g $< -o $@ $(shell pkg-config --cflags --libs gtk4)
 
-gtk-demo: gtk-demo.c
+other-gtk-demo: other-gtk-demo.c
 	gcc -g $< -o $@ $(shell pkg-config --cflags --libs gtk4)
 
 gobject-demo: gobject-demo.c
@@ -20,6 +20,6 @@ run:
 	LD_PRELOAD=./build/libtetradactyl-gtk.so ./build/gtk-demo	
 
 interactive:
-	GTK_DEBUG=interactive ./gtk-demo	
+	LD_PRELOAD=./build/libtetradactyl-gtk.so GTK_DEBUG=interactive ./build/gtk-demo	
 
 .PHONY: run interactive

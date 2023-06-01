@@ -1,6 +1,6 @@
 #include <gtk/gtk.h>
 
-#define print_tree(w) print_tree_rec(w, 0)
-void print_tree_rec(GtkWidget *widget, int rec);
+void print_tree(GtkWidget *widget);
 
-gboolean generic_event_cb(GtkEventController *ctrl, GdkEvent *event);
+void print_gobject_types_tree_from_root(GType root, gboolean show_signals);
+void print_gobject_types_tree(gboolean show_signals);

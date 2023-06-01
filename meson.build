@@ -8,7 +8,7 @@ pwd_inc = include_directories('.')
 tetradactyl_sources = files([
   'tetradactyl-gtk.c',
   'intercepted-symbols.c',
-  # 'gtk-utils.c',
+  'gtk-utils.c',
 ])
 
 tetradactyl_headers =  files(['tetradactyl.h'])

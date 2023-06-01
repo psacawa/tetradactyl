@@ -34,6 +34,9 @@
 #undef MACRO
 
 extern GtkApplication *gtk_app;
+// TODO 31/05/20 psacawa: once window management is better understood, we can
+// consider supporting multiple windows
+extern GtkWindow *main_window;
 
 typedef struct hintiter hintiter;
 

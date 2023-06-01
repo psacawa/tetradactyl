@@ -15,7 +15,7 @@ GtkApplication *gtk_application_new(const gchar *application_id,
   }
   gtk_app = app;
 
-  update_tetradactyl_key_capture(gtk_app);
+  /* update_tetradactyl_key_capture(gtk_app); */
   g_signal_connect(app, "window-added",
                    G_CALLBACK(update_tetradactyl_key_capture), NULL);
 

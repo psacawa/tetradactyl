@@ -16,6 +16,7 @@ tetradactyl_headers =  files(['tetradactyl.h'])
 shared_library('tetradactyl-gtk',
   sources: tetradactyl_sources,
   dependencies: [gtk4_dep],
+  gnu_symbol_visibility: 'hidden',
   include_directories: pwd_inc,
 )
 

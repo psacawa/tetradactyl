@@ -25,6 +25,8 @@
 #define tetradactyl_critical(...)                                              \
   g_log("tetradactyl", G_LOG_LEVEL_CRITICAL, __VA_ARGS__)
 
+#define PUBLIC __attribute__((visibility("default")))
+
 /* DECLARATIONS */
 
 /* obrzydliwy wzór c spotykany choćby w glibc */

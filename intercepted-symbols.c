@@ -2,10 +2,10 @@
 #include "tetradactyl.h"
 #include <gtk/gtk.h>
 
-void gtk_init() { orig_gtk_init(); }
+void PUBLIC gtk_init() { orig_gtk_init(); }
 
-GtkApplication *gtk_application_new(const gchar *application_id,
-                                    GApplicationFlags flags) {
+GtkApplication PUBLIC *gtk_application_new(const gchar *application_id,
+                                           GApplicationFlags flags) {
   tetradactyl_debug("in gtk_application_new %p \n", orig_gtk_application_new);
   GtkApplication *app = (*orig_gtk_application_new)(application_id, flags);
 
@@ -22,7 +22,7 @@ GtkApplication *gtk_application_new(const gchar *application_id,
   return app;
 }
 
-GtkWidget *gtk_window_new() {
+GtkWidget PUBLIC *gtk_window_new() {
   GtkWidget *ret = (*orig_gtk_window_new)();
   return ret;
 }

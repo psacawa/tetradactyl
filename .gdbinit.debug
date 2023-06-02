@@ -1,0 +1,7 @@
+print "preloading ./build/libtetradactyl-gtk.so "
+set environment LD_PRELOAD=./build/libtetradactyl-gtk.so
+add-symbol-file ./build/libtetradactyl-gtk.so
+print "executing with debug symbols"
+set environment LD_LIBRARY_PATH=/usr/local/libd
+
+vim: set ft=gdb :

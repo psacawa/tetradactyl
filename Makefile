@@ -19,6 +19,10 @@ glib-demo: glib-demo.c
 run:
 	LD_PRELOAD=./build/libtetradactyl-gtk.so ./build/gtk-demo	
 
+debug:
+	gdb -x .gdbinit.debug ./build/gtk-demo
+
+
 interactive:
 	LD_PRELOAD=./build/libtetradactyl-gtk.so GTK_DEBUG=interactive ./build/gtk-demo	
 

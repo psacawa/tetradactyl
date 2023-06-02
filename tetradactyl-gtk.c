@@ -1,9 +1,12 @@
 #define G_LOG_USE_STRUCTURED
+
 #include <ctype.h>
 #include <dlfcn.h>
 #include <gtk/gtk.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "gtk-utils.h"
 #include "tetradactyl.h"
@@ -11,13 +14,19 @@
 /* DEFINITIONS */
 
 typedef struct hintiter {
+  unsigned required;
+  /* can't compute the hints in an online manner without already knowing the
+   * number required */
+  unsigned hintlen;
   unsigned int hintidx;
 } hintiter;
+
+tetradactyl_config tconfig;
 
 /* na razie globalny stan */
 enum {
   TETRADACTYL_MODE_NORMAL = 0,
-  TETRADACTYL_MODE_HINT,
+  TETRADACTYL_MODE_HINT = 1,
 } tetradactyl_mode = TETRADACTYL_MODE_NORMAL;
 
 /* ponieważ okna są wejściem do przechwytania wydarzeń musimy replikować zbiór
@@ -25,9 +34,6 @@ enum {
 GtkApplication *gtk_app = NULL;
 GtkWindow *main_window = NULL;
 GList *cached_windows = NULL;
-
-const char hintchars[] = "ASDFGHJKLQWERTYUIOPZXCVBNM";
-#define NUMHINTS sizeof(hintchars)
 
 int ishint_keyval(guint keyval) {
   /* TODO 27/05/20 psacawa: more robust */
@@ -39,15 +45,31 @@ int is_hintable(GtkWidget *widget) {
   return GTK_IS_BUTTON(widget) || GTK_IS_CHECK_BUTTON(widget);
 }
 
-char *hint_next(hintiter *iter) {
-  char *ret = malloc(2);
-  if (iter->hintidx < strlen(hintchars)) {
-    ret[0] = hintchars[iter->hintidx++];
-    ret[1] = '\0';
-  } else {
-    /* dwuliterowe podpowiedzi */
+hintiter *hintiter_init(unsigned required) {
+  hintiter *ret = malloc(sizeof(hintiter));
+  memset(ret, 0, sizeof(hintiter));
+  ret->required = required;
+  for (; required; required /= strlen(tconfig.hintchars)) {
+    ret->hintlen++;
   }
   return ret;
+}
+
+/* for "ASDF" yields A S D F AA AS ... FD FF AAA ... */
+static char *hintiter_next(hintiter *iter) {
+  /* using hintchars as digits, represent iter->hintidx in radix form */
+  size_t hintchars_len = strlen(tconfig.hintchars);
+  char *hintstr = malloc(iter->hintlen + 1);
+
+  unsigned idx = iter->hintidx;
+  for (int i = iter->hintlen - 1; i >= 0; --i) {
+    char ch = tconfig.hintchars[idx % hintchars_len];
+    hintstr[i] = toupper(ch);
+    idx /= hintchars_len;
+  }
+  hintstr[iter->hintlen] = '\0';
+  iter->hintidx++;
+  return hintstr;
 }
 
 GtkOverlay *get_active_overlay(GtkApplication *app) {
@@ -95,6 +117,10 @@ void __attribute__((constructor)) init_gtk_proxy() {
   }
 
   /* other early setup */
+  memset(&tconfig, 0, sizeof(tetradactyl_config));
+  /* config from json? */
+  /* tconfig.hintchars = "asdfghjkl"; */
+  tconfig.hintchars = "asd";
 }
 
 gboolean get_child_position_cb(GtkWidget *overlay, GtkWidget *hint,
@@ -105,8 +131,10 @@ gboolean get_child_position_cb(GtkWidget *overlay, GtkWidget *hint,
       allocation->width, allocation->height);
 
   GtkWidget *target = g_object_get_data(G_OBJECT(hint), "target");
-  gtk_widget_measure(hint, GTK_ORIENTATION_HORIZONTAL, 0, NULL, NULL, NULL,
-                     NULL); /* dummy - kills warnings */
+  int natural;
+  /* longer hints need horizontal allocation */
+  gtk_widget_measure(hint, GTK_ORIENTATION_HORIZONTAL, 0, NULL, &natural, NULL,
+                     NULL);
   graphene_rect_t bounds;
   gboolean err;
   err = gtk_widget_compute_bounds(target, overlay, &bounds);
@@ -118,16 +146,13 @@ gboolean get_child_position_cb(GtkWidget *overlay, GtkWidget *hint,
   }
   allocation->x = bounds.origin.x;
   allocation->y = bounds.origin.y;
-  allocation->width = 20;
+  allocation->width = natural;
   allocation->height = 20;
   return TRUE;
 }
 
 gboolean key_pressed_cb(GtkEventController *controller, guint keyval,
                         guint keycode, GdkModifierType state) {
-
-  GdkKeyEvent *orig_event =
-      (GdkKeyEvent *)(gtk_event_controller_get_current_event(controller));
   /* keycode odzwierciedla fizyczny klawisz i nie jest interesujący z
    * perspektywy naszej aplikacji */
   tetradactyl_debug("key_pressed_cb: "
@@ -149,8 +174,7 @@ gboolean key_pressed_cb(GtkEventController *controller, guint keyval,
       clear_hints_for_active_window();
       clear_tetradactyl_overlay_for_active_window();
     } else if (ishint_keyval(keyval)) {
-      follow_hint(toupper(keyval), orig_event);
-      clear_tetradactyl_overlay_for_active_window();
+      filter_hints(keyval);
     }
     /* escape -> kill hints */
     /* tab -> iterate hints */
@@ -164,48 +188,62 @@ void hint_overlay_for_active_window() {
   GtkOverlay *overlay = get_active_overlay(gtk_app);
 
   /* spis elementów na overlay, skoro gtk nie udostępnia te dane?? */
-  GArray *hint_widgets = g_object_get_data(G_OBJECT(overlay), "hint-widgets");
-  if (hint_widgets != NULL) {
-    g_array_free(hint_widgets, TRUE);
+  GArray *hint_labels = g_object_get_data(G_OBJECT(overlay), "hint-labels");
+  if (hint_labels != NULL) {
+    g_array_free(hint_labels, TRUE);
   }
-  hint_widgets = g_array_new(FALSE, FALSE, sizeof(GtkWidget *));
+  hint_labels = g_array_new(FALSE, FALSE, sizeof(GtkWidget *));
+
+  GArray *hintables = g_array_new(FALSE, FALSE, sizeof(GtkWidget *));
 
   GtkWidget *root_under_overlay =
       gtk_widget_get_first_child(GTK_WIDGET(overlay));
-  hintiter iter = {0};
-  hint_overlay_rec(overlay, root_under_overlay, &iter, hint_widgets);
-  g_object_set_data(G_OBJECT(overlay), "hint-widgets", hint_widgets);
-  tetradactyl_mode = TETRADACTYL_MODE_HINT;
-}
+  get_hintables_for_overlay_rec(overlay, root_under_overlay, hintables);
+  hintiter *iter = hintiter_init(hintables->len);
 
-void hint_overlay_rec(GtkOverlay *overlay, GtkWidget *widget, hintiter *iter,
-                      GArray *hint_widgets) {
+  for (int i = 0; i != hintables->len; ++i) {
 
-  if (is_hintable(widget)) {
-    char *hintstr = hint_next(iter);
+    GtkWidget *hintable = g_array_index(hintables, GtkWidget *, i);
+
+    char *hintstr = hintiter_next(iter);
+    if (!hintstr) {
+      tetradactyl_error("failed to generate string");
+      return;
+    }
     GtkWidget *hintlabel = gtk_label_new(hintstr);
 
-    g_object_set_data(G_OBJECT(hintlabel), "target", widget);
-    g_object_ref(widget);
+    g_object_set_data(G_OBJECT(hintlabel), "target", hintable);
+    g_object_ref(hintable);
 
     gtk_widget_add_css_class(hintlabel, "hintlabel");
     gtk_overlay_add_overlay(overlay, hintlabel);
-    g_array_append_val(hint_widgets, hintlabel);
+    g_array_append_val(hint_labels, hintlabel);
+  }
+
+  g_object_set_data(G_OBJECT(overlay), "hint-labels", hint_labels);
+  tetradactyl_mode = TETRADACTYL_MODE_HINT;
+}
+
+void get_hintables_for_overlay_rec(GtkOverlay *overlay, GtkWidget *widget,
+                                   GArray *hintables) {
+  if (is_hintable(widget)) {
+    g_array_append_val(hintables, widget);
   }
 
   /* hintable does not preclude hintable children */
   GtkWidget *child = gtk_widget_get_first_child(widget);
   while (child != NULL) {
-    hint_overlay_rec(overlay, child, iter, hint_widgets);
+    get_hintables_for_overlay_rec(overlay, child, hintables);
     child = gtk_widget_get_next_sibling(child);
   }
+  return;
 }
 
 void clear_hints_for_active_window() {
   GtkOverlay *overlay = get_active_overlay(gtk_app);
-  GArray *hint_widgets = g_object_get_data(G_OBJECT(overlay), "hint-widgets");
-  for (int i = 0; i != hint_widgets->len; ++i) {
-    GtkWidget *widget = g_array_index(hint_widgets, GtkWidget *, i);
+  GArray *hint_labels = g_object_get_data(G_OBJECT(overlay), "hint-labels");
+  for (int i = 0; i != hint_labels->len; ++i) {
+    GtkWidget *widget = g_array_index(hint_labels, GtkWidget *, i);
     gtk_overlay_remove_overlay(overlay, widget);
   }
   tetradactyl_mode = TETRADACTYL_MODE_NORMAL;
@@ -216,28 +254,39 @@ void send_synthetic_click_event(GtkWidget *hint) {
   gtk_widget_activate(GTK_WIDGET(button));
 }
 
-/* zwróc czy stosowna podpowiedź została odnaleziona */
-gboolean follow_hint(guint keyval, GdkKeyEvent *orig_event) {
-  tetradactyl_info(__FUNCTION__);
-  g_assert(tetradactyl_mode == TETRADACTYL_MODE_HINT);
+void filter_hints(unsigned char keyval) {
   GtkOverlay *overlay = get_active_overlay(gtk_app);
-  GArray *hint_widgets = g_object_get_data(G_OBJECT(overlay), "hint-widgets");
-  for (int i = 0; i != hint_widgets->len; ++i) {
-    GtkWidget *hint = g_array_index(hint_widgets, GtkWidget *, i);
-    const char *hintlabel = gtk_label_get_text(GTK_LABEL(hint));
-    if (hintlabel[0] == keyval) {
-      tetradactyl_info("following hint with label %c", keyval);
-      send_synthetic_click_event(hint);
-      clear_hints_for_active_window();
-      return TRUE;
+  /* current policy: hints are rendered uppercase */
+  keyval = toupper(keyval);
+
+  char *hint_input = g_object_get_data(G_OBJECT(overlay), "hint-input");
+  GArray *hint_labels = g_object_get_data(G_OBJECT(overlay), "hint-labels");
+  unsigned inplen = strlen(hint_input);
+  hint_input[inplen] = keyval;
+  hint_input[++inplen] = '\0';
+
+  for (int i = 0; i != hint_labels->len; ++i) {
+    GtkWidget *label = g_array_index(hint_labels, GtkWidget *, i);
+    const char *label_text = gtk_label_get_text(GTK_LABEL(label));
+    if (!strncmp(label_text, hint_input, inplen)) {
+      /* input is prefix of hint */
+      if (strlen(label_text) == inplen) {
+        /* equal */
+        send_synthetic_click_event(GTK_WIDGET(label));
+        clear_hints_for_active_window();
+        clear_tetradactyl_overlay_for_active_window();
+        return;
+      }
+    } else {
+      /* input is prefix of hint, hide hint */
+      gtk_widget_set_visible(label, FALSE);
     }
   }
-  return FALSE;
 }
 
-/* Check whether libgtk has created any new windows. If so, add the Tetradactyl
- * keypress event controller to them. To called up every exit from an
- * intercepted libgtk routine. Hot path must be fast. */
+/* Check whether libgtk has created any new windows. If so, add the
+ * Tetradactyl keypress event controller to them. To called up every exit from
+ * an intercepted libgtk routine. Hot path must be fast. */
 void update_tetradactyl_key_capture(GtkApplication *app) {
   GList *app_windows = gtk_application_get_windows(app);
   if (g_list_length(app_windows) <= 1) {
@@ -258,7 +307,8 @@ void update_tetradactyl_key_capture(GtkApplication *app) {
   }
 
   /* check if display manager has a display. if so, setup css */
-  /* can be moved to a colder, earlier path once startup is better understood */
+  /* can be moved to a colder, earlier path once startup is better understood
+   */
   GdkDisplayManager *dm = gdk_display_manager_get();
   GdkDisplay *display = gdk_display_manager_get_default_display(dm);
   if (display) {
@@ -287,6 +337,11 @@ void init_tetradactyl_overlay_for_active_window() {
   GtkWidget *overlay = gtk_overlay_new();
   gtk_window_set_child(window, overlay);
   gtk_overlay_set_child(GTK_OVERLAY(overlay), child);
+
+  char *hint_input = malloc(MAX_HINT_LEN + 1);
+  hint_input[0] = '\0';
+  g_object_set_data(G_OBJECT(overlay), "hint-input", hint_input);
+
   g_signal_connect(overlay, "get-child-position",
                    G_CALLBACK(get_child_position_cb), NULL);
 }
@@ -304,8 +359,8 @@ void clear_tetradactyl_overlay_for_active_window() {
   GtkWindow *window = gtk_application_get_active_window(gtk_app);
   GtkWidget *overlay = gtk_window_get_child(window);
   if (!GTK_IS_OVERLAY(overlay)) {
-    tetradactyl_error(
-        "clearing tetradactyl overlay, but window child was not a GtkOverlay");
+    tetradactyl_error("clearing tetradactyl overlay, but window child was "
+                      "not a GtkOverlay");
     return;
   }
   GtkWidget *child = gtk_overlay_get_child(GTK_OVERLAY(overlay));

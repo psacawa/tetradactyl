@@ -5,6 +5,8 @@
 
 #define ARRAY_LEN(arr) sizeof(arr) / sizeof(arr[0])
 
+#define MAX_HINT_LEN 5
+
 #define DECLARE_ORIG_LOC_PTR_EXTERN(sym) extern typeof((sym)) *orig_##sym;
 #define DEFINE_ORIG_LOC_PTR(sym) typeof((sym)) *orig_##sym;
 #define SYMBOL_MAP_ENTRY(sym) {(#sym), &(orig_##sym)},
@@ -35,6 +37,11 @@
 #include "replaced-symbols"
 #undef MACRO
 
+typedef struct tetradactyl_config {
+  char *hintchars;
+} tetradactyl_config;
+
+extern tetradactyl_config tconfig;
 extern GtkApplication *gtk_app;
 // TODO 31/05/20 psacawa: once window management is better understood, we can
 // consider supporting multiple windows
@@ -44,10 +51,11 @@ typedef struct hintiter hintiter;
 
 void hint_overlay_for_active_window();
 void clear_hints_for_active_window();
-gboolean follow_hint(guint keyval, GdkKeyEvent *event);
-void hint_overlay_rec(GtkOverlay *overlay, GtkWidget *widget, hintiter *iter,
-                      GArray *hint_widgets);
+void filter_hints(unsigned char keyval);
+gboolean follow_hint(guint keyval);
 
+void get_hintables_for_overlay_rec(GtkOverlay *overlay, GtkWidget *widget,
+                                   GArray *hint_widgets);
 gboolean key_pressed_cb(GtkEventController *controller, guint keyval,
                         guint keycode, GdkModifierType state);
 GtkOverlay *get_active_overlay(GtkApplication *app);

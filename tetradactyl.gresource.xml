@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<gresources>
+  <gresource prefix="/org/gtk/tetradactyl/">
+    <file preprocess="">hints.css</file>
+  </gresource>
+</gresources>

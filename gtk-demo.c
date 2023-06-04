@@ -10,9 +10,12 @@ void greet_button_cb(GtkWidget *widget, gpointer user_data) {
 
 void app_activate_cb(GtkApplication *app) {
   GtkBuilder *builder = gtk_builder_new();
-  gboolean ret = gtk_builder_add_from_file(builder, "gtk-demo.ui", NULL);
+  /* gboolean ret = gtk_builder_add_from_file(builder, "gtk-demo.ui", NULL); */
+  GError *err = NULL;
+  gboolean ret = gtk_builder_add_from_resource(
+      builder, "/org/gtk/gtk-demo/gtk-demo.ui", &err);
   if (ret == FALSE) {
-    fprintf(stderr, "gtk_builder_add_from_file");
+    fprintf(stderr, "gtk_builder_add_from_file: %s\n", err->message);
     exit(1);
   }
   GtkWidget *window = GTK_WIDGET(gtk_builder_get_object(builder, "window"));

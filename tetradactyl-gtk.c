@@ -42,7 +42,8 @@ int ishint_keyval(guint keyval) {
 }
 
 int is_hintable(GtkWidget *widget) {
-  return GTK_IS_BUTTON(widget) || GTK_IS_CHECK_BUTTON(widget);
+  return GTK_IS_BUTTON(widget) || GTK_IS_CHECK_BUTTON(widget) ||
+         GTK_IS_TOGGLE_BUTTON(widget);
 }
 
 hintiter *hintiter_init(unsigned required) {
@@ -176,10 +177,9 @@ gboolean key_pressed_cb(GtkEventController *controller, guint keyval,
     } else if (ishint_keyval(keyval)) {
       filter_hints(keyval);
     }
-    /* escape -> kill hints */
-    /* tab -> iterate hints */
-    /* alpha -> select hints */
-    /* enter -> actvate hint */
+
+    /* in hint mode, tetradactyl eats all key presses */
+    return TRUE;
   }
   return FALSE;
 }
@@ -348,7 +348,9 @@ void init_tetradactyl_overlay_for_active_window() {
 
 void init_css() {
   GtkCssProvider *provider = gtk_css_provider_new();
-  gtk_css_provider_load_from_path(provider, "./hints.css");
+  /* gtk_css_provider_load_from_path(provider, "./hints.css"); */
+  gtk_css_provider_load_from_resource(provider, "/org/gtk/tetradactyl/hints.css");
+
   GdkDisplay *display = gdk_display_get_default();
   tetradactyl_info("display %p", display);
   gtk_style_context_add_provider_for_display(display,

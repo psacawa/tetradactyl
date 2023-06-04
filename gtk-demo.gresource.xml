@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<gresources>
+  <gresource prefix="/org/gtk/gtk-demo/">
+    <file preprocess="xml-stripblanks">gtk-demo.ui</file>
+  </gresource>
+</gresources>

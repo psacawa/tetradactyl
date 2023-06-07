@@ -1,3 +1,4 @@
+<?xml version="1.0"?>
 <interface>
   <object class="GtkWindow" id="window">
     <property name="title">Demo App</property>

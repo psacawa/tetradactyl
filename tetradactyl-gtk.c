@@ -228,6 +228,7 @@ void get_hintables_for_overlay_rec(GtkOverlay *overlay, GtkWidget *widget,
                                    GArray *hintables) {
   if (is_hintable(widget)) {
     g_array_append_val(hintables, widget);
+    tetradactyl_debug("widget %s hintable", gtk_widget_get_name(widget));
   }
 
   /* hintable does not preclude hintable children */
@@ -349,7 +350,8 @@ void init_tetradactyl_overlay_for_active_window() {
 void init_css() {
   GtkCssProvider *provider = gtk_css_provider_new();
   /* gtk_css_provider_load_from_path(provider, "./hints.css"); */
-  gtk_css_provider_load_from_resource(provider, "/org/gtk/tetradactyl/hints.css");
+  gtk_css_provider_load_from_resource(provider,
+                                      "/org/gtk/tetradactyl/hints.css");
 
   GdkDisplay *display = gdk_display_get_default();
   tetradactyl_info("display %p", display);

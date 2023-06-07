@@ -4,7 +4,7 @@
 
 #define NUM_BUTTONS 6
 
-void greet_button_cb(GtkWidget *widget, gpointer user_data) {
+void button_clicked_cb(GtkWidget *widget, gpointer user_data) {
   printf("button%d\n", GPOINTER_TO_INT(user_data));
 }
 
@@ -26,7 +26,7 @@ void app_activate_cb(GtkApplication *app) {
     char id[10];
     snprintf(id, sizeof(id) - 1, "button%d", i);
     GtkWidget *button = GTK_WIDGET(gtk_builder_get_object(builder, id));
-    g_signal_connect(button, "activate", G_CALLBACK(greet_button_cb),
+    g_signal_connect(button, "clicked", G_CALLBACK(button_clicked_cb),
                      GINT_TO_POINTER(i));
   }
 }

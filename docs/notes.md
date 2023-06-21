@@ -23,6 +23,8 @@
 ### .NET
 
 - Avalonia
+- WPF
+- winforms
 
 ### inne
 
@@ -52,3 +54,5 @@
 - (multi-)select (as contrasted with focus)
 - hint windows of app
 - hover + show tooltips
+- shift resizable boundary (like hold and drag)
+- drag and drop actions

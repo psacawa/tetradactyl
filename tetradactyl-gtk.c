@@ -2,6 +2,7 @@
 
 #include <ctype.h>
 #include <dlfcn.h>
+#include <fcntl.h>
 #include <gtk/gtk.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -85,43 +86,6 @@ GtkOverlay *get_active_overlay(GtkApplication *app) {
   tetradactyl_error("active window of type %s had no GtkOverlay child",
                     gtk_widget_get_name(GTK_WIDGET(window)));
   return NULL;
-}
-
-#define MACRO DEFINE_ORIG_LOC_PTR
-#include "replaced-symbols"
-#undef MACRO
-
-typedef struct symbol_map_entry_t {
-  char *symbol_name;
-  void *ptr_to_ptr_to_symbol_loc;
-  /* wskaźnik do położenia w libgtk-proxy gdzie przechowane jest zmienna orig_*
-   * która sama jest wskaźnikiem do libgtk-4 */
-} symbol_map_entry_t;
-
-symbol_map_entry_t map[] = {
-/* {"gtk_init", &orig_gtk_init}, */
-#define MACRO SYMBOL_MAP_ENTRY
-#include "replaced-symbols"
-#undef MACRO
-};
-
-void __attribute__((constructor)) init_gtk_proxy() {
-  /* setup proxy function pointers */
-  for (int i = 0; i != ARRAY_LEN(map); ++i) {
-    void *org_symbol_loc = dlsym(RTLD_NEXT, map[i].symbol_name);
-    if (org_symbol_loc == NULL) {
-      tetradactyl_error("symbol %s not loaded: %s\n", map[i].symbol_name,
-                        dlerror());
-      exit(EXIT_FAILURE);
-    }
-    *(void **)(map[i].ptr_to_ptr_to_symbol_loc) = org_symbol_loc; /* ? */
-  }
-
-  /* other early setup */
-  memset(&tconfig, 0, sizeof(tetradactyl_config));
-  /* config from json? */
-  /* tconfig.hintchars = "asdfghjkl"; */
-  tconfig.hintchars = "asd";
 }
 
 gboolean get_child_position_cb(GtkWidget *overlay, GtkWidget *hint,
@@ -251,8 +215,18 @@ void clear_hints_for_active_window() {
 }
 
 void send_synthetic_click_event(GtkWidget *hint) {
-  GtkButton *button = g_object_get_data(G_OBJECT(hint), "target");
-  gtk_widget_activate(GTK_WIDGET(button));
+  /* Są różne sposoby na aktywację widżetu. Generalnie, widżet podpowiadalny
+   * (który można kliknąć) będzie implementować interfejs Actionable, zatem,
+   * uruchamiamy tę akcje */
+
+  GtkButton *target = g_object_get_data(G_OBJECT(hint), "target");
+
+  GType type = G_TYPE_FROM_INSTANCE(target);
+  if (type == GTK_TYPE_BUTTON) {
+    g_signal_emit_by_name(target, "clicked", 0);
+  } else if (type == GTK_TYPE_LIST_ITEM) {
+    printf("%s activated\n", g_type_name(type));
+  }
 }
 
 void filter_hints(unsigned char keyval) {

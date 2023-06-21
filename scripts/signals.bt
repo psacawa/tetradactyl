@@ -1,21 +1,37 @@
 #!/usr/bin/env bpftrace
 
-uprobe:libgobject-2.0:g_signal_new {
+uprobe:libgobject-2.0:g_signal_new
+{
   @name[comm,tid] = arg0
 }
 
-uretprobe:libgobject-2.0:g_signal_new 
-/@name[comm,tid]/ {
-  @signal[comm,retval] = @name[comm,tid];
-  delete(@name[comm,tid])
+uretprobe:libgobject-2.0:g_signal_new
+/@name[comm,tid]/ 
+{
+  @signal_by_num[comm,retval] = @name[comm,tid];
+  @signal_by_name[comm,str(@name[comm,tid])] = retval;
+  delete(@name[comm,tid]);
 }
 
-uprobe:libgobject-2.0:g_signal_emit 
-/@signal[comm,arg1]/ {
-  printf("%s %s\n", comm, str(@signal[comm,arg1]));
+uprobe:libgobject-2.0:g_signal_emit, 
+uprobe:libgobject-2.0:g_signal_emitv
+/@signal_by_num[comm,arg1]/
+{
+  printf("%s %s\n", comm, str(@signal_by_num[comm,arg1]));
+  printf("%s\n", ustack());
 }
+
+uprobe:libgobject-2.0:g_signal_emit_by_name,
+{
+  if (@signal_by_name[comm,str(arg1)]) { 
+    // printf("%s %s\n", comm, str(arg1)); 
+    printf("%s\n", ustack());
+  }
+}
+
 
 END {
   clear(@name);
-  clear(@signal);
+  clear(@signal_by_num);
+  clear(@signal_by_name);
 }

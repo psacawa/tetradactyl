@@ -1,5 +1,6 @@
 #include <stdarg.h>
 #define G_LOG_USE_STRUCTURED
+#include "init.h"
 #include "tetradactyl.h"
 #include <glib-object.h>
 #include <gtk/gtk.h>

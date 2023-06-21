@@ -39,6 +39,7 @@
 
 typedef struct tetradactyl_config {
   char *hintchars;
+  gboolean debug;
 } tetradactyl_config;
 
 extern tetradactyl_config tconfig;

@@ -14,6 +14,7 @@ tetradactyl_resources = gnome.compile_resources('tetradactyl_resources',
 
 tetradactyl_sources = files([
   'tetradactyl-gtk.c',
+  'init.c',
   'intercepted-symbols.c',
   'gtk-utils.c',
 ])

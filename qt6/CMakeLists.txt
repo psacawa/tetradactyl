@@ -1,16 +1,29 @@
-project(TetradactylQt6)
+project(tmp LANGUAGES CXX)
 cmake_minimum_required(VERSION 3.20)
 
-# set(CMAKE_CXX_COMPILER CACHE STRING clang++)
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 17)
 
 find_package(
-  Qt6 CONFIG
+  Qt6
   COMPONENTS Widgets
   REQUIRED)
+find_package(fmt)
 
-add_library(tetradactyl-qt SHARED qabstractbutton.cpp pushbutton.cpp common.cpp)
-target_link_libraries(tetradactyl-qt Qt6::Core Qt6::Gui Qt6::Widgets)
-get_target_property(propvar tetradactyl-qt COMPILE_DEFINITIONS)
+add_library(
+  tetradactyl-qt SHARED
+  controller.cpp
+  filter.cpp
+  hint.cpp
+  inject.cpp
+  inject.cpp
+  tetradactyl.qrc)
+
+target_link_libraries(tetradactyl-qt PRIVATE Qt6::Widgets)
+target_link_libraries(tetradactyl-qt PRIVATE Qt6::CorePrivate) # prywatne
+                                                               # nagłówki
+
+target_link_libraries(tetradactyl-qt PRIVATE fmt)
 
 add_subdirectory(calc-demo)

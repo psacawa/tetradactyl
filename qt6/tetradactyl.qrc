@@ -1,0 +1,5 @@
+<RCC>
+  <qresource prefix="/tetradactyl">
+    <file>hints.css</file>
+  </qresource>
+</RCC>

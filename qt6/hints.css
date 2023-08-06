@@ -1,0 +1,10 @@
+HintLabel {
+  background-color: #204e8a;
+  color: white;
+  font-weight: bold;
+  padding: 1px;
+}
+
+QAbstractButton[selected="true"] {
+  background-color: #88ff00;
+}

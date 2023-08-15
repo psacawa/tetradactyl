@@ -1,3 +1,7 @@
+### Względy
+
+`QMenuBar` wyrenderuje dzieci nie w pasku ale w wyskakującym oknie, wraz z akcjami.
+
 ### C++
 
 Qt uses C++ with the MOC code genertor. To use the symbols in the same way as C, we have to deal with issues of ABI on all the supported platforms. Namely:

@@ -10,15 +10,10 @@ find_package(
   COMPONENTS Widgets
   REQUIRED)
 find_package(fmt)
+find_package(toml11 REQUIRED)
 
-add_library(
-  tetradactyl-qt SHARED
-  controller.cpp
-  filter.cpp
-  hint.cpp
-  inject.cpp
-  inject.cpp
-  tetradactyl.qrc)
+add_library(tetradactyl-qt SHARED controller.cpp filter.cpp hint.cpp inject.cpp
+                                  tetradactyl.qrc)
 
 target_link_libraries(tetradactyl-qt PRIVATE Qt6::Widgets)
 target_link_libraries(tetradactyl-qt PRIVATE Qt6::CorePrivate) # prywatne

@@ -20,13 +20,12 @@
 #include "filter.h"
 #include "hint.h"
 
-using fmt::format;
 using std::size_t;
 
 namespace Tetradactyl {
 
 struct ControllerSettings Controller::settings {
-  .hintChars = "ASDF",
+  .hintChars = "ASDFJKL",
   .keymap = {.hintKey = Qt::Key_F, .cancelKey = Qt::Key_Escape}
 };
 

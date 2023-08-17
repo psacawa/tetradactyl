@@ -2,17 +2,22 @@
 #include <QCommandLineOption>
 #include <QCommandLineParser>
 #include <QDebug>
+#include <QDir>
+#include <QFileInfo>
 #include <QList>
 #include <QMetaEnum>
 #include <QProcess>
 #include <Qt>
 
+#include <cstdio>
+#include <cstdlib>
 #include <memory>
-#include <qprocess.h>
 #include <unistd.h>
 
 #include "launcher.h"
 #include "utils.h"
+
+extern char **environ;
 
 using std::unique_ptr;
 
@@ -62,23 +67,21 @@ int main(int argc, char *argv[]) {
       unique_ptr<QCommandLineParser>(createCommandLineParser());
   parser->process(app);
 
-  qInfo() << parser->positionalArguments();
-
   if (auto posArgs = parser->positionalArguments(); posArgs.length() > 0) {
     // launch given command, with dynamic probing if necessary
+    // TODO 17/08/20 psacawa: implement for non-unix
 
-    QProcess child;
-    QProcessEnvironment childEnv(QProcessEnvironment::InheritFromParent);
-    // FIXME 16/08/20 psacawa: dynamic probing
-    childEnv.insert("LD_PRELOAD", "libtetradactyl-qt6.so");
-    child.setProcessEnvironment(childEnv);
-    QString command = posArgs[0];
-    posArgs.pop_front();
-    // TODO 15/08/20 psacawa: instead of this, let the child be freestanding
-    child.setProcessChannelMode(QProcess::ForwardedChannels);
-    child.start(command, posArgs);
-    child.waitForFinished(-1);
-
+    // TODO 17/08/20 psacawa: remove assumption on where to find libs
+    // if (setenv("LD_PRELOAD",
+    // "${ORIGIN}/../lib/libtetradactyl-dynamic-probe.so", 1) < 0) {
+    QDir launcherOrigin = QFileInfo(getLocationOfThisProgram()).dir();
+    QString preloadVar = QString("%1/../lib/libtetradactyl-dynamic-probe.so")
+                             .arg(launcherOrigin.path());
+    if (setenv("LD_PRELOAD", preloadVar.toLocal8Bit().data(), 1) < 0) {
+      perror("setenv");
+      exit(1);
+    }
+    execvpe(argv[1], &argv[1], environ);
   } else {
     // no command supplied, run launcher
     Tetradactyl::Launcher launcher;

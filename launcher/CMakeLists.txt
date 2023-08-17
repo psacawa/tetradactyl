@@ -15,8 +15,9 @@ add_executable(tetradactyl main.cpp probe.cpp launcher.cpp config.cpp utils.cpp)
 target_link_libraries(tetradactyl PRIVATE Qt6::Widgets)
 
 add_library(tetradactyl-dynamic-probe SHARED dynamic-probe.cpp)
-set_property(TARGET tetradactyl-dynamic-probe PROPERTY BUILD_RPATH "\${ORIGIN}/../lib")
-set_property(TARGET tetradactyl-dynamic-probe PROPERTY INSTALL_RPATH "\${ORIGIN}/../lib")
+set_property(TARGET tetradactyl-dynamic-probe PROPERTY BUILD_RPATH "\${ORIGIN}")
+set_property(TARGET tetradactyl-dynamic-probe PROPERTY INSTALL_RPATH "\${ORIGIN}")
+
 
 install(TARGETS tetradactyl)
 install(TARGETS tetradactyl-dynamic-probe)

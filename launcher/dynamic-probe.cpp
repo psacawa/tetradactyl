@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <dlfcn.h>
 #include <link.h>
 #include <pthread.h>
@@ -14,12 +15,6 @@ using std::string;
 
 using DlopenFunc = void *(*)(const char *, int);
 
-// use lambda as C-style callback to avoid global variable?
-bool backendDetected = false;
-const char *backend = NULL;
-
-DlopenFunc originalDlopen = NULL;
-
 // Map of widget lib names to tetradactyl backend libnames.Note that this gets
 // used in a __attribute__((constructor)) context, so any C++ classes,
 // specifically STL maps are forbidden here.
@@ -29,14 +24,19 @@ const char *backendMap[][2] = {{"libQt5Widgets", "libtetradactyl-qt5.so"},
                                {"libgtk-4", "libtetradactyl-gtk4.so"},
                                {"libgtk-3", "libtetradactyl-gtk3.so"}};
 
-int dlIteratePhdrCallback(struct dl_phdr_info *info, size_t size, void *data) {
+// use lambda as C-style callback to avoid global variable?
+bool backendDetected = false;
+const char *backend = NULL;
+
+DlopenFunc originalDlopen = NULL;
+
+extern "C" int dlIteratePhdrCallback(struct dl_phdr_info *info, size_t size,
+                                     void *data) {
   for (int c = 0; c != ARRAY_LEN(backendMap); c++) {
-    string backendName = backendMap[c][0];
-    string tetradactylBackendName = backendMap[c][1];
-    // printf("%d %s %s\n", c, backendMap[c][0], backendMap[c][1]);
-    // printf("%p %s\n", info, info->dlpi_name);
-    if (string(info->dlpi_name).find(backendName) != string::npos) {
-      printf("%s %s\n", info->dlpi_name, backendMap[c][0]);
+    const char *backendName = backendMap[c][0];
+    const char *tetradactylBackendName = backendMap[c][1];
+    // if (string(info->dlpi_name).find(backendName) != string::npos) {
+    if ((strstr(info->dlpi_name, backendName)) != NULL) {
       backendDetected = true;
       ssize_t *backendIdxPtr = (ssize_t *)data;
       *backendIdxPtr = c;
@@ -57,6 +57,7 @@ bool checkLoadedDynLibs() {
   if (backendIdx >= 0) {
     fprintf(stderr, "Target loaded %s. Initializing %s\n",
             backendMap[backendIdx][0], backendMap[backendIdx][1]);
+    fflush(stderr);
     backendDetected = true;
     void *backendHandle = originalDlopen(backendMap[backendIdx][1], RTLD_NOW);
     if (backendHandle == NULL) {

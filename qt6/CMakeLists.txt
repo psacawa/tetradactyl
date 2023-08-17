@@ -13,14 +13,25 @@ find_package(
   COMPONENTS Widgets
   REQUIRED)
 
+find_package(
+  Qt5
+  COMPONENTS Widgets
+  REQUIRED)
+
 add_library(tetradactyl-qt6 SHARED controller.cpp filter.cpp hint.cpp
                                    inject.cpp tetradactyl.qrc)
+
+add_library(tetradactyl-qt5 SHARED tetradactyl-qt5-stub.cpp)
+target_link_libraries(tetradactyl-qt5 PRIVATE Qt5::Widgets)
+target_link_libraries(tetradactyl-qt5 PRIVATE Qt5::CorePrivate)
 
 target_link_libraries(tetradactyl-qt6 PRIVATE Qt6::Widgets)
 # prywatne nagłówki
 target_link_libraries(tetradactyl-qt6 PRIVATE Qt6::CorePrivate)
 
 target_link_libraries(tetradactyl-qt6 PRIVATE fmt)
+
+install(TARGETS tetradactyl-qt5)
 install(TARGETS tetradactyl-qt6)
 
 add_subdirectory(calc-demo)

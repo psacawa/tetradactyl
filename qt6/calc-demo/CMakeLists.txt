@@ -7,20 +7,12 @@ if(NOT DEFINED INSTALL_EXAMPLESDIR)
   set(INSTALL_EXAMPLESDIR "examples")
 endif()
 
-set(INSTALL_EXAMPLEDIR "${INSTALL_EXAMPLESDIR}/widgets/widgets/calculator")
-
 qt_standard_project_setup()
 
 qt_add_executable(calculator button.cpp button.h calculator.cpp calculator.h
                   main.cpp)
 
-set_target_properties(calculator PROPERTIES WIN32_EXECUTABLE TRUE MACOSX_BUNDLE
-                                                                  TRUE)
-
 target_link_libraries(calculator PRIVATE Qt6::Core Qt6::Gui Qt6::Widgets)
+# set(calculator SKIP_BUILD_RPATH YES)
 
-install(
-  TARGETS calculator
-  RUNTIME DESTINATION "${INSTALL_EXAMPLEDIR}"
-  BUNDLE DESTINATION "${INSTALL_EXAMPLEDIR}"
-  LIBRARY DESTINATION "${INSTALL_EXAMPLEDIR}")
+install(TARGETS calculator)

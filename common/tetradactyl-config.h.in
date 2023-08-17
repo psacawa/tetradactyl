@@ -1,0 +1,7 @@
+
+#cmakedefine TETRADACTYL_VERSION @CMAKE_PROJECT_VERSION@
+
+#define TETRADACTYL_QT5_LIB "libtetradactyl-qt5.so"
+#define TETRADACTYL_QT6_LIB "libtetradactyl-qt6.so"
+
+// vim: set ft=h :

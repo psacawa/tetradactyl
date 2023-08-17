@@ -5,7 +5,6 @@
 #include <QTextStream>
 #include <QTimer>
 #include <QWindow>
-#include <QtAssert>
 
 #include <QtCore/private/qhooks_p.h>
 

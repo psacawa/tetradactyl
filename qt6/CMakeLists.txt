@@ -5,20 +5,22 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 17)
 
+find_package(fmt)
+find_package(toml11 REQUIRED)
+
 find_package(
   Qt6
   COMPONENTS Widgets
   REQUIRED)
-find_package(fmt)
-find_package(toml11 REQUIRED)
 
-add_library(tetradactyl-qt SHARED controller.cpp filter.cpp hint.cpp inject.cpp
-                                  tetradactyl.qrc)
+add_library(tetradactyl-qt6 SHARED controller.cpp filter.cpp hint.cpp
+                                   inject.cpp tetradactyl.qrc)
 
-target_link_libraries(tetradactyl-qt PRIVATE Qt6::Widgets)
-target_link_libraries(tetradactyl-qt PRIVATE Qt6::CorePrivate) # prywatne
-                                                               # nagłówki
+target_link_libraries(tetradactyl-qt6 PRIVATE Qt6::Widgets)
+# prywatne nagłówki
+target_link_libraries(tetradactyl-qt6 PRIVATE Qt6::CorePrivate)
 
-target_link_libraries(tetradactyl-qt PRIVATE fmt)
+target_link_libraries(tetradactyl-qt6 PRIVATE fmt)
+install(TARGETS tetradactyl-qt6)
 
 add_subdirectory(calc-demo)

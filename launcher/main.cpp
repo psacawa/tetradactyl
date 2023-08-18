@@ -72,8 +72,7 @@ int main(int argc, char *argv[]) {
     // TODO 17/08/20 psacawa: implement for non-unix
 
     // TODO 17/08/20 psacawa: remove assumption on where to find libs
-    // if (setenv("LD_PRELOAD",
-    // "${ORIGIN}/../lib/libtetradactyl-dynamic-probe.so", 1) < 0) {
+    // TODO 17/08/20 psacawa: remove this damn kruft
     QDir launcherOrigin = QFileInfo(getLocationOfThisProgram()).dir();
     QString preloadVar = QString("%1/../lib/libtetradactyl-dynamic-probe.so")
                              .arg(launcherOrigin.path());

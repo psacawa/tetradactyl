@@ -1,18 +1,29 @@
 #include <QAbstractButton>
+#include <QAction>
 #include <QApplication>
 #include <QDebug>
 #include <QFile>
+#include <QKeySequence>
+#include <QLineEdit>
 #include <QList>
+#include <QLoggingCategory>
+#include <QShortcut>
+#include <QTextEdit>
 #include <QWindow>
+
+// #include <QtWidgets/private>
 
 #include <fmt/core.h>
 
 #include <algorithm>
-#include <cassert>
 #include <iterator>
+#include <qassert.h>
 #include <qdebug.h>
+#include <qglobal.h>
+#include <qlist.h>
 #include <qnamespace.h>
 #include <qobject.h>
+#include <qt6/QtCore/qmap.h>
 #include <qvariant.h>
 #include <vector>
 
@@ -20,9 +31,18 @@
 #include "filter.h"
 #include "hint.h"
 
+#define THIS_LOG tetradactylController
+Q_LOGGING_CATEGORY(tetradactylController, "tetradactyl.controller");
+
 using std::size_t;
 
 namespace Tetradactyl {
+
+const std::map<Controller::HintMode, vector<const QMetaObject *>>
+    Controller::hintableMetaObjects = {
+        {Activatable, {&QAbstractButton::staticMetaObject}},
+        {Editable,
+         {&QLineEdit::staticMetaObject, &QTextEdit::staticMetaObject}}};
 
 struct ControllerSettings Controller::settings {
   .hintChars = "ASDFJKL",
@@ -33,7 +53,7 @@ bool Controller::initalized = false;
 QString Controller::stylesheet = "";
 
 Controller::Controller(QWindow *_window) : QObject(_window), window(_window) {
-  assert(_window);
+  Q_ASSERT(_window);
   filter = new KeyboardEventFilter(window, this);
   if (!initalized) {
     Controller::stylesheet = fetchStylesheet();
@@ -43,16 +63,19 @@ Controller::Controller(QWindow *_window) : QObject(_window), window(_window) {
 
 Controller::~Controller() {}
 
-void Controller::hint() {
-  assert(state == State::Normal);
-  qDebug() << __PRETTY_FUNCTION__;
+void Controller::hint(HintMode hintMode) {
+  if (!(mode == ControllerMode::Normal)) {
+    qCInfo(THIS_LOG) << __PRETTY_FUNCTION__ << "from" << mode;
+    return;
+  }
+  qCDebug(THIS_LOG) << __PRETTY_FUNCTION__;
   hintBuffer = "";
-  QList<QWidget *> hintables = this->hintables();
+  QList<QWidget *> hintables = this->getHintables(hintMode);
   HintGenerator hintStringGenerator(Controller::settings.hintChars,
                                     hintables.length());
   for (auto widget : hintables) {
     string hintStr = *hintStringGenerator;
-    qDebug() << "Hinting " << widget << " with " << hintStr.c_str();
+    qCDebug(THIS_LOG) << "Hinting " << widget << " with " << hintStr.c_str();
     HintLabel *hint = new HintLabel(*hintStringGenerator, widget);
     hint->parentWidget()->setProperty("selected", QVariant(true));
     hint->show();
@@ -60,23 +83,53 @@ void Controller::hint() {
     hintStringGenerator++;
   }
   selectedHint = hints.begin();
-  state = State::Hint;
+  mode = ControllerMode::Hint;
+  currentHintMode = hintMode;
 }
 
 void Controller::acceptCurrent() {}
 
 void Controller::accept(QWidget *widget) {
-  qInfo() << "Accepted " << widget;
-  if (auto button = qobject_cast<QAbstractButton *>(widget)) {
-    button->click();
-  } else {
-    qWarning() << "Don't know how to activate " << widget;
+  if (!(mode == ControllerMode::Hint)) {
+    qCInfo(THIS_LOG) << __PRETTY_FUNCTION__ << "from" << mode;
+    return;
+  }
+  qCInfo(THIS_LOG) << "Accepted " << widget << "in" << currentHintMode;
+  switch (currentHintMode) {
+  case Activatable: {
+    if (auto button = qobject_cast<QAbstractButton *>(widget)) {
+      button->click();
+    } else {
+      qCWarning(THIS_LOG) << "Don't know how to activate " << widget << "in"
+                          << currentHintMode;
+    }
+    break;
+  }
+  case Editable: {
+    widget->setFocus();
+    /*
+     * if (const auto lineEdit = qobject_cast<QLineEdit *>(widget)) {
+     * } else {
+     *   else_block
+     * }
+     */
+    break;
+  }
+  case Yankable:
+    qCWarning(THIS_LOG) << "unimplemented";
+    break;
+  default:
+    Q_UNREACHABLE();
+    break;
   }
   cancel();
 }
 
 void Controller::pushKey(char ch) {
-  assert(state == State::Hint);
+  if (!(mode == ControllerMode::Hint)) {
+    qCInfo(THIS_LOG) << __PRETTY_FUNCTION__ << "from" << mode;
+    return;
+  }
   hintBuffer += ch;
   filterHints();
 
@@ -87,11 +140,23 @@ void Controller::pushKey(char ch) {
 }
 
 void Controller::popKey() {
-  assert(state == State::Hint);
+  if (!(mode == ControllerMode::Hint)) {
+    qCInfo(THIS_LOG) << __PRETTY_FUNCTION__ << "from" << mode;
+    return;
+  }
   // pop char from hintBuffer
   hintBuffer =
       hintBuffer.substr(0, hintBuffer.size() - 1 ? hintBuffer.size() : 0);
   filterHints();
+}
+
+QWidget *Controller::myToplevelWidget() {
+  for (auto toplevel : qApp->topLevelWidgets()) {
+    if (toplevel->windowHandle() == window) {
+      return toplevel;
+    }
+  }
+  Q_UNREACHABLE();
 }
 
 void Controller::filterHints() {
@@ -116,22 +181,44 @@ void Controller::filterHints() {
 }
 
 void Controller::cancel() {
-  assert(state == State::Hint);
-  qDebug() << __PRETTY_FUNCTION__;
+  if (!(mode == ControllerMode::Hint)) {
+    qCInfo(THIS_LOG) << __PRETTY_FUNCTION__ << "from" << mode;
+    return;
+  }
+  qCDebug(THIS_LOG) << __PRETTY_FUNCTION__;
   for (auto hint : hints) {
     delete hint;
   }
   hints = {};
   visibleHints = {};
-  state = State::Normal;
+  mode = ControllerMode::Normal;
 }
 
-QList<QWidget *> Controller::hintables() {
-  // QWidget *toplevelWidget =  this->window->wind
-  // return QList<QWidget *>();
-  QWidget *toplevelWidget = qApp->activeWindow();
-  QList<QAbstractButton *> hintables =
-      toplevelWidget->findChildren<QAbstractButton *>();
+// For now the  hinting proceed only by type: QObjects whose meta-object are
+// right get hinted. However, to support clients with more complex handling of
+// events, etc., we will want a more dynamic approach.
+QList<QWidget *> Controller::getHintables(HintMode hintMode) {
+  QWidget *toplevelWidget = myToplevelWidget();
+  QList<QWidget *> descendants = toplevelWidget->findChildren<QWidget *>();
+  vector<QWidget *> hintables;
+  vector<const QMetaObject *> metaObjects;
+  try {
+    metaObjects = hintableMetaObjects.at(hintMode);
+  } catch (std::out_of_range) {
+    qCWarning(THIS_LOG) << "unsupported" << hintMode;
+    return {};
+  }
+
+  std::copy_if(descendants.begin(), descendants.end(),
+               std::back_inserter(hintables), [=](QWidget *obj) {
+                 for (auto mo : metaObjects) {
+                   if (mo->cast(obj) != nullptr) {
+                     return true;
+                   }
+                 }
+                 return false;
+               });
+
   // TODO 02/08/20 psacawa: dla się bez tego kopiowania?
   // return QList<QWidget *>(hintables.begin(), hintables.end());
   return QList<QWidget *>(hintables.begin(), hintables.end());

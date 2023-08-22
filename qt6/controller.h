@@ -1,9 +1,12 @@
 #pragma once
 
+#include <QAbstractButton>
 #include <QDebug>
+#include <QMap>
 #include <QWidget>
 #include <QWindow>
 
+#include <map>
 #include <vector>
 
 #include "filter.h"
@@ -29,19 +32,17 @@ class Controller : public QObject {
   Q_OBJECT
 
 public:
-  enum State { Normal, Hint };
+  enum ControllerMode { Normal, Hint, Input };
+  Q_ENUM(ControllerMode);
+  enum HintMode { Activatable, Editable, Yankable };
+  Q_ENUM(HintMode);
 
   Controller(QWindow *_window);
   virtual ~Controller();
 
-  void hint();
-  void acceptCurrent();
-  QList<QWidget *> hintables();
-  void cancel();
-  void pushKey(char ch);
-  void popKey();
-
-  State state = State::Normal;
+  QList<QWidget *> getHintables(HintMode mode);
+  ControllerMode mode = ControllerMode::Normal;
+  HintMode currentHintMode;
   QWindow *window;
   KeyboardEventFilter *filter;
   vector<HintLabel *> hints;
@@ -55,9 +56,23 @@ public:
   static QString stylesheet;
   static bool initalized;
 
+public slots:
+
+  void hint(HintMode mode = Activatable);
+  void acceptCurrent();
+  void cancel();
+  void pushKey(char ch);
+  void popKey();
+
 private:
   void filterHints();
+  QWidget *myToplevelWidget();
   void accept(QWidget *widget);
+
+  static const std::map<HintMode, vector<const QMetaObject *>>
+      hintableMetaObjects;
+
+  friend class KeyboardEventFilter;
 };
 
 int pow(int b, unsigned e);

@@ -90,6 +90,6 @@ void __attribute__((constructor)) initDynamicProbe() {
   originalDlopen = (DlopenFunc)((dlsym(RTLD_NEXT, "dlopen")));
   bool backendStaticallyDetected = checkLoadedDynLibs();
   if (backendStaticallyDetected) {
-    fprintf(stderr, "Widget backend staticlly detected.");
+    fprintf(stderr, "Widget backend statically detected.\n");
   }
 }

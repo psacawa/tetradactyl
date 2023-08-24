@@ -1,6 +1,7 @@
 #include <QApplication>
 #include <QDebug>
 #include <QList>
+#include <QLoggingCategory>
 #include <QObject>
 #include <QTextStream>
 #include <QTimer>
@@ -8,23 +9,25 @@
 
 #include <QtCore/private/qhooks_p.h>
 
+#include <cstdio>
+
 #include "controller.h"
 #include "inject.h"
-
-#include <cstdio>
 
 using QHooks::AddQObjectCallback;
 using QHooks::HookIndex;
 using QHooks::RemoveQObjectCallback;
 using QHooks::StartupCallback;
-using Tetradactyl::Controller;
 using Tetradactyl::Probe;
+
+#define lcThis tetradactylInject
+Q_LOGGING_CATEGORY(tetradactylInject, "tetradactyl.inject");
 
 static StartupCallback nextStartupCallback;
 static AddQObjectCallback nextAddQObjectCallback;
 static RemoveQObjectCallback nextRemoveQObjectCallback;
 
-void __attribute__((constructor)) init_hooks() {
+void __attribute__((constructor)) initHooks() {
 
   nextStartupCallback =
       reinterpret_cast<StartupCallback>(qtHookData[HookIndex::Startup]);
@@ -47,7 +50,7 @@ Probe::Probe() {
 
 void Probe::startupCallback() {
 
-  QTimer::singleShot(0, []() { Probe::attachControllerToWindows(); });
+  QTimer::singleShot(0, []() { Probe::afterAppInitialization(); });
   if (nextStartupCallback) {
     nextStartupCallback();
   }
@@ -82,10 +85,20 @@ void Probe::removeQObjectCallback(QObject *obj) {
   }
 }
 
+void Probe::afterAppInitialization() {
+  attachControllerToWindows();
+
+  // Initially defocus input widgets. This assumes the tol-level widget is not
+  // e.g. QLineEdit
+  for (auto widget : qApp->topLevelWidgets()) {
+    widget->setFocus();
+  }
+}
+
 void Probe::attachControllerToWindows() {
   QList<QWindow *> windows = qApp->allWindows();
   for (auto win : windows) {
-    qInfo() << "Attaching Tetradactyl to " << win;
+    qCInfo(lcThis) << "Attaching Tetradactyl to " << win;
     new Tetradactyl::Controller(win);
   }
 }

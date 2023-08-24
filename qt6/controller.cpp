@@ -1,6 +1,7 @@
 #include <QAbstractButton>
 #include <QAction>
 #include <QApplication>
+#include <QClipboard>
 #include <QDebug>
 #include <QFile>
 #include <QKeySequence>
@@ -10,8 +11,6 @@
 #include <QShortcut>
 #include <QTextEdit>
 #include <QWindow>
-
-// #include <QtWidgets/private>
 
 #include <fmt/core.h>
 
@@ -27,11 +26,12 @@
 #include <qvariant.h>
 #include <vector>
 
+#include "common.h"
 #include "controller.h"
 #include "filter.h"
 #include "hint.h"
 
-#define THIS_LOG tetradactylController
+#define lcThis tetradactylController
 Q_LOGGING_CATEGORY(tetradactylController, "tetradactyl.controller");
 
 using std::size_t;
@@ -42,11 +42,18 @@ const std::map<Controller::HintMode, vector<const QMetaObject *>>
     Controller::hintableMetaObjects = {
         {Activatable, {&QAbstractButton::staticMetaObject}},
         {Editable,
-         {&QLineEdit::staticMetaObject, &QTextEdit::staticMetaObject}}};
+         {&QLineEdit::staticMetaObject, &QTextEdit::staticMetaObject}},
+        {Focusable, {&QWidget::staticMetaObject}},
+        {Yankable, {&QLabel::staticMetaObject}}};
 
 struct ControllerSettings Controller::settings {
-  .hintChars = "ASDFJKL",
-  .keymap = {.hintKey = Qt::Key_F, .cancelKey = Qt::Key_Escape}
+  .hintChars = "ASDFJKL", .keymap = {.activate = QKeySequence(Qt::Key_F),
+                                     .cancel = QKeySequence(Qt::Key_Escape),
+                                     .edit = QKeySequence(Qt::Key_G, Qt::Key_I),
+                                     .focus = QKeySequence(Qt::Key_Semicolon),
+                                     .yank = QKeySequence(Qt::Key_Y),
+                                     .upScroll = QKeySequence(Qt::Key_K),
+                                     .downScroll = QKeySequence(Qt::Key_J)}
 };
 
 bool Controller::initalized = false;
@@ -65,17 +72,17 @@ Controller::~Controller() {}
 
 void Controller::hint(HintMode hintMode) {
   if (!(mode == ControllerMode::Normal)) {
-    qCInfo(THIS_LOG) << __PRETTY_FUNCTION__ << "from" << mode;
+    qCInfo(lcThis) << __PRETTY_FUNCTION__ << "from" << mode;
     return;
   }
-  qCDebug(THIS_LOG) << __PRETTY_FUNCTION__;
+  qCDebug(lcThis) << __PRETTY_FUNCTION__;
   hintBuffer = "";
   QList<QWidget *> hintables = this->getHintables(hintMode);
   HintGenerator hintStringGenerator(Controller::settings.hintChars,
                                     hintables.length());
   for (auto widget : hintables) {
     string hintStr = *hintStringGenerator;
-    qCDebug(THIS_LOG) << "Hinting " << widget << " with " << hintStr.c_str();
+    qCDebug(lcThis) << "Hinting " << widget << " with " << hintStr.c_str();
     HintLabel *hint = new HintLabel(*hintStringGenerator, widget);
     hint->parentWidget()->setProperty("selected", QVariant(true));
     hint->show();
@@ -91,20 +98,22 @@ void Controller::acceptCurrent() {}
 
 void Controller::accept(QWidget *widget) {
   if (!(mode == ControllerMode::Hint)) {
-    qCInfo(THIS_LOG) << __PRETTY_FUNCTION__ << "from" << mode;
+    qCInfo(lcThis) << __PRETTY_FUNCTION__ << "from" << mode;
     return;
   }
-  qCInfo(THIS_LOG) << "Accepted " << widget << "in" << currentHintMode;
+  qCInfo(lcThis) << "Accepted " << widget << "in" << currentHintMode;
   switch (currentHintMode) {
   case Activatable: {
     if (auto button = qobject_cast<QAbstractButton *>(widget)) {
       button->click();
     } else {
-      qCWarning(THIS_LOG) << "Don't know how to activate " << widget << "in"
-                          << currentHintMode;
+      qCWarning(lcThis) << "Don't know how to activate " << widget << "in"
+                        << currentHintMode;
     }
     break;
   }
+  case Focusable:
+    // TODO 24/08/20 psacawa: set focussed GUI state for button...
   case Editable: {
     widget->setFocus();
     /*
@@ -115,9 +124,16 @@ void Controller::accept(QWidget *widget) {
      */
     break;
   }
-  case Yankable:
-    qCWarning(THIS_LOG) << "unimplemented";
+  case Yankable: {
+    if (QLabel *label = qobject_cast<QLabel *>(widget)) {
+      QClipboard *clipboard = qApp->clipboard();
+      QString text = label->text();
+      clipboard->setText(text);
+    } else {
+      qCWarning(lcThis) << "unimplemented";
+    }
     break;
+  }
   default:
     Q_UNREACHABLE();
     break;
@@ -127,7 +143,7 @@ void Controller::accept(QWidget *widget) {
 
 void Controller::pushKey(char ch) {
   if (!(mode == ControllerMode::Hint)) {
-    qCInfo(THIS_LOG) << __PRETTY_FUNCTION__ << "from" << mode;
+    qCInfo(lcThis) << __PRETTY_FUNCTION__ << "from" << mode;
     return;
   }
   hintBuffer += ch;
@@ -141,7 +157,7 @@ void Controller::pushKey(char ch) {
 
 void Controller::popKey() {
   if (!(mode == ControllerMode::Hint)) {
-    qCInfo(THIS_LOG) << __PRETTY_FUNCTION__ << "from" << mode;
+    qCInfo(lcThis) << __PRETTY_FUNCTION__ << "from" << mode;
     return;
   }
   // pop char from hintBuffer
@@ -182,10 +198,10 @@ void Controller::filterHints() {
 
 void Controller::cancel() {
   if (!(mode == ControllerMode::Hint)) {
-    qCInfo(THIS_LOG) << __PRETTY_FUNCTION__ << "from" << mode;
+    qCInfo(lcThis) << __PRETTY_FUNCTION__ << "from" << mode;
     return;
   }
-  qCDebug(THIS_LOG) << __PRETTY_FUNCTION__;
+  qCDebug(lcThis) << __PRETTY_FUNCTION__;
   for (auto hint : hints) {
     delete hint;
   }
@@ -205,14 +221,17 @@ QList<QWidget *> Controller::getHintables(HintMode hintMode) {
   try {
     metaObjects = hintableMetaObjects.at(hintMode);
   } catch (std::out_of_range) {
-    qCWarning(THIS_LOG) << "unsupported" << hintMode;
+    qCWarning(lcThis) << "unsupported" << hintMode;
     return {};
   }
 
   std::copy_if(descendants.begin(), descendants.end(),
-               std::back_inserter(hintables), [=](QWidget *obj) {
+               std::back_inserter(hintables), [=](QWidget *widget) {
+                 if (!widget->isEnabled()) {
+                   return false;
+                 }
                  for (auto mo : metaObjects) {
-                   if (mo->cast(obj) != nullptr) {
+                   if (mo->cast(widget) != nullptr) {
                      return true;
                    }
                  }

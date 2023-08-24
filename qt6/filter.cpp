@@ -19,7 +19,7 @@ using HintMode = Tetradactyl::Controller::HintMode;
 using Tetradactyl::ControllerKeymap;
 using ControllerMode = Tetradactyl::Controller::ControllerMode;
 
-#define THIS_LOG tetradactylFilter
+#define lcThis tetradactylFilter
 Q_LOGGING_CATEGORY(tetradactylFilter, "tetradactyl.filter");
 
 namespace Tetradactyl {
@@ -52,15 +52,16 @@ bool KeyboardEventFilter::eventFilter(QObject *obj, QEvent *ev = nullptr) {
 
       QKeyEvent *kev = static_cast<QKeyEvent *>(ev);
       Tetradactyl::ControllerKeymap &keymap = controller->settings.keymap;
-      int key = kev->key();
+      QKeyCombination kc = QKeyCombination::fromCombined(kev->key());
 
       // current technique to let input widgets get input is to avoid filtering
       // the input if the current focussed widget is considered an input widget.
       // Only  <esc> is captured to escape the focus
 
       if (inputWidgetFocussed()) {
-        qDebug() << "Input widget is focussed. Passing keypress" << kev;
-        if (key == Qt::Key_Escape) {
+        qCDebug(lcThis) << "Input widget is focussed. Passing keypress"
+                          << kev;
+        if (kc == QKeyCombination(Qt::Key_Escape)) {
           // is there a better default for focus to escape inputs?
           controller->myToplevelWidget()->setFocus();
           return true;
@@ -69,23 +70,34 @@ bool KeyboardEventFilter::eventFilter(QObject *obj, QEvent *ev = nullptr) {
       }
 
       if (controller->mode == ControllerMode::Normal) {
-        if (key == keymap.hintKey) {
+        // TODO 22/08/20 psacawa: really handle shortcuts input buffering
+        if (kc == keymap.activate[0]) {
           this->controller->hint();
           return true;
-        } else if (key == Qt::Key_G) {
+        } else if (kc == keymap.focus[0]) {
+          this->controller->hint(HintMode::Focusable);
+          return true;
+        } else if (kc == keymap.yank[0]) {
+          this->controller->hint(HintMode::Yankable);
+          return true;
+        } else if (kc == keymap.edit[0]) {
+          this->controller->hint(HintMode::Editable);
+          return true;
+        } else if (kc == keymap.upScroll[0]) {
           this->controller->hint(HintMode::Editable);
           return true;
         }
       } else if (controller->mode == Controller::ControllerMode::Hint) {
-        if (key == keymap.cancelKey) {
+        if (kc == keymap.cancel[0]) {
           this->controller->cancel();
           return true;
-        } else if (key == Qt::Key_Backspace) {
+        } else if (kc == QKeyCombination(Qt::Key_Backspace)) {
           this->controller->popKey();
           return true;
-        } else if (isalpha(key)) {
+        } else if (kc.keyboardModifiers() == Qt::NoModifier &&
+                   isalpha(kc.key())) {
           // TODO 02/08/20 psacawa: finish this
-          this->controller->pushKey(toupper(key));
+          this->controller->pushKey(toupper(kc.key()));
           return true;
         }
       }

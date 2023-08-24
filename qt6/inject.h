@@ -17,6 +17,8 @@ public:
   static void addQObjectCallback(QObject *obj);
   static void removeQObjectCallback(QObject *obj);
   static void startupCallback();
+
+  static void afterAppInitialization();
   static void attachControllerToWindows();
 
   static Probe *instance();

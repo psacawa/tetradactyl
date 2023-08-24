@@ -2,6 +2,7 @@
 
 #include <QAbstractButton>
 #include <QDebug>
+#include <QKeySequence>
 #include <QMap>
 #include <QWidget>
 #include <QWindow>
@@ -19,12 +20,19 @@ using std::vector;
 namespace Tetradactyl {
 
 struct ControllerKeymap {
-  Qt::Key hintKey;
-  Qt::Key cancelKey;
+  QKeySequence activate;
+  QKeySequence cancel;
+  QKeySequence edit;
+  QKeySequence focus;
+  QKeySequence yank;
+  QKeySequence upScroll;
+  QKeySequence downScroll;
 };
 
 struct ControllerSettings {
   const char *hintChars;
+  bool passthroughKeyboardInput;
+  bool passthroughKeyboardInputDelay;
   ControllerKeymap keymap;
 };
 
@@ -34,7 +42,7 @@ class Controller : public QObject {
 public:
   enum ControllerMode { Normal, Hint, Input };
   Q_ENUM(ControllerMode);
-  enum HintMode { Activatable, Editable, Yankable };
+  enum HintMode { Activatable, Editable, Yankable, Focusable, Contextable };
   Q_ENUM(HintMode);
 
   Controller(QWindow *_window);

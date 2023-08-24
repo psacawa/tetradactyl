@@ -22,6 +22,7 @@ protected:
   bool eventFilter(QObject *obj, QEvent *ev) override;
 
 private:
+  // vector <QKeySequence>
   static vector<const QMetaObject *> inputMetaObjects;
   bool inputWidgetFocussed();
   QObject *owner = nullptr;

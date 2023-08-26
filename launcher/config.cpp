@@ -6,12 +6,15 @@
 #include "config.h"
 
 using std::string;
-
-TetradactylConfig TetradactylConfig::fromConfigFile(string filename) {
-  const auto data = toml::parse(filename);
-  TetradactylConfig config;
-  config.hintChars =
-      toml::find_or<string>(data, "hintChars", "hjklasdfgyuiopqwertnmzxcvb");
-  config.addToSystemTray = toml::find_or<bool>(data, "addToSystemTray", true);
-  return config;
-}
+namespace Tetradactyl
+{
+  
+  Config Config::fromConfigFile(string filename) {
+    const auto data = toml::parse(filename);
+    Config config;
+    config.hintChars =
+        toml::find_or<string>(data, "hintChars", "hjklasdfgyuiopqwertnmzxcvb");
+    config.addToSystemTray = toml::find_or<bool>(data, "addToSystemTray", true);
+    return config;
+  }
+} /* Tetradactyl */ 

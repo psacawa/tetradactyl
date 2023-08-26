@@ -1,7 +1,7 @@
 {
-  "ignore": [".git", "build"],
+  "ignore": [".git", "build", "examples"],
   "delay": 0.2,
   "watch": ["."],
   "exec": "cmake --build build --parallel 6 || exit 1",
-  "ext": "cpp,h,txt"
+  "ext": "cpp,h,txt,ui,qrc"
 }

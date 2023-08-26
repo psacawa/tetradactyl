@@ -6,6 +6,7 @@
 #include <QJsonObject>
 #include <QListView>
 #include <QMainWindow>
+#include <QPushButton>
 #include <QString>
 #include <Qt>
 
@@ -26,10 +27,13 @@ enum WidgetBackend {
   Gtk4,
   Qt5,
   Qt6,
+  None,
 };
 Q_ENUM_NS(WidgetBackend);
 
 struct App {
+  // Perhaps comes from XDG Desktop file;  fallback to filename
+  QString name;
   QFileInfo file;
   WidgetBackend backend;
 
@@ -46,6 +50,17 @@ public:
   virtual ~Launcher() {}
 
 private:
+  void createLayout();
+  QWidget *central;
+  QLayout *layout;
+  QWidget *bottom;
+
+  QLayout *bottomLayout;
+  QPushButton *launchButton;
+  QPushButton *addButton;
+  QPushButton *refreshButton;
+  QPushButton *exitButton;
+
   ApplicationListModel *model;
   QListView *view;
 };

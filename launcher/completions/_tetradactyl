@@ -1,0 +1,9 @@
+#compdef tetradactyl
+
+_arguments  \
+  '1: :(***/*(*))'  \
+  '(-b,--backend)'{-b,--backend}': :(Gtk3 Gtk4 Qt5 Qt6 None)' \
+  '*:arg: _default' --
+
+
+# vim: set ft=zsh :

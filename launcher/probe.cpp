@@ -9,10 +9,10 @@
 
 #include <cstdlib>
 
-using std::getenv;
-
 #include "launcher.h"
 #include "probe.h"
+
+using std::getenv;
 
 // Probing an  executable to determine whether it uses a supported backend can
 // proceed in multiple ways:

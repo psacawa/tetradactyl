@@ -25,8 +25,10 @@
 
 #include "launcher.h"
 #include "probe.h"
+#include "tablemodel.h"
 
 using std::domain_error;
+using std::string;
 
 namespace Tetradactyl {
 
@@ -64,30 +66,14 @@ App App::fromJson(const QJsonObject &json) {
 }
 
 Launcher::Launcher() {
+  setWindowTitle("Tetradactyl Launcher");
+
+  createLayout();
+
   model = new ApplicationListModel();
-
-  QWidget *central = new QWidget;
-  setCentralWidget(central);
-  QLayout *layout = new QVBoxLayout(central);
-
-  view = new QListView();
-  QWidget *bottom = new QWidget;
+  new ApplicationTableModel;
 
   view->setModel(model);
-
-  layout->addWidget(view);
-  layout->addWidget(bottom);
-
-  QLayout *bottomLayout = new QHBoxLayout(bottom);
-  QPushButton *launchButton = new QPushButton(tr("&Launch"));
-  QPushButton *addButton = new QPushButton(tr("&Add"));
-  QPushButton *refreshButton = new QPushButton(tr("Re&fresh database"));
-  QPushButton *exitButton = new QPushButton(tr("E&xit"));
-
-  bottomLayout->addWidget(launchButton);
-  bottomLayout->addWidget(addButton);
-  bottomLayout->addWidget(refreshButton);
-  bottomLayout->addWidget(exitButton);
 
   connect(launchButton, &QAbstractButton::clicked, this, [=] {
     auto selection = view->selectionModel()->selection();
@@ -125,6 +111,29 @@ Launcher::Launcher() {
   probe->start();
 }
 
+void Launcher::createLayout() {
+  central = new QWidget;
+  setCentralWidget(central);
+  layout = new QVBoxLayout(central);
+
+  view = new QListView();
+  bottom = new QWidget;
+
+  layout->addWidget(view);
+  layout->addWidget(bottom);
+
+  bottomLayout = new QHBoxLayout(bottom);
+  launchButton = new QPushButton(tr("&Launch"));
+  addButton = new QPushButton(tr("&Add"));
+  refreshButton = new QPushButton(tr("Re&fresh database"));
+  exitButton = new QPushButton(tr("E&xit"));
+
+  bottomLayout->addWidget(launchButton);
+  bottomLayout->addWidget(addButton);
+  bottomLayout->addWidget(refreshButton);
+  bottomLayout->addWidget(exitButton);
+}
+
 ApplicationListModel::ApplicationListModel() {}
 
 int ApplicationListModel::rowCount(const QModelIndex &parent) const {
@@ -144,7 +153,7 @@ QVariant ApplicationListModel::data(const QModelIndex &index, int role) const {
 void ApplicationListModel::addTetradactylApp(QFileInfo file,
                                              WidgetBackend backend) {
   beginInsertRows(QModelIndex(), apps.size(), apps.size() + 1);
-  App *app = new App{file, backend};
+  App *app = new App{file.baseName(), file, backend};
   apps.push_back(app);
   endInsertRows();
 }

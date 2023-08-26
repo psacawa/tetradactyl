@@ -82,8 +82,6 @@ void *dlopen(const char *filename, int flags) {
   return ret;
 }
 
-void installHooks() {}
-
 void __attribute__((constructor)) initDynamicProbe() {
   fprintf(stderr, "Initializing Tetradactyl dynamic probe %p\n",
           (void *)pthread_self());

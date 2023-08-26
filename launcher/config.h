@@ -2,10 +2,12 @@
 
 using std::string;
 
-class TetradactylConfig {
+namespace Tetradactyl {
+class Config {
 public:
-  static TetradactylConfig fromConfigFile(string filename);
+  static Config fromConfigFile(string filename);
 
   string hintChars;
   bool addToSystemTray;
 };
+} // namespace Tetradactyl

@@ -18,72 +18,50 @@
 #include <QVariant>
 #include <Qt>
 
+#include <QFileInfo>
+
 #include <QtGlobal>
 
 #include <exception>
 #include <stdexcept>
 
+#include "applicationtablemodel.h"
 #include "launcher.h"
 #include "probe.h"
-#include "tablemodel.h"
+#include "ui_launcherwindow.h"
 
 using std::domain_error;
 using std::string;
 
 namespace Tetradactyl {
 
-QJsonObject App::toJson() const {
-  QJsonObject serializedApp;
-  serializedApp["file"] = file.absoluteFilePath();
-  QMetaEnum backendEnum = QMetaEnum::fromType<WidgetBackend>();
-  serializedApp["backend"] = backendEnum.valueToKey(backend);
-  return serializedApp;
-}
-
-App App::fromJson(const QJsonObject &json) {
-  App ret;
-  if (const QJsonValue fileValue = json["file"]; fileValue.isString()) {
-    QString file = fileValue.toString();
-    QFileInfo fileInfo(file);
-    if (!fileInfo.exists()) {
-      throw domain_error("binary in application cache not found");
-    }
-    ret.file = fileInfo;
-  }
-  if (const QJsonValue backendValue = json["backend"];
-      backendValue.isString()) {
-    QMetaEnum backendEnum = QMetaEnum::fromType<WidgetBackend>();
-    QString backendQString = backendValue.toString();
-    bool valueOk;
-    ret.backend = WidgetBackend(
-        backendEnum.keyToValue(backendQString.toUtf8(), &valueOk));
-    if (!valueOk) {
-      throw domain_error(
-          "Backend in application cache does not correspond not supported");
-    }
-  }
-  return ret;
-}
-
-Launcher::Launcher() {
+Launcher::Launcher() : ui(new Ui::LauncherWindow) {
   setWindowTitle("Tetradactyl Launcher");
 
-  createLayout();
+  ui->setupUi(this);
+  model = ApplicationTableModel::createApplicationTableModel();
 
-  model = new ApplicationListModel();
-  new ApplicationTableModel;
+  fixupUi();
 
-  view->setModel(model);
+  ui->appTableView->setModel(model);
+  ui->appTableView->hideColumn(0);
+  ui->appTableView->setSelectionBehavior(
+      QAbstractItemView::SelectionBehavior::SelectRows);
 
-  connect(launchButton, &QAbstractButton::clicked, this, [=] {
-    auto selection = view->selectionModel()->selection();
+  // model->addTetradactylApp(QFileInfo("/bin/anki"), WidgetBackend::Qt6);
+  qInfo() << model->rowCount();
+
+  connect(ui->launchButton, &QAbstractButton::clicked, this, [=] {
+    auto selection = ui->appTableView->selectionModel()->selection();
     auto indexList = selection.indexes();
     if (indexList.size() > 0) {
-      model->launch(indexList[0]);
+      /*
+       * model->launch(indexList[0]);
+       */
     }
   });
 
-  connect(addButton, &QAbstractButton::clicked, [this] {
+  connect(ui->addButton, &QAbstractButton::clicked, [this] {
     QFileDialog fileDialog(this, tr("Select Program"), "/");
     fileDialog.setFilter(QDir::Executable | QDir::Dirs);
     if (!fileDialog.exec()) {
@@ -97,106 +75,71 @@ Launcher::Launcher() {
     }
   });
 
-  connect(exitButton, &QAbstractButton::clicked, qApp, &QApplication::quit);
-  connect(view, &QAbstractItemView::activated, model,
-          &ApplicationListModel::launch);
+  connect(ui->exitButton, &QAbstractButton::clicked, qApp, &QApplication::quit);
+  /*
+   *   connect(view, &QAbstractItemView::activated, model,
+   *           &ApplicationTableModel::launch);
+   *
+   *   ProbeThread *probe = new ProbeThread();
+   *   connect(probe, &ProbeThread::foundTetradctylApp, model,
+   *           &ApplicationTableModel::addTetradactylApp);
+   *
+   *   connect(probe, &ProbeThread::finished, model,
+   *           &ApplicationTableModel::cacheTetradactylApps);
+   */
 
-  ProbeThread *probe = new ProbeThread();
-  connect(probe, &ProbeThread::foundTetradctylApp, model,
-          &ApplicationListModel::addTetradactylApp);
-
-  connect(probe, &ProbeThread::finished, model,
-          &ApplicationListModel::cacheTetradactylApps);
-
-  probe->start();
+  // probe->start();
 }
 
-void Launcher::createLayout() {
-  central = new QWidget;
-  setCentralWidget(central);
-  layout = new QVBoxLayout(central);
+// last-mile modifications to UI initalization that either can't do, or it's too
+// inconvenient
+void Launcher::fixupUi() {
+  ui->appTableView->horizontalHeader()->setSectionResizeMode(
+      QHeaderView::ResizeMode::Stretch);
 
-  view = new QListView();
-  bottom = new QWidget;
-
-  layout->addWidget(view);
-  layout->addWidget(bottom);
-
-  bottomLayout = new QHBoxLayout(bottom);
-  launchButton = new QPushButton(tr("&Launch"));
-  addButton = new QPushButton(tr("&Add"));
-  refreshButton = new QPushButton(tr("Re&fresh database"));
-  exitButton = new QPushButton(tr("E&xit"));
-
-  bottomLayout->addWidget(launchButton);
-  bottomLayout->addWidget(addButton);
-  bottomLayout->addWidget(refreshButton);
-  bottomLayout->addWidget(exitButton);
+  // groupbox
+  ui->label->setVisible(false);
+  ui->cancelButton->setEnabled(false);
+  ui->launchButton->setEnabled(false);
 }
 
-ApplicationListModel::ApplicationListModel() {}
+/*
+ * QVariant ApplicationTableModel::data(const QModelIndex &index, int role)
+ * const { if (!index.isValid()) return QVariant(); if (role != Qt::DisplayRole)
+ *     return QVariant();
+ *
+ *   App *app = apps[index.row()];
+ *   return QVariant(app->file.fileName());
+ * }
+ */
 
-int ApplicationListModel::rowCount(const QModelIndex &parent) const {
-  return apps.size();
-}
-
-QVariant ApplicationListModel::data(const QModelIndex &index, int role) const {
-  if (!index.isValid())
-    return QVariant();
-  if (role != Qt::DisplayRole)
-    return QVariant();
-
-  App *app = apps[index.row()];
-  return QVariant(app->file.fileName());
-}
-
-void ApplicationListModel::addTetradactylApp(QFileInfo file,
-                                             WidgetBackend backend) {
-  beginInsertRows(QModelIndex(), apps.size(), apps.size() + 1);
-  App *app = new App{file.baseName(), file, backend};
-  apps.push_back(app);
-  endInsertRows();
-}
-
-void ApplicationListModel::cacheTetradactylApps() {
-  qInfo() << "Caching found Tetradactyl Apps";
-  QDir cachePath = qEnvironmentVariable(
-      "XDG_CACHE_HOME",
-      QString("%1/.cache/tetradactyl").arg(QDir::home().absolutePath()));
-  if (!cachePath.exists()) {
-    if (!cachePath.mkpath(".")) {
-      qWarning()
-          << QString("Could not create cache dir %1").arg(cachePath.path());
-      return;
-    }
-  }
-  QFile cacheFile(cachePath.filePath("apps.json"));
-  if (!cacheFile.open(QIODeviceBase::WriteOnly | QIODeviceBase::Truncate)) {
-    qWarning()
-        << QString("Could not create cache dir %1").arg(cachePath.path());
-    return;
-  }
-  QJsonArray appsJson;
-  for (auto app : apps) {
-    appsJson.append(app->toJson());
-  }
-  cacheFile.write(QJsonDocument(appsJson).toJson());
-  cacheFile.close();
-}
-
-void ApplicationListModel::launch(const QModelIndex &index) {
-  App *app = apps[index.row()];
-  qInfo() << QString("Launching %1").arg(app->file.absoluteFilePath());
-  QProcessEnvironment childEnv(QProcessEnvironment::InheritFromParent);
-  if (app->backend == WidgetBackend::Qt6) {
-    childEnv.insert("LD_PRELOAD", "libtetradactyl-qt.so");
-  }
-  QProcess tetradactylProcess;
-  tetradactylProcess.setProcessEnvironment(childEnv);
-  tetradactylProcess.start(app->file.absoluteFilePath());
-  tetradactylProcess.waitForFinished(-1);
-  // TODO 15/08/20 psacawa: pass args
-}
+/*
+ * void ApplicationTableModel::cacheTetradactylApps() {
+ *   qInfo() << "Caching found Tetradactyl Apps";
+ *   QDir cachePath = qEnvironmentVariable(
+ *       "XDG_CACHE_HOME",
+ *       QString("%1/.cache/tetradactyl").arg(QDir::home().absolutePath()));
+ *   if (!cachePath.exists()) {
+ *     if (!cachePath.mkpath(".")) {
+ *       qWarning()
+ *           << QString("Could not create cache dir %1").arg(cachePath.path());
+ *       return;
+ *     }
+ *   }
+ *   QFile cacheFile(cachePath.filePath("apps.json"));
+ *   if (!cacheFile.open(QIODeviceBase::WriteOnly | QIODeviceBase::Truncate)) {
+ *     qWarning()
+ *         << QString("Could not create cache dir %1").arg(cachePath.path());
+ *     return;
+ *   }
+ *   QJsonArray appsJson;
+ *   for (auto app : apps) {
+ *     appsJson.append(app->toJson());
+ *   }
+ *   cacheFile.write(QJsonDocument(appsJson).toJson());
+ *   cacheFile.close();
+ * }
+ */
 
 } // namespace Tetradactyl
 

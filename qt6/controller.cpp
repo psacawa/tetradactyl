@@ -16,7 +16,6 @@
 
 #include <algorithm>
 #include <iterator>
-#include <qassert.h>
 #include <qdebug.h>
 #include <qglobal.h>
 #include <qlist.h>

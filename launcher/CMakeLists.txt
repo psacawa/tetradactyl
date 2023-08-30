@@ -1,6 +1,6 @@
 set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
-set(CMAKE_CXX_STANDARD 17)
 
 find_package(
   Qt6
@@ -18,8 +18,13 @@ add_executable(
   launcher.cpp
   config.cpp
   utils.cpp
-  tablemodel.cpp
-  waitingspinnerwidget.cpp)
+  applicationtablemodel.cpp
+  waitingspinnerwidget.cpp
+  launcherwindow.ui
+  # needed to explicitly state for MOC detection - any header not in the form
+  # <source>.h or <source>_p.h and therefore needed to be explicitly list if it
+  # needs to be MOC'ed
+  common.h)
 target_link_libraries(tetradactyl PRIVATE Qt6::Widgets Qt6::Sql)
 
 add_library(tetradactyl-dynamic-probe SHARED dynamic-probe.cpp)

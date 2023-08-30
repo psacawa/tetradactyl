@@ -2,11 +2,14 @@ cmake_minimum_required(VERSION 3.20)
 cmake_policy(VERSION 3.20)
 
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 project(
   tetradactyl
   LANGUAGES CXX
   VERSION "0.1")
+
+enable_testing()
 
 # cmake kruft to put all *.so in one place
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")

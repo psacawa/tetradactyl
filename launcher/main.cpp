@@ -8,6 +8,7 @@
 #include <QMetaEnum>
 #include <QProcess>
 #include <Qt>
+#include <QtGlobal>
 
 #include <cstdio>
 #include <cstdlib>
@@ -15,8 +16,11 @@
 #include <qlist.h>
 #include <unistd.h>
 
+#include "common.h"
 #include "launcher.h"
 #include "utils.h"
+
+// #include "moc_common.cpp"
 
 extern char **environ;
 
@@ -83,7 +87,9 @@ int main(int argc, char *argv[]) {
     QString preloadedLib;
     WidgetBackend backend;
     if (parser.isSet(dynamicProbeOption) && parser.isSet(backendOption)) {
-      qFatal()
+      qInfo() << "asdf";
+
+      qCritical()
           << "--dynamic-probe and --backend are mutually exclusive options";
       return 1;
     }
@@ -94,7 +100,7 @@ int main(int argc, char *argv[]) {
       QMetaEnum me = QMetaEnum::fromType<WidgetBackend>();
       int backendInt = me.keyToValue(backendString.toStdString().c_str());
       if (backendInt < 0) {
-        qFatal() << "Unrecognized backend" << backendString;
+        qCritical() << "Unrecognized backend" << backendString;
         return 1;
       }
       backend = static_cast<WidgetBackend>(backendInt);
@@ -128,5 +134,6 @@ int main(int argc, char *argv[]) {
     launcher.show();
     app.exec();
   }
+
   return 0;
 }

@@ -20,7 +20,9 @@ endfunction()
 find_package(Qt6 REQUIRED COMPONENTS Widgets Sql Test)
 
 add_launcher_test(applicationtablemodel)
-target_sources(applicationtablemodel_test PRIVATE common.cpp)
+target_sources(
+  applicationtablemodel_test
+  PRIVATE common.cpp "${CMAKE_SOURCE_DIR}/launcher/common-probe.cpp")
 target_link_libraries(applicationtablemodel_test PRIVATE Qt6::Sql Qt6::Widgets)
 
 add_executable(functionallauncher_test functionallauncher.cpp common.cpp)

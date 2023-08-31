@@ -3,6 +3,10 @@
 #include <QFileInfo>
 #include <QObject>
 
+#include <string>
+
+using std::string;
+
 namespace Tetradactyl {
 Q_NAMESPACE
 
@@ -11,9 +15,15 @@ enum WidgetBackend {
   Gtk4,
   Qt5,
   Qt6,
-  None,
+  Unknown,
 };
 Q_ENUM_NS(WidgetBackend);
+
+struct BackendData {
+  WidgetBackend type;
+  string lib;
+  string tetradactylLib;
+};
 
 struct App {
   // Perhaps comes from XDG Desktop file;  fallback to filename

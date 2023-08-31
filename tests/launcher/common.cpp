@@ -1,9 +1,4 @@
-#include <QDir>
-#include <QString>
-#include <Qt>
 #include <QtTest>
-
-#include <cstdlib>
 #include <random>
 
 #include "common.h"

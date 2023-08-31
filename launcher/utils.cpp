@@ -1,7 +1,3 @@
-#include <QList>
-#include <QMetaEnum>
-#include <QString>
-
 #include <unistd.h>
 
 #include "utils.h"

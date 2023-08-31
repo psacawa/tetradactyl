@@ -1,18 +1,21 @@
 #include <QDir>
 #include <QLoggingCategory>
+#include <QMessageBox>
 #include <QMetaEnum>
-#include <QMetaType>
 #include <QProcessEnvironment>
-#include <Qt>
-#include <QtSql/QSqlDatabase>
+#include <QRegularExpressionMatch>
 #include <QtSql/QSqlError>
 #include <QtSql/QSqlField>
 #include <QtSql/QSqlQuery>
 #include <QtSql/QSqlRecord>
-
-#include <cstdlib>
+#include <qassert.h>
 
 #include "applicationtablemodel.h"
+#include "libnames.h"
+
+using std::string;
+using std::vector;
+using Tetradactyl::BackendData;
 
 const char createAppsTableCmd[] =
     "create table " APPS_TABLE " (id integer primary key, "
@@ -23,6 +26,8 @@ const char createAppsTableCmd[] =
 const char insertAppCmd[] =
     "insert into table " APPS_TABLE " (name, path, backend) "
     "values (?, ? , ?)";
+
+extern vector<BackendData> backends;
 
 Q_LOGGING_CATEGORY(lcThis, "tetradactyl.launcher.tablemodel");
 
@@ -44,6 +49,7 @@ ApplicationTableModel::~ApplicationTableModel() {}
 // ApplicationTableModel is constructed. Expectations of QSqlTableModel mean
 // that this can't be done in ApplicationTableModel::ApplicationTableModel()
 ApplicationTableModel *ApplicationTableModel::createApplicationTableModel() {
+
   QString home = qEnvironmentVariable("HOME");
   Q_ASSERT(home != "");
 
@@ -67,9 +73,44 @@ ApplicationTableModel *ApplicationTableModel::createApplicationTableModel() {
   return new ApplicationTableModel();
 }
 
+QVariant ApplicationTableModel::data(const QModelIndex &index, int role) const {
+  if (!index.isValid() || index.row() >= this->rowCount()) {
+    return QVariant();
+  }
+  switch (role) {
+  case Qt::DisplayRole: {
+    auto nameIdx = index.siblingAtColumn(1);
+    auto backendIdx = index.siblingAtColumn(3);
+    return QString("%1 - %2")
+        .arg(QSqlTableModel::data(nameIdx, role).toString())
+        .arg(QSqlTableModel::data(backendIdx, role).toString());
+  }
+  default:
+    return QVariant();
+  }
+  Q_UNREACHABLE();
+}
+
 void ApplicationTableModel::initDB() {
   QSqlQuery query;
   query.exec(createAppsTableCmd);
+}
+
+bool ApplicationTableModel::probeAndAddApp(QFileInfo file) {
+  if (!file.isExecutable())
+    return false;
+  WidgetBackend backend = ApplicationTableModel::staticProbeExecutable(file);
+  if (backend == WidgetBackend::Unknown) {
+    QMessageBox::information(
+        qobject_cast<QWidget *>(this->parent()),
+        QString("Widget Library Unknown"),
+        "Widget library could not be statically detected. This doesn't mean "
+        "that Tetradactyl doesn't support it. When the application is "
+        "launched, Tetradactyl will try to dynamically probe the  widget "
+        "library.");
+  }
+  addTetradactylApp(file, backend);
+  return true;
 }
 
 void ApplicationTableModel::addTetradactylApp(QFileInfo file,
@@ -104,6 +145,23 @@ void ApplicationTableModel::addTetradactylApp(QFileInfo file,
   if (!this->insertRecord(-1, newRecord)) {
     qCritical() << "record not added:" << newRecord;
   }
+}
+
+// Blocking static probe for usin ldd in subprocess
+WidgetBackend ApplicationTableModel::staticProbeExecutable(QFileInfo file) {
+  QProcess lddProc;
+  lddProc.start("ldd", {file.absoluteFilePath()});
+  if (!lddProc.waitForFinished(-1))
+    throw lddProc.error();
+  QString procOutput = lddProc.readAllStandardError();
+
+  for (auto backendData : backends) {
+    QRegularExpression pattern(QString::fromStdString(backendData.lib));
+    if (pattern.match(procOutput).hasMatch()) {
+      return backendData.type;
+    }
+  }
+  return WidgetBackend::Unknown;
 }
 
 void ApplicationTableModel::launch(const QModelIndex &index) {

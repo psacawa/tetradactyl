@@ -7,7 +7,6 @@ find_package(
   COMPONENTS Widgets Sql
   REQUIRED)
 find_package(toml11 REQUIRED)
-# find_package(fmt)
 
 # file(GENERATE_FILE tetradactyl-backend-dirs )
 
@@ -20,6 +19,7 @@ add_executable(
   utils.cpp
   applicationtablemodel.cpp
   waitingspinnerwidget.cpp
+  common-probe.cpp
   launcherwindow.ui
   # needed to explicitly state for MOC detection - any header not in the form
   # <source>.h or <source>_p.h and therefore needed to be explicitly list if it

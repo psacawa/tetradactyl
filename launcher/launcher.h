@@ -33,6 +33,7 @@ class Launcher : public QMainWindow {
 public:
   Launcher();
   virtual ~Launcher() {}
+private slots:
 
 private:
   ApplicationTableModel *model;

@@ -1,12 +1,7 @@
-#include <Qt>
-#include <QtSql/QSqlDatabase>
 #include <QtSql/QSqlError>
 #include <QtSql/QSqlQuery>
 #include <QtSql/QSqlRecord>
 #include <QtTest>
-
-#include <cstdlib>
-#include <sys/ptrace.h>
 
 #include "common.h"
 #include <launcher/applicationtablemodel.h>

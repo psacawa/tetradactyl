@@ -1,19 +1,5 @@
-#include <QApplication>
-#include <QCommandLineOption>
 #include <QCommandLineParser>
-#include <QDebug>
 #include <QDir>
-#include <QFileInfo>
-#include <QList>
-#include <QMetaEnum>
-#include <QProcess>
-#include <Qt>
-#include <QtGlobal>
-
-#include <cstdio>
-#include <cstdlib>
-#include <memory>
-#include <qlist.h>
 #include <unistd.h>
 
 #include "common.h"
@@ -104,12 +90,12 @@ int main(int argc, char *argv[]) {
         return 1;
       }
       backend = static_cast<WidgetBackend>(backendInt);
-      if (backend != WidgetBackend::None) {
+      if (backend != WidgetBackend::Unknown) {
         preloadedLib =
             QString("libtetradactyl-%1.so").arg(backendString.toLower());
       }
     }
-    if (backend != WidgetBackend::None) {
+    if (backend != WidgetBackend::Unknown) {
       QDir launcherOrigin = QFileInfo(getLocationOfThisProgram()).dir();
       QString preloadVar =
           QString("%1/../lib/%2").arg(launcherOrigin.path()).arg(preloadedLib);

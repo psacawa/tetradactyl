@@ -1,11 +1,9 @@
-#include <cstdio>
-#include <cstdlib>
 #include <cstring>
-#include <dlfcn.h>
 #include <link.h>
 #include <pthread.h>
-
 #include <string>
+
+#include "libnames.h"
 
 // NO QT ALLOWED!!
 
@@ -19,10 +17,10 @@ using DlopenFunc = void *(*)(const char *, int);
 // used in a __attribute__((constructor)) context, so any C++ classes,
 // specifically STL maps are forbidden here.
 // TODO 16/08/20 psacawa: support more complex detection mechanism.
-const char *backendMap[][2] = {{"libQt5Widgets", "libtetradactyl-qt5.so"},
-                               {"libQt6Widgets", "libtetradactyl-qt6.so"},
-                               {"libgtk-4", "libtetradactyl-gtk4.so"},
-                               {"libgtk-3", "libtetradactyl-gtk3.so"}};
+const char *backendMap[][2] = {{GTK3_LIB, GTK3_TETRADACTYL_LIB},
+                               {GTK4_LIB, GTK4_TETRADACTYL_LIB},
+                               {QT5_LIB, QT5_TETRADACTYL_LIB},
+                               {QT6_LIB, QT6_TETRADACTYL_LIB}};
 
 // use lambda as C-style callback to avoid global variable?
 bool backendDetected = false;

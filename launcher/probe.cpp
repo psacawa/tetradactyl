@@ -1,12 +1,5 @@
-#include <QDebug>
 #include <QDir>
-#include <QObject>
 #include <QProcess>
-#include <QRegularExpression>
-#include <QString>
-#include <QThread>
-#include <Qt>
-
 #include <cstdlib>
 
 #include "launcher.h"

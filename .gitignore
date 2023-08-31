@@ -58,7 +58,6 @@ dkms.conf
 # End of https://www.toptal.com/developers/gitignore/api/c
 .gdb_history
 .cache
-compile_commands.json
 
 *.log
 *.gresource

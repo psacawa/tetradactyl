@@ -19,13 +19,18 @@ public:
   virtual ~ApplicationTableModel();
   static ApplicationTableModel *createApplicationTableModel();
 
+  QVariant data(const QModelIndex &index,
+                int role = Qt::DisplayRole) const override;
+
 public slots:
+  bool probeAndAddApp(QFileInfo file);
   void addTetradactylApp(QFileInfo file,
-                         WidgetBackend backend = WidgetBackend::None);
+                         WidgetBackend backend = WidgetBackend::Unknown);
   void launch(const QModelIndex &index);
 
 private:
   void initDB();
+  static WidgetBackend staticProbeExecutable(QFileInfo file);
 
   QSqlDatabase *db;
 

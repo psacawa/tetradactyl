@@ -1,6 +1,4 @@
 #include <QtTest>
-#include <qtestcase.h>
-
 #include <launcher/common.h>
 
 class FunctionalLauncherTest : public QObject {

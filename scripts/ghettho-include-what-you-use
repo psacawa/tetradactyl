@@ -1,0 +1,55 @@
+#!/usr/bin/zsh
+
+# dumbass script that removes #include <*> lines that aren't necessary from source and
+# header files by seding them away and testing whether the project still builds
+
+if [[ $# == 0 ]]; then
+  echo "Usage: $(basename $0) *.cpp *.h"
+  exit 1
+fi
+
+if ! cmake --build build; then 
+  echo needs to be in initally building state
+  exit 1
+fi
+
+received_sigint=0
+function undo_current_change_sigint_handler () {
+  
+  if [[ $received_sigint == 0 ]]; then
+    echo got SIGINT, restoring most recent change
+    sed -i "${nr}i${line}" "$file"
+    exit 1
+  fi
+}
+trap undo_current_change_sigint_handler SIGINT
+
+local -A report
+
+for file in $@; do
+  if [[ "${file:e}" =~ "cpp|h" ]]; then
+    local -a removed_lines=()
+    local -i nr=1
+    while read line; do
+      if [[ "$line" =~ "#include <" ]]; then
+        # try to remove
+        sed -i "${nr}d" "$file"
+        if ! cmake --build build; then
+          sed -i "${nr}i${line}" "$file"
+          nr+=1
+        else
+          removed_lines+=$line
+        fi
+      fi
+    done < "$file"
+    report[$file]="${(j:;:)removed_lines}"
+  fi
+done
+
+echo Removed lines:
+for file in ${(k)report}; do
+  echo $file
+  for line in ${(s:;:)${report[$file]}}; do
+    printf "  $line\n"
+  done
+done

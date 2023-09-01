@@ -27,7 +27,7 @@ QString join(QList<QString> arr, QString sep) {
 QString getLocationOfThisProgram() {
   char pathBuf[256];
   size_t len = sizeof(pathBuf);
-  int bytes = MIN(readlink("/proc/self/exe", pathBuf, len), len - 1);
+  int bytes = MIN(readlink("/proc/self/exe", pathBuf, len), (ssize_t)len - 1);
   if (bytes >= 0)
     pathBuf[bytes] = '\0';
   return QString(pathBuf);

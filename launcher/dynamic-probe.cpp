@@ -13,10 +13,6 @@ using std::string;
 
 using DlopenFunc = void *(*)(const char *, int);
 
-// Map of widget lib names to tetradactyl backend libnames.Note that this gets
-// used in a __attribute__((constructor)) context, so any C++ classes,
-// specifically STL maps are forbidden here.
-// TODO 16/08/20 psacawa: support more complex detection mechanism.
 const char *backendMap[][2] = {{GTK3_LIB, GTK3_TETRADACTYL_LIB},
                                {GTK4_LIB, GTK4_TETRADACTYL_LIB},
                                {QT5_LIB, QT5_TETRADACTYL_LIB},
@@ -32,8 +28,6 @@ extern "C" int dlIteratePhdrCallback(struct dl_phdr_info *info, size_t size,
                                      void *data) {
   for (int c = 0; c != ARRAY_LEN(backendMap); c++) {
     const char *backendName = backendMap[c][0];
-    const char *tetradactylBackendName = backendMap[c][1];
-    // if (string(info->dlpi_name).find(backendName) != string::npos) {
     if ((strstr(info->dlpi_name, backendName)) != NULL) {
       backendDetected = true;
       ssize_t *backendIdxPtr = (ssize_t *)data;

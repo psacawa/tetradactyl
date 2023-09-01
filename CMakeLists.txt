@@ -15,6 +15,7 @@ enable_testing()
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 
+add_compile_options(-Wall -Werror=return-type -Werror=unknown-pragmas)
 add_compile_definitions("TETRADACTYL_VERSION=${CMAKE_PROJECT_VERSION}")
 
 # TODO 16/08/20 psacawa: finish this add_subdirectory(common)

@@ -6,3 +6,5 @@
 #define GTK4_LIB "libgtk-4"
 #define QT5_LIB "libQt5Widgets"
 #define QT6_LIB "libQt6Widgets"
+
+#define DYNAMIC_TETRADACTYL_LIB "libtetradactyl-dynamic-probe.so"

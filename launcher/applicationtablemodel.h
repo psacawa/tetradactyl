@@ -26,11 +26,16 @@ public slots:
   bool probeAndAddApp(QFileInfo file);
   void addTetradactylApp(QFileInfo file,
                          WidgetBackend backend = WidgetBackend::Unknown);
+
+  App *findByName(const char *name);
+  App *findByPath(const char *name);
   void launch(const QModelIndex &index);
 
 private:
   void initDB();
   static WidgetBackend staticProbeExecutable(QFileInfo file);
+  static App *recordToApp(const QSqlRecord &record);
+  App app(const QModelIndex &index);
 
   QSqlDatabase *db;
 

@@ -4,14 +4,20 @@
 #include <QMetaEnum>
 #include <QProcessEnvironment>
 #include <QRegularExpressionMatch>
+#include <QSettings>
 #include <QtSql/QSqlError>
 #include <QtSql/QSqlField>
 #include <QtSql/QSqlQuery>
 #include <QtSql/QSqlRecord>
 #include <qassert.h>
 
+#include <qmetaobject.h>
+#include <qtpreprocessorsupport.h>
+#include <unistd.h>
+
 #include "applicationtablemodel.h"
-#include "libnames.h"
+#include "common.h"
+#include "utils.h"
 
 using std::string;
 using std::vector;
@@ -34,9 +40,8 @@ Q_LOGGING_CATEGORY(lcThis, "tetradactyl.launcher.tablemodel");
 namespace Tetradactyl {
 
 ApplicationTableModel::ApplicationTableModel() {
-
+  initDB();
   setTable(APPS_TABLE);
-  qInfo() << lastError();
   if (!select()) {
     qInfo() << "select" << lastError();
   }
@@ -69,7 +74,6 @@ ApplicationTableModel *ApplicationTableModel::createApplicationTableModel() {
     qCritical()
         << QString("SQlite database %1 not opened").arg(db.databaseName());
   }
-  qInfo() << db.tables();
   return new ApplicationTableModel();
 }
 
@@ -147,16 +151,50 @@ void ApplicationTableModel::addTetradactylApp(QFileInfo file,
   }
 }
 
+
+// allocating conversion to struct App
+App *ApplicationTableModel::recordToApp(const QSqlRecord &record) {
+  QMetaEnum me = QMetaEnum::fromType<WidgetBackend>();
+  WidgetBackend backend = static_cast<WidgetBackend>(
+      me.keyToValue(record.value("backend").toString().toLocal8Bit()));
+  return new App{.name = record.value("name").toString(),
+                 .file = record.value("path").toString(),
+                 .backend = backend};
+}
+
+App *ApplicationTableModel::findByName(const char *name) {
+  for (int row = 0; row != rowCount(); ++row) {
+    QSqlRecord record = this->record(row);
+    QString recordName = record.value("name").toString();
+    if (recordName == name) {
+      return recordToApp(record);
+    }
+  }
+  return nullptr;
+}
+
+App *ApplicationTableModel::findByPath(const char *name) {
+  for (int row = 0; row != rowCount(); ++row) {
+    QSqlRecord record = this->record(row);
+    QString recordName = record.value("path").toString();
+    if (recordName == name) {
+      return recordToApp(record);
+    }
+  }
+  return nullptr;
+}
+
 // Blocking static probe for usin ldd in subprocess
 WidgetBackend ApplicationTableModel::staticProbeExecutable(QFileInfo file) {
   QProcess lddProc;
   lddProc.start("ldd", {file.absoluteFilePath()});
   if (!lddProc.waitForFinished(-1))
     throw lddProc.error();
-  QString procOutput = lddProc.readAllStandardError();
+  QString procOutput = lddProc.readAllStandardOutput();
 
   for (auto backendData : backends) {
     QRegularExpression pattern(QString::fromStdString(backendData.lib));
+    pattern.setPatternOptions(QRegularExpression::MultilineOption);
     if (pattern.match(procOutput).hasMatch()) {
       return backendData.type;
     }
@@ -164,21 +202,34 @@ WidgetBackend ApplicationTableModel::staticProbeExecutable(QFileInfo file) {
   return WidgetBackend::Unknown;
 }
 
-void ApplicationTableModel::launch(const QModelIndex &index) {
-  /*
-   * App *app = apps[index.row()];
+App ApplicationTableModel::app(const QModelIndex &index) {
+  QSqlRecord record = this->record(index.row());
+  QMetaEnum me = QMetaEnum::fromType<WidgetBackend>();
+  WidgetBackend wb = static_cast<WidgetBackend>(
+      me.keyToValue(record.value("backend").toString().toLocal8Bit()));
+  qInfo() << wb;
+  return App{
+      .name = record.value("name").toString(),
+      .file = record.value("path").toString(),
+      .backend = wb,
+  };
+}
 
-   * qInfo() << QString("Launching %1").arg(app->file.absoluteFilePath());
-   * QProcessEnvironment childEnv(QProcessEnvironment::InheritFromParent);
-   * if (app->backend == WidgetBackend::Qt6) {
-   *   childEnv.insert("LD_PRELOAD", "libtetradactyl-qt.so");
-   * }
-   * QProcess tetradactylProcess;
-   * tetradactylProcess.setProcessEnvironment(childEnv);
-   * tetradactylProcess.start(app->file.absoluteFilePath());
-   * tetradactylProcess.waitForFinished(-1);
-   */
-  // TODO 15/08/20 psacawa: pass args
+void ApplicationTableModel::launch(const QModelIndex &index) {
+  App app = this->app(index);
+  QString preloadedLib;
+  app.backend == WidgetBackend::Unknown ? DYNAMIC_TETRADACTYL_LIB
+                                        : backends[app.backend].lib;
+  QDir launcherOrigin = QFileInfo(getLocationOfThisProgram()).dir();
+  QString preloadVar =
+      QString("%1/../lib/%2").arg(launcherOrigin.path()).arg(preloadedLib);
+  if (setenv("LD_PRELOAD", preloadVar.toLocal8Bit().data(), 1) < 0) {
+    perror("setenv");
+    exit(1);
+  }
+  string clientProgram = app.file.toStdString();
+  char *childArgv[1] = {NULL};
+  execvpe(clientProgram.data(), childArgv, environ);
 }
 
 } // namespace Tetradactyl

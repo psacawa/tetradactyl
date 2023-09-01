@@ -35,6 +35,11 @@ public:
   virtual ~Launcher() {}
 private slots:
 
+  void on_applicationView_activated(const QModelIndex &index);
+  void
+  on_applicationView_doubleClicked(const QModelIndex &index = QModelIndex());
+  void on_launchButton_clicked(bool clicked);
+
 private:
   ApplicationTableModel *model;
 

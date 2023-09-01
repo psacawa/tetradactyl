@@ -1,5 +1,8 @@
+#include <QAbstractButton>
 #include <QFileDialog>
+#include <QItemSelectionModel>
 #include <QMessageBox>
+#include <qslider.h>
 #include <stdexcept>
 
 #include "applicationtablemodel.h"
@@ -22,10 +25,6 @@ Launcher::Launcher() : ui(new Ui::LauncherWindow) {
 
   ui->applicationView->setModel(model);
   // ui->applicationView->hideColumn(0);
-  ui->applicationView->setSelectionBehavior(
-      QAbstractItemView::SelectionBehavior::SelectRows);
-
-  qInfo() << model->rowCount();
 
   connect(ui->launchButton, &QAbstractButton::clicked, this, [=] {
     auto selection = ui->applicationView->selectionModel()->selection();
@@ -56,20 +55,27 @@ Launcher::Launcher() : ui(new Ui::LauncherWindow) {
     }
   });
 
-  connect(ui->exitButton, &QAbstractButton::clicked, qApp, &QApplication::quit);
-  /*
-   *   connect(view, &QAbstractItemView::activated, model,
-   *           &ApplicationTableModel::launch);
-   *
-   *   ProbeThread *probe = new ProbeThread();
-   *   connect(probe, &ProbeThread::foundTetradctylApp, model,
-   *           &ApplicationTableModel::addTetradactylApp);
-   *
-   *   connect(probe, &ProbeThread::finished, model,
-   *           &ApplicationTableModel::cacheTetradactylApps);
-   */
+  connect(ui->applicationView->selectionModel(),
+          &QItemSelectionModel::selectionChanged,
+          [](const QItemSelection &selected, const QItemSelection &deselected) {
+            qInfo() << selected;
+          });
 
-  // probe->start();
+  connect(ui->exitButton, &QAbstractButton::clicked, qApp, &QApplication::quit);
+}
+
+void Launcher::on_applicationView_activated(const QModelIndex &index) {
+  qInfo() << __PRETTY_FUNCTION__;
+  model->launch(index);
+}
+void Launcher::on_applicationView_doubleClicked(const QModelIndex &index) {
+  qInfo() << __PRETTY_FUNCTION__;
+}
+void Launcher::on_launchButton_clicked(bool checked) {
+  qInfo() << __PRETTY_FUNCTION__;
+  QModelIndex currentIndex =
+      ui->applicationView->selectionModel()->currentIndex();
+  ui->applicationView->activated(currentIndex);
 }
 
 // last-mile modifications to UI initalization that either can't do, or it's too
@@ -82,7 +88,7 @@ void Launcher::fixupUi() {
   // groupbox
   ui->label->setVisible(false);
   ui->cancelButton->setEnabled(false);
-  ui->launchButton->setEnabled(false);
+  // ui->launchButton->setEnabled(false);
 }
 
 } // namespace Tetradactyl

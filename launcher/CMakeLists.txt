@@ -10,6 +10,9 @@ find_package(toml11 REQUIRED)
 
 # file(GENERATE_FILE tetradactyl-backend-dirs )
 
+# Any header with Q_ENUM/Q_NAMESPACE etc. needs to by explicitly stated for MOC
+# detection - any header not in the form <source>.h or <source>_p.h and
+# therefore needed to be explicitly list if it needs to be MOC'ed
 add_executable(
   tetradactyl
   main.cpp
@@ -19,12 +22,8 @@ add_executable(
   utils.cpp
   applicationtablemodel.cpp
   waitingspinnerwidget.cpp
-  common-probe.cpp
   launcherwindow.ui
-  # needed to explicitly state for MOC detection - any header not in the form
-  # <source>.h or <source>_p.h and therefore needed to be explicitly list if it
-  # needs to be MOC'ed
-  common.h)
+  common.cpp)
 target_link_libraries(tetradactyl PRIVATE Qt6::Widgets Qt6::Sql)
 
 add_library(tetradactyl-dynamic-probe SHARED dynamic-probe.cpp)

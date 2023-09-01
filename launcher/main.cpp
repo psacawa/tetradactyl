@@ -6,11 +6,8 @@
 #include "launcher.h"
 #include "utils.h"
 
-// #include "moc_common.cpp"
-
 extern char **environ;
 
-using std::unique_ptr;
 using Tetradactyl::WidgetBackend;
 
 // If the laucnher is launched without a concrete executable to run, it
@@ -79,9 +76,7 @@ int main(int argc, char *argv[]) {
           << "--dynamic-probe and --backend are mutually exclusive options";
       return 1;
     }
-    if (parser.isSet(dynamicProbeOption)) {
-      preloadedLib = "libtetradactyl-dynamic-probe.so";
-    } else if (parser.isSet(backendOption)) {
+    if (parser.isSet(backendOption)) {
       QString backendString = parser.value(backendOption);
       QMetaEnum me = QMetaEnum::fromType<WidgetBackend>();
       int backendInt = me.keyToValue(backendString.toStdString().c_str());
@@ -91,9 +86,11 @@ int main(int argc, char *argv[]) {
       }
       backend = static_cast<WidgetBackend>(backendInt);
       if (backend != WidgetBackend::Unknown) {
-        preloadedLib =
-            QString("libtetradactyl-%1.so").arg(backendString.toLower());
+        preloadedLib = QString::fromStdString(backends[backend].tetradactylLib);
       }
+    }
+    if (preloadedLib == "") {
+      preloadedLib = DYNAMIC_TETRADACTYL_LIB;
     }
     if (backend != WidgetBackend::Unknown) {
       QDir launcherOrigin = QFileInfo(getLocationOfThisProgram()).dir();

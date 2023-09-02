@@ -47,7 +47,9 @@ sleep 0.5
 
 grep -q "$LIB" "/proc/$PID/maps"
 RET=$?
-echo $RET
+if [[ $RET != 0 ]]; then
+  echo "$LIB not found in /proc/$PID/maps" > /dev/stderr
+fi
 
 kill $PID
 exit $RET

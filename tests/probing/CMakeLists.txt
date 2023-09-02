@@ -7,40 +7,53 @@ add_custom_target(ProcessLoadedLib.sh ALL
 # Unfortunately this can't be done with package-manager distributed programs
 # list /bin/*
 
-add_test(NAME "Dynamic probe of calculator-qt5"
+add_test(NAME "dynamic_probe_of_calculator_qt5"
          COMMAND ./ProcessLoadedLib.sh --lib libtetradactyl-qt5 --
                  $<TARGET_FILE:tetradactyl> $<TARGET_FILE:calculator-qt5>)
 set_tests_properties(
-  "Dynamic probe of calculator-qt5"
-  PROPERTIES LABELS "dynamic runs-gui" ENVIRONMENT QT_QPA_PLATFORM=offscreen)
+  "dynamic_probe_of_calculator_qt5"
+  PROPERTIES LABELS "dynamic;runs-gui;qt5" ENVIRONMENT
+             QT_QPA_PLATFORM=offscreen)
 
-add_test(NAME "Dynamic probe of calculator-qt5 with failure"
+add_test(NAME "dynamic_probe_of_calculator_qt6"
+         COMMAND ./ProcessLoadedLib.sh --lib libtetradactyl-qt6 --
+                 $<TARGET_FILE:tetradactyl> $<TARGET_FILE:calculator-qt6>)
+set_tests_properties(
+  "dynamic_probe_of_calculator_qt6"
+  PROPERTIES LABELS "dynamic;runs-gui;qt6" ENVIRONMENT
+             QT_QPA_PLATFORM=offscreen)
+
+add_test(NAME "dynamic_probe_of_some_dynamic_qt6_app"
+         COMMAND ./ProcessLoadedLib.sh --lib libtetradactyl-qt6 --
+                 $<TARGET_FILE:tetradactyl> $<TARGET_FILE:some-dynamic-qt6-app>)
+set_tests_properties(
+  "dynamic_probe_of_some_dynamic_qt6_app"
+  PROPERTIES LABELS "dynamic;external;runs-gui;qt6" ENVIRONMENT
+             QT_QPA_PLATFORM=offscreen)
+
+# The below XFAIL  tests function primarily as a test of the test infrastructure
+# itself: they prevent the test infra from reporting false positives.
+
+add_test(NAME "dynamic_probe_of_calculator-qt5_will_fail"
          COMMAND ./ProcessLoadedLib.sh --lib libtetradactyl-qt6 --
                  $<TARGET_FILE:tetradactyl> $<TARGET_FILE:calculator-qt5>)
 set_tests_properties(
-  "Dynamic probe of calculator-qt5 with failure"
-  PROPERTIES LABELS "dynamic runs-gui" ENVIRONMENT QT_QPA_PLATFORM=offscreen
-             WILL_FAIL 1)
+  "dynamic_probe_of_calculator-qt5_will_fail"
+  PROPERTIES LABELS "dynamic;runs-gui;xfail" ENVIRONMENT
+             QT_QPA_PLATFORM=offscreen WILL_FAIL ON)
 
-add_test(NAME "Dynamic probe of calculator-qt6"
-         COMMAND ./ProcessLoadedLib.sh --lib libtetradactyl-qt6 --
-                 $<TARGET_FILE:tetradactyl> $<TARGET_FILE:calculator-qt6>)
-set_tests_properties(
-  "Dynamic probe of calculator-qt6"
-  PROPERTIES LABELS "dynamic runs-gui" ENVIRONMENT QT_QPA_PLATFORM=offscreen)
-
-add_test(NAME "Dynamic probe of calculator-qt6 with failure"
+add_test(NAME "dynamic_probe_of_calculator-qt6_will_fail"
          COMMAND ./ProcessLoadedLib.sh --lib libtetradactyl-qt5 --
                  $<TARGET_FILE:tetradactyl> $<TARGET_FILE:calculator-qt6>)
 set_tests_properties(
-  "Dynamic probe of calculator-qt6 with failure"
-  PROPERTIES LABELS "dynamic runs-gui" ENVIRONMENT QT_QPA_PLATFORM=offscreen
-             WILL_FAIL ON)
+  "dynamic_probe_of_calculator-qt6_will_fail"
+  PROPERTIES LABELS "dynamic;runs-gui;xfail" ENVIRONMENT
+             QT_QPA_PLATFORM=offscreen WILL_FAIL ON)
 
-# depends on the installed vlc loading libQt5Widgets
-add_test(NAME "Dynamic probe of vlc"
+add_test(NAME "dynamic_probe_of_some_dynamic_qt6_app_will_fail"
          COMMAND ./ProcessLoadedLib.sh --lib libtetradactyl-qt5 --
-                 $<TARGET_FILE:tetradactyl> /usr/bin/vlc)
+                 $<TARGET_FILE:tetradactyl> $<TARGET_FILE:some-dynamic-qt6-app>)
 set_tests_properties(
-  "Dynamic probe of vlc" PROPERTIES LABELS "dynamic external runs-gui"
-                                    ENVIRONMENT QT_QPA_PLATFORM=offscreen)
+  "dynamic_probe_of_some_dynamic_qt6_app_will_fail"
+  PROPERTIES LABELS "dynamic;external;runs-gui;xfail" ENVIRONMENT
+             QT_QPA_PLATFORM=offscreen WILL_FAIL ON)

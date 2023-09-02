@@ -26,6 +26,6 @@ add_subdirectory(launcher)
 
 add_subdirectory(qt6)
 
-add_subdirectory(tests)
-
 # preferred build system for gtk is meson add_subdirectory(gtk4)
+
+add_subdirectory(tests)

@@ -15,6 +15,7 @@ function(add_launcher_test _name)
 
   add_test(NAME ${test_name} COMMAND ${test_name})
   target_link_libraries(${test_name} PRIVATE Qt6::Test)
+  set_tests_properties(${test_name} PROPERTIES LABELS launcher)
 endfunction()
 
 find_package(Qt6 REQUIRED COMPONENTS Widgets Sql Test)

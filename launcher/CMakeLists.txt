@@ -7,6 +7,7 @@ find_package(
   COMPONENTS Widgets Sql
   REQUIRED)
 find_package(toml11 REQUIRED)
+find_package(fmt REQUIRED)
 
 # file(GENERATE_FILE tetradactyl-backend-dirs )
 
@@ -27,6 +28,7 @@ add_executable(
 target_link_libraries(tetradactyl PRIVATE Qt6::Widgets Qt6::Sql)
 
 add_library(tetradactyl-dynamic-probe SHARED dynamic-probe.cpp)
+target_link_libraries(tetradactyl-dynamic-probe PRIVATE fmt)
 set_property(TARGET tetradactyl-dynamic-probe PROPERTY BUILD_RPATH "\${ORIGIN}")
 set_property(TARGET tetradactyl-dynamic-probe PROPERTY INSTALL_RPATH
                                                        "\${ORIGIN}")

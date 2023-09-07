@@ -10,6 +10,7 @@
 #include <map>
 #include <vector>
 
+#include "common.h"
 #include "filter.h"
 #include "hint.h"
 
@@ -18,6 +19,7 @@ using std::string;
 using std::vector;
 
 namespace Tetradactyl {
+Q_NAMESPACE
 
 struct ControllerKeymap {
   QKeySequence activate;
@@ -36,14 +38,15 @@ struct ControllerSettings {
   ControllerKeymap keymap;
 };
 
+enum HintMode { Activatable, Editable, Yankable, Focusable, Contextable };
+Q_ENUM_NS(HintMode);
+
 class Controller : public QObject {
   Q_OBJECT
 
 public:
   enum ControllerMode { Normal, Hint, Input };
   Q_ENUM(ControllerMode);
-  enum HintMode { Activatable, Editable, Yankable, Focusable, Contextable };
-  Q_ENUM(HintMode);
 
   Controller(QWindow *_window);
   virtual ~Controller();

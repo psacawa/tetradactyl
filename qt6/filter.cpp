@@ -14,11 +14,6 @@
 #include "controller.h"
 #include "filter.h"
 
-using Tetradactyl::Controller;
-using HintMode = Tetradactyl::Controller::HintMode;
-using Tetradactyl::ControllerKeymap;
-using ControllerMode = Tetradactyl::Controller::ControllerMode;
-
 #define lcThis tetradactylFilter
 Q_LOGGING_CATEGORY(tetradactylFilter, "tetradactyl.filter");
 
@@ -59,8 +54,7 @@ bool KeyboardEventFilter::eventFilter(QObject *obj, QEvent *ev = nullptr) {
       // Only  <esc> is captured to escape the focus
 
       if (inputWidgetFocussed()) {
-        qCDebug(lcThis) << "Input widget is focussed. Passing keypress"
-                          << kev;
+        qCDebug(lcThis) << "Input widget is focussed. Passing keypress" << kev;
         if (kc == QKeyCombination(Qt::Key_Escape)) {
           // is there a better default for focus to escape inputs?
           controller->myToplevelWidget()->setFocus();
@@ -69,7 +63,7 @@ bool KeyboardEventFilter::eventFilter(QObject *obj, QEvent *ev = nullptr) {
         return false;
       }
 
-      if (controller->mode == ControllerMode::Normal) {
+      if (controller->mode == Controller::ControllerMode::Normal) {
         // TODO 22/08/20 psacawa: really handle shortcuts input buffering
         if (kc == keymap.activate[0]) {
           this->controller->hint();

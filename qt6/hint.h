@@ -6,6 +6,7 @@
 
 using std::string;
 
+namespace Tetradactyl {
 class HintLabel : public QLabel {
   Q_OBJECT
 public:
@@ -23,3 +24,5 @@ private:
 
 inline bool HintLabel::getSelected() { return selected; }
 inline void HintLabel::setSelected(bool _selected) { selected = _selected; }
+
+} // namespace Tetradactyl

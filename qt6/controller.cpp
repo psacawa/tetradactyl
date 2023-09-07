@@ -37,7 +37,7 @@ using std::size_t;
 
 namespace Tetradactyl {
 
-const std::map<Controller::HintMode, vector<const QMetaObject *>>
+const std::map<HintMode, vector<const QMetaObject *>>
     Controller::hintableMetaObjects = {
         {Activatable, {&QAbstractButton::staticMetaObject}},
         {Editable,

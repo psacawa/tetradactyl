@@ -1,3 +1,4 @@
+# Copyright 2023 Paweł Sacawa. All rights reserved.
 project(tmp LANGUAGES CXX)
 cmake_minimum_required(VERSION 3.20)
 
@@ -17,8 +18,15 @@ find_package(
   COMPONENTS Widgets
   REQUIRED)
 
-add_library(tetradactyl-qt6 SHARED controller.cpp filter.cpp hint.cpp
-                                   inject.cpp tetradactyl.qrc)
+add_library(
+  tetradactyl-qt6 SHARED
+  controller.cpp
+  filter.cpp
+  hint.cpp
+  overlay.cpp
+  logging.cpp
+  probe.cpp
+  tetradactyl.qrc)
 
 add_library(tetradactyl-qt5 SHARED tetradactyl-qt5-stub.cpp)
 target_link_libraries(tetradactyl-qt5 PRIVATE Qt5::Widgets)

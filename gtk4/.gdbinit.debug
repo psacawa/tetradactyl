@@ -4,4 +4,4 @@ add-symbol-file ./build/libtetradactyl-gtk.so
 print "executing with debug symbols"
 set environment LD_LIBRARY_PATH=/usr/local/libd
 
-vim: set ft=gdb :
+# vim: set ft=gdb :

@@ -1,3 +1,4 @@
+<!-- Copyright 2023 Paweł Sacawa. All rights reserved.  -->
 <RCC>
   <qresource prefix="/tetradactyl">
     <file>hints.css</file>

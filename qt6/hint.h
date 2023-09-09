@@ -1,10 +1,8 @@
+// Copyright 2023 Paweł Sacawa. All rights reserved.
 #pragma once
 
 #include <QLabel>
-
-#include <string>
-
-using std::string;
+#include <QString>
 
 namespace Tetradactyl {
 class HintLabel : public QLabel {
@@ -12,8 +10,7 @@ class HintLabel : public QLabel {
 public:
   Q_PROPERTY(bool selected READ getSelected WRITE setSelected);
 
-  // HintLabel(QWidget *_target, const char *label);
-  HintLabel(string label, QWidget *_target);
+  HintLabel(QString label, QWidget *target);
 
   inline bool getSelected();
   inline void setSelected(bool);

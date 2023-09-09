@@ -1,8 +1,10 @@
+// Copyright 2023 Paweł Sacawa. All rights reserved.
 #pragma once
 
 #include <QAbstractButton>
 #include <QDebug>
 #include <QKeySequence>
+#include <QList>
 #include <QMap>
 #include <QWidget>
 #include <QWindow>
@@ -10,9 +12,9 @@
 #include <map>
 #include <vector>
 
-#include "common.h"
 #include "filter.h"
 #include "hint.h"
+#include "overlay.h"
 
 using std::size_t;
 using std::string;
@@ -21,12 +23,16 @@ using std::vector;
 namespace Tetradactyl {
 Q_NAMESPACE
 
+class WindowController;
+
 struct ControllerKeymap {
   QKeySequence activate;
   QKeySequence cancel;
   QKeySequence edit;
   QKeySequence focus;
   QKeySequence yank;
+  QKeySequence activateMenu;
+  QKeySequence activateContext;
   QKeySequence upScroll;
   QKeySequence downScroll;
 };
@@ -41,31 +47,52 @@ struct ControllerSettings {
 enum HintMode { Activatable, Editable, Yankable, Focusable, Contextable };
 Q_ENUM_NS(HintMode);
 
+// Manages global Tetradactyl state of application.
 class Controller : public QObject {
   Q_OBJECT
 
 public:
+  Controller(QWidget *parent = nullptr);
+  virtual ~Controller();
+
+  static ControllerSettings settings;
+  static QString stylesheet;
+  static Controller *instance();
+
+public slots:
+  static void createController();
+  void routeObject(QObject *obj);
+
+private:
+  bool eventFilter(QObject *obj, QEvent *ev);
+  void tryAttachToWindow(QWidget *widget);
+  void attachToExistingWindows();
+  static const std::map<HintMode, vector<const QMetaObject *>>
+      hintableMetaObjects;
+  QList<WindowController *> windowControllers;
+
+  static Controller *self;
+};
+
+inline Controller *Controller::instance() { return Controller::self; }
+
+// Manages Tetradactyl state for each toplevel "main" widgets. This means
+// Widgets that got shown, including diaglogs, but not WindowType::Popup
+// widgets like QMenu
+class WindowController : public QObject {
+  Q_OBJECT
+public:
   enum ControllerMode { Normal, Hint, Input };
   Q_ENUM(ControllerMode);
 
-  Controller(QWindow *_window);
-  virtual ~Controller();
+  WindowController(QWidget *target, QObject *_target);
+  virtual ~WindowController() {}
 
   QList<QWidget *> getHintables(HintMode mode);
   ControllerMode mode = ControllerMode::Normal;
   HintMode currentHintMode;
-  QWindow *window;
-  KeyboardEventFilter *filter;
-  vector<HintLabel *> hints;
-  vector<HintLabel *> visibleHints;
-  // Currently "active" hint. <enter> will accept it. May be invalidated when
-  // hintBuffer gets input
-  // TODO 02/08/20 psacawa: custom iterator that only touches visible widgets
-  vector<HintLabel *>::iterator selectedHint;
-  string hintBuffer;
-  static ControllerSettings settings;
-  static QString stylesheet;
-  static bool initalized;
+
+  QWidget *host();
 
 public slots:
 
@@ -76,17 +103,24 @@ public slots:
   void popKey();
 
 private:
-  void filterHints();
-  QWidget *myToplevelWidget();
+  bool eventFilter(QObject *obj, QEvent *ev);
   void accept(QWidget *widget);
+  void filterHints();
+  void initializeShortcuts();
+  void initializeOverlays();
+  void tryAttachController(QWidget *widget);
 
-  static const std::map<HintMode, vector<const QMetaObject *>>
-      hintableMetaObjects;
-
-  friend class KeyboardEventFilter;
+  Controller *controller;
+  QWidget *target;
+  QList<Overlay *> overlays;
+  vector<HintLabel *> hints;
+  vector<HintLabel *> visibleHints;
+  // Currently "active" hint. <enter> will accept it. May be invalidated when
+  // hintBuffer gets input
+  // TODO 02/08/20 psacawa: custom iterator that only touches visible widgets
+  vector<HintLabel *>::iterator selectedHint;
+  string hintBuffer;
 };
-
-int pow(int b, unsigned e);
 
 class HintGenerator {
 

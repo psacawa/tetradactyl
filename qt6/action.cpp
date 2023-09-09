@@ -1,3 +1,4 @@
+// Copyright 2023 Paweł Sacawa. All rights reserved. 
 #include <QAbstractButton>
 #include <QGroupBox>
 #include <QList>
@@ -38,6 +39,8 @@ QList<QWidget *> ActivateAction::getHintables(QWidget *root) {
       }
     }
   }
+  // TODO 08/09/20 psacawa: finish this
+  return {};
 }
 
 } // namespace Tetradactyl

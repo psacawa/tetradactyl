@@ -1,3 +1,4 @@
+// Copyright 2023 Paweł Sacawa. All rights reserved.
 #include <QAbstractButton>
 #include <QAction>
 #include <QApplication>
@@ -10,6 +11,7 @@
 #include <QLoggingCategory>
 #include <QShortcut>
 #include <QTextEdit>
+#include <QTimer>
 #include <QWindow>
 
 #include <fmt/core.h>
@@ -25,64 +27,176 @@
 #include <qvariant.h>
 #include <vector>
 
-#include "common.h"
 #include "controller.h"
 #include "filter.h"
 #include "hint.h"
+#include "logging.h"
 
-#define lcThis tetradactylController
-Q_LOGGING_CATEGORY(tetradactylController, "tetradactyl.controller");
+LOGGING_CATEGORY_COLOR("tetradactyl.controller", Qt::blue);
 
+using Qt::WindowType;
 using std::size_t;
 
 namespace Tetradactyl {
 
-const std::map<HintMode, vector<const QMetaObject *>>
-    Controller::hintableMetaObjects = {
-        {Activatable, {&QAbstractButton::staticMetaObject}},
-        {Editable,
-         {&QLineEdit::staticMetaObject, &QTextEdit::staticMetaObject}},
-        {Focusable, {&QWidget::staticMetaObject}},
-        {Yankable, {&QLabel::staticMetaObject}}};
+static bool isDescendantOf(QObject *descendant, QObject *ancestor) {
+  for (; descendant != nullptr; descendant = descendant->parent()) {
+    if (descendant == ancestor)
+      return true;
+  }
+  return false;
+}
+
+const std::map<HintMode, vector<const QMetaObject *>> hintableMetaObjects = {
+    {Activatable, {&QAbstractButton::staticMetaObject}},
+    {Editable, {&QLineEdit::staticMetaObject, &QTextEdit::staticMetaObject}},
+    {Focusable, {&QWidget::staticMetaObject}},
+    {Yankable, {&QLabel::staticMetaObject}}};
 
 struct ControllerSettings Controller::settings {
-  .hintChars = "ASDFJKL", .keymap = {.activate = QKeySequence(Qt::Key_F),
-                                     .cancel = QKeySequence(Qt::Key_Escape),
-                                     .edit = QKeySequence(Qt::Key_G, Qt::Key_I),
-                                     .focus = QKeySequence(Qt::Key_Semicolon),
-                                     .yank = QKeySequence(Qt::Key_Y),
-                                     .upScroll = QKeySequence(Qt::Key_K),
-                                     .downScroll = QKeySequence(Qt::Key_J)}
+  .hintChars = "ASDFJKL",
+  .keymap = {.activate = QKeySequence(Qt::Key_F),
+             .cancel = QKeySequence(Qt::Key_Escape),
+             .edit = QKeySequence(Qt::Key_G, Qt::Key_I),
+             .focus = QKeySequence(Qt::Key_Semicolon),
+             .yank = QKeySequence(Qt::Key_Y),
+             .activateMenu = QKeySequence(Qt::Key_M),
+             .activateContext = QKeySequence(Qt::Key_G, Qt::Key_C),
+             .upScroll = QKeySequence(Qt::Key_K),
+             .downScroll = QKeySequence(Qt::Key_J)}
 };
 
-bool Controller::initalized = false;
-QString Controller::stylesheet = "";
+QString Controller::stylesheet = "*{ background-color: blue; }";
 
-Controller::Controller(QWindow *_window) : QObject(_window), window(_window) {
-  Q_ASSERT(_window);
-  filter = new KeyboardEventFilter(window, this);
-  if (!initalized) {
-    Controller::stylesheet = fetchStylesheet();
-    qApp->setStyleSheet(Controller::stylesheet);
-  }
+Controller::Controller(QWidget *parent) : QObject(parent) {
+  Q_ASSERT(self == nullptr);
+  Controller::stylesheet = fetchStylesheet();
+  qApp->setStyleSheet(Controller::stylesheet);
+
+  qApp->installEventFilter(new Tetradactyl::PrintFilter);
+  qApp->installEventFilter(this);
 }
 
 Controller::~Controller() {}
 
-void Controller::hint(HintMode hintMode) {
+void Controller::createController() {
+  logInfo << "Creating Tetradactyl controller";
+  self = new Controller();
+
+  self->attachToExistingWindows();
+
+  // Initially defocus input widgets. This assumes the tol-level widget is not
+  // e.g. QLineEdit
+  for (auto widget : qApp->topLevelWidgets()) {
+    widget->setFocus();
+  }
+}
+
+void Controller::attachToExistingWindows() {
+  QList<QWidget *> topelevelWidgets = qApp->topLevelWidgets();
+  for (auto &widget : topelevelWidgets) {
+    // QTimer::singleShot(0, [widget] { self->tryAttachToWindow(widget); });
+    tryAttachToWindow(widget);
+  }
+}
+
+// Check if the widget is a window and not a popup. If so, create a
+// WindowController
+void Controller::tryAttachToWindow(QWidget *widget) {
+  // Make sure no to attach WindowController to things with the popup bit
+  // set, such as  QMenu (in menu bar and context menu)
+  if (widget->isWindow() &&
+      !(widget->windowFlags() & WindowType::Popup & ~WindowType::Window)) {
+    logInfo << "Attaching Tetradactyl to" << widget;
+    self->windowControllers.append(
+        new Tetradactyl::WindowController(widget, this));
+    // }
+  }
+}
+
+// TODO 09/09/20 psacawa: test it works
+bool Controller::eventFilter(QObject *obj, QEvent *ev) {
+  QEvent::Type type = ev->type();
+  QWidget *widget = qobject_cast<QWidget *>(obj);
+  if (type == QEvent::Show && widget != nullptr) {
+    tryAttachToWindow(widget);
+  }
+  return false;
+}
+
+void Controller::routeObject(QObject *obj) {
+  const QMetaObject *mo = obj->metaObject();
+  // TODO 09/09/20 psacawa: add WindowController overlay or wait for show
+  // event as necessary
+}
+
+Controller *Controller::self = nullptr;
+
+void WindowController::initializeShortcuts() {
+  ControllerKeymap &keymap = controller->settings.keymap;
+  QShortcut __attribute__((unused)) *activateShortcut =
+      new QShortcut(keymap.activate, target, [this] { hint(); });
+  QShortcut __attribute__((unused)) *focusShortcut = new QShortcut(
+      keymap.focus, target, [this] { hint(HintMode::Focusable); });
+  QShortcut __attribute__((unused)) *editShortcut =
+      new QShortcut(keymap.edit, target, [this] { hint(HintMode::Editable); });
+  QShortcut __attribute__((unused)) *yankShortcut =
+      new QShortcut(keymap.yank, target, [this] { hint(HintMode::Yankable); });
+  QShortcut __attribute__((unused)) *cancelShortcut =
+      new QShortcut(keymap.cancel, target, [this] { cancel(); });
+}
+
+WindowController::WindowController(QWidget *_target, QObject *parent = nullptr)
+    : QObject(parent), target(_target) {
+  Q_ASSERT(parent);
+  initializeShortcuts();
+  initializeOverlays();
+  target->installEventFilter(this);
+}
+
+bool WindowController::eventFilter(QObject *obj, QEvent *ev) {
+  auto type = ev->type();
+  if (type == QEvent::KeyPress) {
+    QKeyEvent *kev = static_cast<QKeyEvent *>(ev);
+    if (mode == ControllerMode::Hint && kev->key() != Qt::Key_Escape) {
+      pushKey(kev->key());
+    }
+  }
+  return false;
+}
+
+// Current strategy: just search for the overlayable classes under the target
+void WindowController::initializeOverlays() {
+  QList<QWidget *> widgets = target->findChildren<QWidget *>();
+  for (auto widget : qApp->topLevelWidgets()) {
+    if (isDescendantOf(widget, target)) {
+      tryAttachController(widget);
+    }
+  }
+}
+
+// As with tryAttachToWindow, can be called to attach to existing overlayable
+// widget, or in response to one being created.
+void WindowController::tryAttachController(QWidget *widget) {
+  // TODO 09/09/20 psacawa: add checks for both cases
+  overlays.append(new Overlay(widget));
+}
+
+void WindowController::hint(HintMode hintMode) {
   if (!(mode == ControllerMode::Normal)) {
-    qCInfo(lcThis) << __PRETTY_FUNCTION__ << "from" << mode;
+    logInfo << __PRETTY_FUNCTION__ << "from" << mode;
     return;
   }
-  qCDebug(lcThis) << __PRETTY_FUNCTION__;
+  logDebug << __PRETTY_FUNCTION__;
   hintBuffer = "";
   QList<QWidget *> hintables = this->getHintables(hintMode);
   HintGenerator hintStringGenerator(Controller::settings.hintChars,
                                     hintables.length());
   for (auto widget : hintables) {
     string hintStr = *hintStringGenerator;
-    qCDebug(lcThis) << "Hinting " << widget << " with " << hintStr.c_str();
-    HintLabel *hint = new HintLabel(*hintStringGenerator, widget);
+    logDebug << "Hinting " << widget << " with " << hintStr.c_str();
+    HintLabel *hint =
+        new HintLabel(QString::fromStdString(*hintStringGenerator), widget);
     hint->parentWidget()->setProperty("selected", QVariant(true));
     hint->show();
     hints.push_back(hint);
@@ -93,21 +207,21 @@ void Controller::hint(HintMode hintMode) {
   currentHintMode = hintMode;
 }
 
-void Controller::acceptCurrent() {}
+void WindowController::acceptCurrent() {}
 
-void Controller::accept(QWidget *widget) {
+void WindowController::accept(QWidget *widget) {
   if (!(mode == ControllerMode::Hint)) {
-    qCInfo(lcThis) << __PRETTY_FUNCTION__ << "from" << mode;
+    logInfo << __PRETTY_FUNCTION__ << "from" << mode;
     return;
   }
-  qCInfo(lcThis) << "Accepted " << widget << "in" << currentHintMode;
+  logInfo << "Accepted " << widget << "in" << currentHintMode;
   switch (currentHintMode) {
   case Activatable: {
     if (auto button = qobject_cast<QAbstractButton *>(widget)) {
       button->click();
     } else {
-      qCWarning(lcThis) << "Don't know how to activate " << widget << "in"
-                        << currentHintMode;
+      logWarning << "Don't know how to activate " << widget << "in"
+                 << currentHintMode;
     }
     break;
   }
@@ -129,7 +243,7 @@ void Controller::accept(QWidget *widget) {
       QString text = label->text();
       clipboard->setText(text);
     } else {
-      qCWarning(lcThis) << "unimplemented";
+      logWarning << "unimplemented";
     }
     break;
   }
@@ -140,9 +254,9 @@ void Controller::accept(QWidget *widget) {
   cancel();
 }
 
-void Controller::pushKey(char ch) {
+void WindowController::pushKey(char ch) {
   if (!(mode == ControllerMode::Hint)) {
-    qCInfo(lcThis) << __PRETTY_FUNCTION__ << "from" << mode;
+    logInfo << __PRETTY_FUNCTION__ << "from" << mode;
     return;
   }
   hintBuffer += ch;
@@ -154,27 +268,12 @@ void Controller::pushKey(char ch) {
   // }
 }
 
-void Controller::popKey() {
-  if (!(mode == ControllerMode::Hint)) {
-    qCInfo(lcThis) << __PRETTY_FUNCTION__ << "from" << mode;
-    return;
-  }
-  // pop char from hintBuffer
-  hintBuffer =
-      hintBuffer.substr(0, hintBuffer.size() - 1 ? hintBuffer.size() : 0);
-  filterHints();
-}
-
-QWidget *Controller::myToplevelWidget() {
-  for (auto toplevel : qApp->topLevelWidgets()) {
-    if (toplevel->windowHandle() == window) {
-      return toplevel;
-    }
-  }
+QWidget *WindowController::host() {
+  return dynamic_cast<QWidget *>(this->parent());
   Q_UNREACHABLE();
 }
 
-void Controller::filterHints() {
+void WindowController::filterHints() {
   vector<QWidget *> invisibleHints;
   visibleHints = {};
   std::partition_copy(hints.begin(), hints.end(),
@@ -195,12 +294,12 @@ void Controller::filterHints() {
   }
 }
 
-void Controller::cancel() {
+void WindowController::cancel() {
   if (!(mode == ControllerMode::Hint)) {
-    qCInfo(lcThis) << __PRETTY_FUNCTION__ << "from" << mode;
+    logInfo << __PRETTY_FUNCTION__ << "from" << mode;
     return;
   }
-  qCDebug(lcThis) << __PRETTY_FUNCTION__;
+  logDebug << __PRETTY_FUNCTION__;
   for (auto hint : hints) {
     delete hint;
   }
@@ -212,15 +311,14 @@ void Controller::cancel() {
 // For now the  hinting proceed only by type: QObjects whose meta-object are
 // right get hinted. However, to support clients with more complex handling of
 // events, etc., we will want a more dynamic approach.
-QList<QWidget *> Controller::getHintables(HintMode hintMode) {
-  QWidget *toplevelWidget = myToplevelWidget();
-  QList<QWidget *> descendants = toplevelWidget->findChildren<QWidget *>();
+QList<QWidget *> WindowController::getHintables(HintMode hintMode) {
+  QList<QWidget *> descendants = target->findChildren<QWidget *>();
   vector<QWidget *> hintables;
   vector<const QMetaObject *> metaObjects;
   try {
     metaObjects = hintableMetaObjects.at(hintMode);
-  } catch (std::out_of_range) {
-    qCWarning(lcThis) << "unsupported" << hintMode;
+  } catch (std::out_of_range &e) {
+    logWarning << "unsupported" << hintMode;
     return {};
   }
 
@@ -246,7 +344,7 @@ HintGenerator::HintGenerator(const char *_hintChars, size_t size)
     : hintChars(_hintChars), pos(0) {
   lengthOfHints = 0;
   // find the minimum lengthOfHints to be able to generate enough hint strings
-  for (int numHintsGenerated = 1; numHintsGenerated < size;
+  for (size_t numHintsGenerated = 1; numHintsGenerated < size;
        numHintsGenerated *= hintChars.size()) {
     lengthOfHints++;
   }

@@ -1,7 +1,2 @@
+// Copyright 2023 Paweł Sacawa. All rights reserved. 
 #pragma once
-
-#define qDebugThis qCDebug(lcThis)
-#define qInfoThis qCInfo(lcThis)
-#define qWarningThis qCWarning(lcThis)
-#define qCriticalThis qCCritical(lcThis)
-#define qFatalThis qCFatal(lcThis)

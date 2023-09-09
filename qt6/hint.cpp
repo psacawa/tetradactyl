@@ -1,19 +1,13 @@
-#include <QFile>
-#include <QIODevice>
+// Copyright 2023 Paweł Sacawa. All rights reserved.
 #include <QLabel>
 #include <QString>
-#include <QStyle>
 
-#include <string>
-
+#include "controller.h"
 #include "hint.h"
 
-using std::string;
-
 namespace Tetradactyl {
-HintLabel::HintLabel(string label, QWidget *_target)
-    : QLabel(label.c_str(), _target) {}
 
+HintLabel::HintLabel(QString text, QWidget *target) : QLabel(text, target) {
+  setStyleSheet(Controller::stylesheet);
+}
 } // namespace Tetradactyl
-
-#include "moc_hint.cpp"

@@ -1,3 +1,4 @@
+// Copyright 2023 Paweł Sacawa. All rights reserved.
 #include <QApplication>
 #include <QDebug>
 #include <QLineEdit>
@@ -6,16 +7,18 @@
 #include <QTextEdit>
 #include <Qt>
 
+#include <algorithm>
 #include <cctype>
 #include <cstdio>
 #include <cstring>
+#include <qloggingcategory.h>
 #include <qobject.h>
 
 #include "controller.h"
 #include "filter.h"
+#include "logging.h"
 
-#define lcThis tetradactylFilter
-Q_LOGGING_CATEGORY(tetradactylFilter, "tetradactyl.filter");
+LOGGING_CATEGORY_COLOR("tetradactyl.filter", Qt::green);
 
 namespace Tetradactyl {
 
@@ -46,7 +49,7 @@ bool KeyboardEventFilter::eventFilter(QObject *obj, QEvent *ev = nullptr) {
     if (ev->type() == QEvent::KeyPress) {
 
       QKeyEvent *kev = static_cast<QKeyEvent *>(ev);
-      Tetradactyl::ControllerKeymap &keymap = controller->settings.keymap;
+      // Tetradactyl::ControllerKeymap &keymap = controller->settings.keymap;
       QKeyCombination kc = QKeyCombination::fromCombined(kev->key());
 
       // current technique to let input widgets get input is to avoid filtering
@@ -54,49 +57,67 @@ bool KeyboardEventFilter::eventFilter(QObject *obj, QEvent *ev = nullptr) {
       // Only  <esc> is captured to escape the focus
 
       if (inputWidgetFocussed()) {
-        qCDebug(lcThis) << "Input widget is focussed. Passing keypress" << kev;
+        logInfo << "Input widget is focussed. Passing keypress" << kev;
         if (kc == QKeyCombination(Qt::Key_Escape)) {
           // is there a better default for focus to escape inputs?
-          controller->myToplevelWidget()->setFocus();
+          // controller->host()->setFocus();
           return true;
         }
         return false;
-      }
-
-      if (controller->mode == Controller::ControllerMode::Normal) {
-        // TODO 22/08/20 psacawa: really handle shortcuts input buffering
-        if (kc == keymap.activate[0]) {
-          this->controller->hint();
-          return true;
-        } else if (kc == keymap.focus[0]) {
-          this->controller->hint(HintMode::Focusable);
-          return true;
-        } else if (kc == keymap.yank[0]) {
-          this->controller->hint(HintMode::Yankable);
-          return true;
-        } else if (kc == keymap.edit[0]) {
-          this->controller->hint(HintMode::Editable);
-          return true;
-        } else if (kc == keymap.upScroll[0]) {
-          this->controller->hint(HintMode::Editable);
-          return true;
-        }
-      } else if (controller->mode == Controller::ControllerMode::Hint) {
-        if (kc == keymap.cancel[0]) {
-          this->controller->cancel();
-          return true;
-        } else if (kc == QKeyCombination(Qt::Key_Backspace)) {
-          this->controller->popKey();
-          return true;
-        } else if (kc.keyboardModifiers() == Qt::NoModifier &&
-                   isalpha(kc.key())) {
-          // TODO 02/08/20 psacawa: finish this
-          this->controller->pushKey(toupper(kc.key()));
-          return true;
-        }
       }
     }
   }
   return false;
 }
+
+// In the special case that  there are interested and disinterested items (a
+// user error), an interested match is enough to match
+bool PrintFilter::interestedInMetaObject(QObject *obj) {
+  if (interestedMetaObjects.length() != 0) {
+    const QMetaObject *metaObj = obj->metaObject();
+    for (auto mo : interestedMetaObjects) {
+      if (metaObj->inherits(mo)) {
+        return true;
+      }
+    }
+  }
+  if (disinterestedMetaObjects.length() != 0) {
+    const QMetaObject *metaObj = obj->metaObject();
+    for (auto mo : disinterestedMetaObjects) {
+      if (metaObj->inherits(mo)) {
+        return false;
+      }
+    }
+  }
+  if (interestedMetaObjects.length() == 0 &&
+      disinterestedMetaObjects.length() == 0) {
+    return true;
+  }
+  return false;
+}
+
+bool PrintFilter::interestedInEventType(const QEvent &event) {
+  QEvent::Type type = event.type();
+  if (interestedEventTypes.indexOf(type) >= 0)
+    return true;
+
+  if (disinterestedEventTypes.length() != 0) {
+    if (disinterestedEventTypes.indexOf(type) >= 0)
+      return false;
+  }
+
+  if (interestedEventTypes.length() == 0 &&
+      disinterestedEventTypes.length() == 0) {
+    return true;
+  }
+  return false;
+}
+
+bool PrintFilter::eventFilter(QObject *obj, QEvent *ev) {
+  if (interestedInEventType(*ev) && interestedInMetaObject(obj)) {
+    logInfo << ev << obj;
+  }
+  return false;
+}
+
 } // namespace Tetradactyl

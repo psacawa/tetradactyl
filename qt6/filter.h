@@ -1,9 +1,13 @@
+// Copyright 2023 Paweł Sacawa. All rights reserved.
 #pragma once
 
+#include <QAction>
 #include <QDebug>
 #include <QEvent>
 #include <QKeyEvent>
 #include <QMetaObject>
+#include <QShortcut>
+#include <QWidget>
 
 #include <vector>
 
@@ -28,4 +32,32 @@ private:
   QObject *owner = nullptr;
   Tetradactyl::Controller *controller = nullptr;
 };
+
+class PrintFilter : public QObject {
+  Q_OBJECT
+public:
+  PrintFilter() {}
+  virtual ~PrintFilter() {}
+
+private:
+  QList<const QMetaObject *> interestedMetaObjects = {
+      // &QAction::staticMetaObject, &QShortcut::staticMetaObject,
+      // &QWidget::staticMetaObject
+  };
+  QList<const QMetaObject *> disinterestedMetaObjects = {};
+  QList<QEvent::Type> interestedEventTypes = {
+      // QEvent::KeyPress,
+      // QEvent::Shortcut
+      QEvent::Show,
+      // QEvent::ShowToParent
+  };
+  QList<QEvent::Type> disinterestedEventTypes = {};
+
+  bool interestedInMetaObject(QObject *obj);
+
+  bool interestedInEventType(const QEvent &event);
+
+  bool eventFilter(QObject *obj, QEvent *ev);
+};
+
 } // namespace Tetradactyl

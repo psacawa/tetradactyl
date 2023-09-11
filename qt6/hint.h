@@ -13,13 +13,14 @@ public:
   HintLabel(QString label, QWidget *target);
 
   inline bool getSelected();
-  inline void setSelected(bool);
+  void setSelected(bool);
+
+  QWidget *target;
 
 private:
   bool selected;
 };
 
 inline bool HintLabel::getSelected() { return selected; }
-inline void HintLabel::setSelected(bool _selected) { selected = _selected; }
 
 } // namespace Tetradactyl

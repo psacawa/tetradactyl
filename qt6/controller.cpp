@@ -9,6 +9,8 @@
 #include <QLineEdit>
 #include <QList>
 #include <QLoggingCategory>
+#include <QMenu>
+#include <QMenuBar>
 #include <QShortcut>
 #include <QTextEdit>
 #include <QTimer>
@@ -31,6 +33,7 @@
 #include "filter.h"
 #include "hint.h"
 #include "logging.h"
+#include "overlay.h"
 
 LOGGING_CATEGORY_COLOR("tetradactyl.controller", Qt::blue);
 
@@ -54,7 +57,9 @@ const std::map<HintMode, vector<const QMetaObject *>> hintableMetaObjects = {
     {Yankable, {&QLabel::staticMetaObject}}};
 
 struct ControllerSettings Controller::settings {
-  .hintChars = "ASDFJKL",
+  .hintChars = "ASDFJKL", .autoAcceptUniqueHint = true,
+  .highlightAcceptedHint = true, .highlightAcceptedHintMs = 1000,
+  .passthroughKeyboardInput = true,
   .keymap = {.activate = QKeySequence(Qt::Key_F),
              .cancel = QKeySequence(Qt::Key_Escape),
              .edit = QKeySequence(Qt::Key_G, Qt::Key_I),
@@ -63,7 +68,7 @@ struct ControllerSettings Controller::settings {
              .activateMenu = QKeySequence(Qt::Key_M),
              .activateContext = QKeySequence(Qt::Key_G, Qt::Key_C),
              .upScroll = QKeySequence(Qt::Key_K),
-             .downScroll = QKeySequence(Qt::Key_J)}
+             .downScroll = QKeySequence(Qt::Key_J)},
 };
 
 QString Controller::stylesheet = "*{ background-color: blue; }";
@@ -77,7 +82,12 @@ Controller::Controller(QWidget *parent) : QObject(parent) {
   qApp->installEventFilter(this);
 }
 
-Controller::~Controller() {}
+Controller::~Controller() {
+  for (auto &WindowController : windowControllers) {
+    delete WindowController;
+  }
+  self = nullptr;
+}
 
 void Controller::createController() {
   logInfo << "Creating Tetradactyl controller";
@@ -88,8 +98,16 @@ void Controller::createController() {
   // Initially defocus input widgets. This assumes the tol-level widget is not
   // e.g. QLineEdit
   for (auto widget : qApp->topLevelWidgets()) {
-    widget->setFocus();
+    widget->clearFocus();
   }
+}
+
+WindowController *Controller::findControllerForWidget(QWidget *widget) {
+  for (auto winController : windowControllers) {
+    if (widget->window() == winController->target())
+      return winController;
+  }
+  return nullptr;
 }
 
 void Controller::attachToExistingWindows() {
@@ -108,8 +126,7 @@ void Controller::tryAttachToWindow(QWidget *widget) {
   if (widget->isWindow() &&
       !(widget->windowFlags() & WindowType::Popup & ~WindowType::Window)) {
     logInfo << "Attaching Tetradactyl to" << widget;
-    self->windowControllers.append(
-        new Tetradactyl::WindowController(widget, this));
+    self->windowControllers.append(new WindowController(widget, this));
     // }
   }
 }
@@ -118,14 +135,43 @@ void Controller::tryAttachToWindow(QWidget *widget) {
 bool Controller::eventFilter(QObject *obj, QEvent *ev) {
   QEvent::Type type = ev->type();
   QWidget *widget = qobject_cast<QWidget *>(obj);
-  if (type == QEvent::Show && widget != nullptr) {
-    tryAttachToWindow(widget);
+  if (widget) {
+    if (type == QEvent::Show) {
+      tryAttachToWindow(widget);
+    } else if (type == QEvent::KeyPress) {
+      QKeyEvent *kev = static_cast<QKeyEvent *>(ev);
+      WindowController *windowController = findControllerForWidget(widget);
+      if (windowController) {
+        bool accepted = windowController->earlyKeyEventFilter(kev);
+        return accepted;
+      }
+    }
   }
   return false;
 }
 
-void Controller::routeObject(QObject *obj) {
+void Controller::routeNewlyCreatedObject(QObject *obj) {
   const QMetaObject *mo = obj->metaObject();
+  if (!mo->inherits(&QWidget::staticMetaObject)) {
+    return;
+  }
+  QWidget *widget = qobject_cast<QWidget *>(obj);
+
+  // Create overlays for some types of QObject
+  if (mo->inherits(&QMenu::staticMetaObject)) {
+
+    // Object at this point may be a descendant of a window with a Tetradactyl
+    // controller, but it may not be.
+    QWidget *win = widget->window();
+    WindowController *winController = findControllerForWidget(win);
+    if (winController) {
+      winController->addOverlay(widget);
+    } else {
+      // TODO 11/09/20 psacawa: this is the case of a QMenu etc. added. We need
+      // to add the overlay if the controlling window is none, or set up a
+      // notification mechanism if it isn't.
+    }
+  }
   // TODO 09/09/20 psacawa: add WindowController overlay or wait for show
   // event as necessary
 }
@@ -134,57 +180,133 @@ Controller *Controller::self = nullptr;
 
 void WindowController::initializeShortcuts() {
   ControllerKeymap &keymap = controller->settings.keymap;
-  QShortcut __attribute__((unused)) *activateShortcut =
-      new QShortcut(keymap.activate, target, [this] { hint(); });
-  QShortcut __attribute__((unused)) *focusShortcut = new QShortcut(
-      keymap.focus, target, [this] { hint(HintMode::Focusable); });
-  QShortcut __attribute__((unused)) *editShortcut =
-      new QShortcut(keymap.edit, target, [this] { hint(HintMode::Editable); });
-  QShortcut __attribute__((unused)) *yankShortcut =
-      new QShortcut(keymap.yank, target, [this] { hint(HintMode::Yankable); });
-  QShortcut __attribute__((unused)) *cancelShortcut =
-      new QShortcut(keymap.cancel, target, [this] { cancel(); });
+  QShortcut *activateShortcut =
+      new QShortcut(keymap.activate, p_target, [this] { hint(); });
+  QShortcut *editShortcut = new QShortcut(keymap.edit, p_target,
+                                          [this] { hint(HintMode::Editable); });
+  QShortcut *yankShortcut = new QShortcut(keymap.yank, p_target,
+                                          [this] { hint(HintMode::Yankable); });
+  QShortcut *cancelShortcut =
+      new QShortcut(keymap.cancel, p_target, [this] { cancel(); });
+  shortcuts.append(activateShortcut);
+  shortcuts.append(editShortcut);
+  shortcuts.append(yankShortcut);
+  shortcuts.append(cancelShortcut);
 }
 
 WindowController::WindowController(QWidget *_target, QObject *parent = nullptr)
-    : QObject(parent), target(_target) {
+    : QObject(parent), p_target(_target) {
   Q_ASSERT(parent);
   initializeShortcuts();
   initializeOverlays();
-  target->installEventFilter(this);
+  Q_ASSERT(p_overlays.length() > 0);
+  p_target->installEventFilter(this);
 }
 
-bool WindowController::eventFilter(QObject *obj, QEvent *ev) {
-  auto type = ev->type();
+WindowController::~WindowController() {
+  for (auto &overlay : p_overlays) {
+    delete overlay;
+  }
+}
+
+/*
+ * Filter QKeyEvents before the receiver widgets get a change to act on them.
+ * Called from the application eventFilter.
+ */
+bool WindowController::earlyKeyEventFilter(QKeyEvent *kev) {
+  logInfo << __PRETTY_FUNCTION__ << kev;
+  auto type = kev->type();
   if (type == QEvent::KeyPress) {
-    QKeyEvent *kev = static_cast<QKeyEvent *>(ev);
-    if (mode == ControllerMode::Hint && kev->key() != Qt::Key_Escape) {
-      pushKey(kev->key());
+    if (mode == ControllerMode::Hint) {
+      if (kev->key() == Qt::Key_Escape) {
+        cancel();
+        return true;
+      } else if (kev->key() == Qt::Key_Return) {
+        acceptCurrent();
+        return true;
+      } else if (kev->key() == Qt::Key_Backspace) {
+        popKey();
+        return true;
+      } else if (kev->key() == Qt::Key_Tab) {
+        activeOverlay()->nextHint(true);
+        return true;
+      } else if (kev->key() == Qt::Key_Backtab) {
+        activeOverlay()->nextHint(false);
+        return true;
+      } else if ((kev->key() >= 'A') && (kev->key() <= 'Z')) {
+        // std::isalpha doesn't work here
+        logDebug << kev->key();
+        pushKey(kev->key());
+        return true;
+      }
     }
   }
   return false;
 }
 
-// Current strategy: just search for the overlayable classes under the target
+bool WindowController::eventFilter(QObject *obj, QEvent *ev) {
+  /*
+   * auto type = ev->type();
+   * if (type == QEvent::KeyPress) {
+   *   QKeyEvent *kev = static_cast<QKeyEvent *>(ev);
+   *   if (mode == ControllerMode::Hint) {
+   *     if (kev->key() == Qt::Key_Escape) {
+   *       cancel();
+   *     } else if (kev->key() == Qt::Key_Enter) {
+   *       acceptCurrent();
+   *     } else if (kev->key() == Qt::Key_Backspace) {
+   *       popKey();
+   *     } else if (kev->key() == Qt::Key_Tab) {
+   *       activeOverlay()->nextHint(kev->modifiers() & Qt::Modifier::SHIFT);
+   *     } else if (std::isalpha(kev->key())) {
+   *       pushKey(kev->key());
+   *     }
+   *   }
+   * }
+   * return false;
+   */
+  return false;
+}
+
+// Current strategy: just search for the overlayable classes under the
+// target
 void WindowController::initializeOverlays() {
-  QList<QWidget *> widgets = target->findChildren<QWidget *>();
+  QList<QWidget *> widgets = p_target->findChildren<QWidget *>();
   for (auto widget : qApp->topLevelWidgets()) {
-    if (isDescendantOf(widget, target)) {
+    if (isDescendantOf(widget, p_target)) {
       tryAttachController(widget);
     }
   }
 }
 
-// As with tryAttachToWindow, can be called to attach to existing overlayable
-// widget, or in response to one being created.
-void WindowController::tryAttachController(QWidget *widget) {
+// As with tryAttachToWindow, can be called to attach to existing
+// overlayable widget, or in response to one being created.
+void WindowController::tryAttachController(QWidget *target) {
   // TODO 09/09/20 psacawa: add checks for both cases
-  overlays.append(new Overlay(widget));
+  if (target != nullptr) {
+    addOverlay(target);
+  }
+}
+
+void WindowController::addOverlay(QWidget *target) {
+  p_overlays.append(new Overlay(target));
+  connect(this, &WindowController::destroyed, this, [this](QObject *obj) {
+    Overlay *overlay = qobject_cast<Overlay *>(obj);
+    this->removeOverlay(overlay, true);
+  });
+}
+
+void WindowController::removeOverlay(QWidget *overlay, bool fromSignal) {
+  if (!fromSignal) {
+    delete overlay;
+  }
+  int idx = p_overlays.indexOf(overlay);
+  p_overlays.remove(idx);
 }
 
 void WindowController::hint(HintMode hintMode) {
   if (!(mode == ControllerMode::Normal)) {
-    logInfo << __PRETTY_FUNCTION__ << "from" << mode;
+    logWarning << __PRETTY_FUNCTION__ << "from" << mode;
     return;
   }
   logDebug << __PRETTY_FUNCTION__;
@@ -195,23 +317,31 @@ void WindowController::hint(HintMode hintMode) {
   for (auto widget : hintables) {
     string hintStr = *hintStringGenerator;
     logDebug << "Hinting " << widget << " with " << hintStr.c_str();
-    HintLabel *hint =
-        new HintLabel(QString::fromStdString(*hintStringGenerator), widget);
-    hint->parentWidget()->setProperty("selected", QVariant(true));
-    hint->show();
-    hints.push_back(hint);
+    mainOverlay()->addHint(QString::fromStdString(*hintStringGenerator),
+                           widget);
     hintStringGenerator++;
   }
-  selectedHint = hints.begin();
+  mainOverlay()->resetSelection();
   mode = ControllerMode::Hint;
+
+  // In hint mode, just disable shortcuts. Need something cleaner?
+  for (auto sc : shortcuts)
+    sc->setEnabled(false);
+
   currentHintMode = hintMode;
 }
-
-void WindowController::acceptCurrent() {}
+void WindowController::acceptCurrent() {
+  QWidget *current = activeOverlay()->selected();
+  if (current == nullptr) {
+    logWarning << "Active overlay has no selected hint";
+    return;
+  }
+  accept(current);
+}
 
 void WindowController::accept(QWidget *widget) {
   if (!(mode == ControllerMode::Hint)) {
-    logInfo << __PRETTY_FUNCTION__ << "from" << mode;
+    logWarning << __PRETTY_FUNCTION__ << "from" << mode;
     return;
   }
   logInfo << "Accepted " << widget << "in" << currentHintMode;
@@ -256,63 +386,48 @@ void WindowController::accept(QWidget *widget) {
 
 void WindowController::pushKey(char ch) {
   if (!(mode == ControllerMode::Hint)) {
-    logInfo << __PRETTY_FUNCTION__ << "from" << mode;
+    logWarning << __PRETTY_FUNCTION__ << "from" << mode;
     return;
   }
   hintBuffer += ch;
-  filterHints();
-
-  // if selectedHint hidden, set new one
-  // if ((*selectedHint)->isHidden()) {
-  //   selectedHint = visibleHints.begin();
-  // }
-}
-
-QWidget *WindowController::host() {
-  return dynamic_cast<QWidget *>(this->parent());
-  Q_UNREACHABLE();
-}
-
-void WindowController::filterHints() {
-  vector<QWidget *> invisibleHints;
-  visibleHints = {};
-  std::partition_copy(hints.begin(), hints.end(),
-                      std::back_inserter(visibleHints),
-                      std::back_inserter(invisibleHints), [&](HintLabel *hint) {
-                        return hint->text().startsWith(hintBuffer.c_str());
-                      });
-  for (auto widget : visibleHints) {
-    widget->show();
-  }
-  for (auto widget : invisibleHints) {
-    widget->hide();
-  }
-  if (visibleHints.size() == 1) {
-    accept(qobject_cast<QWidget *>(visibleHints[0]->parent()));
-  } else if (visibleHints.size() == 0) {
+  int numVisibleHints = activeOverlay()->updateHints(hintBuffer);
+  if (numVisibleHints == 1 && Controller::settings.autoAcceptUniqueHint) {
+    acceptCurrent();
+  } else if (numVisibleHints == 0) {
     cancel();
   }
 }
 
+void WindowController::popKey() {
+  if (!(mode == ControllerMode::Hint)) {
+    logWarning << __PRETTY_FUNCTION__ << "from" << mode;
+    return;
+  }
+  hintBuffer.remove(hintBuffer.length() - 1, 1);
+  activeOverlay()->updateHints(hintBuffer);
+}
+
+QWidget *WindowController::target() {
+  return dynamic_cast<QWidget *>(this->p_target);
+}
+
 void WindowController::cancel() {
   if (!(mode == ControllerMode::Hint)) {
-    logInfo << __PRETTY_FUNCTION__ << "from" << mode;
+    logWarning << __PRETTY_FUNCTION__ << "from" << mode;
     return;
   }
   logDebug << __PRETTY_FUNCTION__;
-  for (auto hint : hints) {
-    delete hint;
-  }
-  hints = {};
-  visibleHints = {};
+  activeOverlay()->clear();
   mode = ControllerMode::Normal;
+  for (auto sc : shortcuts)
+    sc->setEnabled(true);
 }
 
-// For now the  hinting proceed only by type: QObjects whose meta-object are
-// right get hinted. However, to support clients with more complex handling of
-// events, etc., we will want a more dynamic approach.
+// For now the  hinting proceed only by type: QObjects whose meta-object
+// are right get hinted. However, to support clients with more complex
+// handling of events, etc., we will want a more dynamic approach.
 QList<QWidget *> WindowController::getHintables(HintMode hintMode) {
-  QList<QWidget *> descendants = target->findChildren<QWidget *>();
+  QList<QWidget *> descendants = p_target->findChildren<QWidget *>();
   vector<QWidget *> hintables;
   vector<const QMetaObject *> metaObjects;
   try {
@@ -343,7 +458,8 @@ QList<QWidget *> WindowController::getHintables(HintMode hintMode) {
 HintGenerator::HintGenerator(const char *_hintChars, size_t size)
     : hintChars(_hintChars), pos(0) {
   lengthOfHints = 0;
-  // find the minimum lengthOfHints to be able to generate enough hint strings
+  // find the minimum lengthOfHints to be able to generate enough hint
+  // strings
   for (size_t numHintsGenerated = 1; numHintsGenerated < size;
        numHintsGenerated *= hintChars.size()) {
     lengthOfHints++;
@@ -383,6 +499,7 @@ QString fetchStylesheet() {
   QFile hintsCss(":/tetradactyl/hints.css");
   hintsCss.open(QIODevice::ReadOnly);
   QString ret = hintsCss.readAll();
+  logInfo << "CSS:" << ret;
   return ret;
 }
 

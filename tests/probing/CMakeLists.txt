@@ -12,7 +12,7 @@ add_test(NAME "dynamic_probe_of_calculator_qt5"
                  $<TARGET_FILE:tetradactyl> $<TARGET_FILE:calculator-qt5>)
 set_tests_properties(
   "dynamic_probe_of_calculator_qt5"
-  PROPERTIES LABELS "dynamic;runs-gui;qt5" ENVIRONMENT
+  PROPERTIES LABELS "dynamic;qt5" ENVIRONMENT
              QT_QPA_PLATFORM=offscreen)
 
 add_test(NAME "dynamic_probe_of_calculator_qt6"
@@ -20,7 +20,7 @@ add_test(NAME "dynamic_probe_of_calculator_qt6"
                  $<TARGET_FILE:tetradactyl> $<TARGET_FILE:calculator-qt6>)
 set_tests_properties(
   "dynamic_probe_of_calculator_qt6"
-  PROPERTIES LABELS "dynamic;runs-gui;qt6" ENVIRONMENT
+  PROPERTIES LABELS "dynamic;qt6" ENVIRONMENT
              QT_QPA_PLATFORM=offscreen)
 
 add_test(NAME "dynamic_probe_of_some_dynamic_qt6_app"
@@ -28,7 +28,7 @@ add_test(NAME "dynamic_probe_of_some_dynamic_qt6_app"
                  $<TARGET_FILE:tetradactyl> $<TARGET_FILE:some-dynamic-qt6-app>)
 set_tests_properties(
   "dynamic_probe_of_some_dynamic_qt6_app"
-  PROPERTIES LABELS "dynamic;external;runs-gui;qt6" ENVIRONMENT
+  PROPERTIES LABELS "dynamic;external;qt6" ENVIRONMENT
              QT_QPA_PLATFORM=offscreen)
 
 # The below XFAIL  tests function primarily as a test of the test infrastructure
@@ -39,7 +39,7 @@ add_test(NAME "dynamic_probe_of_calculator-qt5_will_fail"
                  $<TARGET_FILE:tetradactyl> $<TARGET_FILE:calculator-qt5>)
 set_tests_properties(
   "dynamic_probe_of_calculator-qt5_will_fail"
-  PROPERTIES LABELS "dynamic;runs-gui;xfail" ENVIRONMENT
+  PROPERTIES LABELS "dynamic;xfail" ENVIRONMENT
              QT_QPA_PLATFORM=offscreen WILL_FAIL ON)
 
 add_test(NAME "dynamic_probe_of_calculator-qt6_will_fail"
@@ -47,7 +47,7 @@ add_test(NAME "dynamic_probe_of_calculator-qt6_will_fail"
                  $<TARGET_FILE:tetradactyl> $<TARGET_FILE:calculator-qt6>)
 set_tests_properties(
   "dynamic_probe_of_calculator-qt6_will_fail"
-  PROPERTIES LABELS "dynamic;runs-gui;xfail" ENVIRONMENT
+  PROPERTIES LABELS "dynamic;xfail" ENVIRONMENT
              QT_QPA_PLATFORM=offscreen WILL_FAIL ON)
 
 add_test(NAME "dynamic_probe_of_some_dynamic_qt6_app_will_fail"
@@ -55,5 +55,5 @@ add_test(NAME "dynamic_probe_of_some_dynamic_qt6_app_will_fail"
                  $<TARGET_FILE:tetradactyl> $<TARGET_FILE:some-dynamic-qt6-app>)
 set_tests_properties(
   "dynamic_probe_of_some_dynamic_qt6_app_will_fail"
-  PROPERTIES LABELS "dynamic;external;runs-gui;xfail" ENVIRONMENT
+  PROPERTIES LABELS "dynamic;external;xfail" ENVIRONMENT
              QT_QPA_PLATFORM=offscreen WILL_FAIL ON)

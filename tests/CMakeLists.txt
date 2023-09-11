@@ -5,5 +5,8 @@ unset(CMAKE_RUNTIME_OUTPUT_DIRECTORY)
 add_subdirectory(launcher)
 
 add_subdirectory(probing)
+
+add_subdirectory(qt6)
+
 # demos for tests purposes?
 add_subdirectory(demos)

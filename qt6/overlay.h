@@ -4,9 +4,9 @@
 #include <QWidget>
 #include <qlist.h>
 
-#include "hint.h"
-
 namespace Tetradactyl {
+
+class HintLabel;
 
 struct HintData {
   HintLabel *label;
@@ -19,10 +19,16 @@ public:
   Overlay(QWidget *target);
   virtual ~Overlay() {}
 
-  void addHint(QString &text, QWidget *widget);
+  void addHint(QString text, QWidget *widget);
   void removeHint(HintLabel *hint);
+  void clear();
+  int updateHints(QString &);
+  void resetSelection(HintLabel* label = nullptr);
+  void nextHint(bool forward);
+  QWidget *selected();
 
 private:
   QList<HintData> hints;
+  HintLabel *selectedHint ;
 };
 } // namespace Tetradactyl

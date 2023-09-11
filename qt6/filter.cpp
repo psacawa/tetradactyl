@@ -60,7 +60,7 @@ bool KeyboardEventFilter::eventFilter(QObject *obj, QEvent *ev = nullptr) {
         logInfo << "Input widget is focussed. Passing keypress" << kev;
         if (kc == QKeyCombination(Qt::Key_Escape)) {
           // is there a better default for focus to escape inputs?
-          // controller->host()->setFocus();
+          // controller->target()->setFocus();
           return true;
         }
         return false;

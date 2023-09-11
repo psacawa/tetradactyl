@@ -4,9 +4,10 @@
 #include <QMetaObject>
 #include <QWidget>
 
-#include "controller.h"
-
 #include <map>
+
+// c++ forbids  forward reference to enum HintMode
+#include "controller.h"
 
 using std::map;
 

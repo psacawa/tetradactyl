@@ -23,7 +23,7 @@ Overlay::Overlay(QWidget *target) : QWidget(target), p_selectedHint(nullptr) {
   Q_ASSERT(target != nullptr);
   // Since Overlay is not in any layout, this is needed.
   setFixedSize(2000, 2000);
-  // show();
+  hide();
 }
 
 // Possible to do this nonsense statically?

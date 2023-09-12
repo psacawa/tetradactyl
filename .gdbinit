@@ -30,3 +30,7 @@ define preload-qt6
 set environment LD_PRELOAD=./build/lib/libtetradactyl-qt6.so
 add-symbol-file ./build/lib/libtetradactyl-qt6.so -readnow
 end
+
+define offscreen-qt
+set environment QT_QPA_PLATFORM=offscreen
+end

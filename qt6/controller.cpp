@@ -53,7 +53,8 @@ static bool isDescendantOf(QObject *descendant, QObject *ancestor) {
 const std::map<HintMode, vector<const QMetaObject *>> hintableMetaObjects = {
     {Activatable, {&QAbstractButton::staticMetaObject}},
     {Editable, {&QLineEdit::staticMetaObject, &QTextEdit::staticMetaObject}},
-    {Focusable, {&QWidget::staticMetaObject}},
+    {Focusable,
+     {&QLineEdit::staticMetaObject, &QAbstractButton::staticMetaObject}},
     {Yankable, {&QLabel::staticMetaObject}}};
 
 static ControllerSettings baseTestSettings() {
@@ -77,7 +78,7 @@ static ControllerSettings baseTestSettings() {
 
 struct ControllerSettings Controller::settings = baseTestSettings();
 
-QString Controller::stylesheet = "*{ background-color: blue; }";
+QString Controller::stylesheet = "";
 
 Controller::Controller() {
   Q_ASSERT(self == nullptr);
@@ -126,7 +127,7 @@ void Controller::attachToExistingWindows() {
 
 // Check if the widget is a window,not a popup, and doesn't alredy have an
 // attached WindowController. If so, create a WindowController. NB it's
-// necessary for invisibile window to have active controller in the test suite.
+// necessary for invisible window to have active controller in the test suite.
 void Controller::tryAttachToWindow(QWidget *widget) {
   // Make sure no to attach WindowController to things with the popup bit
   // set, such as  QMenu (in menu bar and context menu)
@@ -194,11 +195,14 @@ void WindowController::initializeShortcuts() {
                                           [this] { hint(HintMode::Editable); });
   QShortcut *yankShortcut = new QShortcut(keymap.yank, p_target,
                                           [this] { hint(HintMode::Yankable); });
+  QShortcut *focusShortcut = new QShortcut(
+      keymap.focus, p_target, [this] { hint(HintMode::Focusable); });
   QShortcut *cancelShortcut =
       new QShortcut(keymap.cancel, p_target, [this] { cancel(); });
   shortcuts.append(activateShortcut);
   shortcuts.append(editShortcut);
   shortcuts.append(yankShortcut);
+  shortcuts.append(focusShortcut);
   shortcuts.append(cancelShortcut);
 }
 
@@ -372,6 +376,10 @@ void WindowController::accept(QWidget *widget) {
   }
   case Focusable:
     // TODO 24/08/20 psacawa: set focussed GUI state for button...
+    widget->setFocus();
+    if (QAbstractButton *button = qobject_cast<QAbstractButton *>(widget)) {
+      button->setDown(true);
+    }
   case Editable: {
     widget->setFocus();
     /*

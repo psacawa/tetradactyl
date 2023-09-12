@@ -39,12 +39,14 @@ include_directories("${CMAKE_SOURCE_DIR}")
 
 function(add_qt6_test _name)
   set(test_name "${_name}_test")
-  add_executable(${test_name} ${_name}.cpp
+  add_executable(${test_name} ${_name}.cpp common.cpp
                               "${CMAKE_SOURCE_DIR}/qt6/${_name}.cpp")
 
   add_test(NAME ${test_name} COMMAND ${test_name})
   target_link_libraries(${test_name} PRIVATE Qt6::Test Qt6::Widgets)
-  set_tests_properties(${test_name} PROPERTIES LABELS "controller;qt6")
+  set_tests_properties(
+    ${test_name} PROPERTIES LABELS "controller;qt6" ENVIRONMENT
+                            "QT_QPA_PLATFORM=offscreen")
 endfunction()
 
 add_qt6_test(controller)

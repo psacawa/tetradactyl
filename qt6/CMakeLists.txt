@@ -20,6 +20,7 @@ find_package(
 
 add_library(
   tetradactyl-qt6 SHARED
+  action.cpp
   controller.cpp
   filter.cpp
   hint.cpp

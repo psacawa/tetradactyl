@@ -20,19 +20,42 @@ public:
   virtual ~AbstractUiAction() {}
 
   static AbstractUiAction *getActionByHintMode(HintMode);
-
-private:
-  static map<HintMode, AbstractUiAction *> actionRegistry;
 };
 
 class ActivateAction : public AbstractUiAction {
 public:
   static const QList<const QMetaObject *> acceptableMetaObjects;
-  ActivateAction();
+  ActivateAction() {}
   QList<QWidget *> getHintables(QWidget *root = nullptr) override;
+  void accept(QWidget *widget) override;
   virtual ~ActivateAction() {}
-
-private:
-  /* data */
 };
+
+class EditAction : public AbstractUiAction {
+public:
+  static const QList<const QMetaObject *> acceptableMetaObjects;
+  EditAction() {}
+  QList<QWidget *> getHintables(QWidget *root = nullptr) override;
+  virtual ~EditAction() {}
+};
+
+class FocusInputAction : public AbstractUiAction {
+public:
+  static const QList<const QMetaObject *> acceptableMetaObjects;
+  FocusInputAction() {}
+  QList<QWidget *> getHintables(QWidget *root = nullptr) override;
+  void accept(QWidget *widget) override ;
+  virtual ~FocusInputAction() {}
+};
+
+class YankAction : public AbstractUiAction {
+public:
+  static const QList<const QMetaObject *> acceptableMetaObjects;
+  YankAction() {}
+  QList<QWidget *> getHintables(QWidget *root = nullptr) override;
+  virtual ~YankAction() {}
+};
+
+extern map<HintMode, AbstractUiAction *> actionRegistry;
+
 } // namespace Tetradactyl

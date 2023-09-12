@@ -56,24 +56,30 @@ const std::map<HintMode, vector<const QMetaObject *>> hintableMetaObjects = {
     {Focusable, {&QWidget::staticMetaObject}},
     {Yankable, {&QLabel::staticMetaObject}}};
 
-struct ControllerSettings Controller::settings {
-  .hintChars = "ASDFJKL", .autoAcceptUniqueHint = true,
-  .highlightAcceptedHint = true, .highlightAcceptedHintMs = 1000,
-  .passthroughKeyboardInput = true,
-  .keymap = {.activate = QKeySequence(Qt::Key_F),
-             .cancel = QKeySequence(Qt::Key_Escape),
-             .edit = QKeySequence(Qt::Key_G, Qt::Key_I),
-             .focus = QKeySequence(Qt::Key_Semicolon),
-             .yank = QKeySequence(Qt::Key_Y),
-             .activateMenu = QKeySequence(Qt::Key_M),
-             .activateContext = QKeySequence(Qt::Key_G, Qt::Key_C),
-             .upScroll = QKeySequence(Qt::Key_K),
-             .downScroll = QKeySequence(Qt::Key_J)},
-};
+static ControllerSettings baseTestSettings() {
+  return ControllerSettings{
+      .hintChars = "ASDFJKL",
+      .autoAcceptUniqueHint = true,
+      .highlightAcceptedHint = true,
+      .highlightAcceptedHintMs = 1000,
+      .passthroughKeyboardInput = true,
+      .keymap = {.activate = QKeySequence(Qt::Key_F),
+                 .cancel = QKeySequence(Qt::Key_Escape),
+                 .edit = QKeySequence(Qt::Key_G, Qt::Key_I),
+                 .focus = QKeySequence(Qt::Key_Semicolon),
+                 .yank = QKeySequence(Qt::Key_Y),
+                 .activateMenu = QKeySequence(Qt::Key_M),
+                 .activateContext = QKeySequence(Qt::Key_G, Qt::Key_C),
+                 .upScroll = QKeySequence(Qt::Key_K),
+                 .downScroll = QKeySequence(Qt::Key_J)},
+  };
+}
+
+struct ControllerSettings Controller::settings = baseTestSettings();
 
 QString Controller::stylesheet = "*{ background-color: blue; }";
 
-Controller::Controller(QWidget *parent) : QObject(parent) {
+Controller::Controller() {
   Q_ASSERT(self == nullptr);
   Controller::stylesheet = fetchStylesheet();
   qApp->setStyleSheet(Controller::stylesheet);
@@ -118,13 +124,15 @@ void Controller::attachToExistingWindows() {
   }
 }
 
-// Check if the widget is a window and not a popup. If so, create a
-// WindowController
+// Check if the widget is a window,not a popup, and doesn't alredy have an
+// attached WindowController. If so, create a WindowController. NB it's
+// necessary for invisibile window to have active controller in the test suite.
 void Controller::tryAttachToWindow(QWidget *widget) {
   // Make sure no to attach WindowController to things with the popup bit
   // set, such as  QMenu (in menu bar and context menu)
   if (widget->isWindow() &&
-      !(widget->windowFlags() & WindowType::Popup & ~WindowType::Window)) {
+      !(widget->windowFlags() & WindowType::Popup & ~WindowType::Window) &&
+      findControllerForWidget(widget) == nullptr) {
     logInfo << "Attaching Tetradactyl to" << widget;
     self->windowControllers.append(new WindowController(widget, this));
     // }
@@ -206,6 +214,9 @@ WindowController::WindowController(QWidget *_target, QObject *parent = nullptr)
 WindowController::~WindowController() {
   for (auto &overlay : p_overlays) {
     delete overlay;
+  }
+  for (auto shortcut : shortcuts) {
+    delete shortcut;
   }
 }
 
@@ -301,10 +312,13 @@ void WindowController::removeOverlay(QWidget *overlay, bool fromSignal) {
     delete overlay;
   }
   int idx = p_overlays.indexOf(overlay);
-  p_overlays.remove(idx);
+  if (idx >= 0) {
+    p_overlays.remove(idx);
+  }
 }
 
 void WindowController::hint(HintMode hintMode) {
+  qInfo() << __PRETTY_FUNCTION__;
   if (!(mode == ControllerMode::Normal)) {
     logWarning << __PRETTY_FUNCTION__ << "from" << mode;
     return;
@@ -321,6 +335,7 @@ void WindowController::hint(HintMode hintMode) {
                            widget);
     hintStringGenerator++;
   }
+  mainOverlay()->setVisible(true);
   mainOverlay()->resetSelection();
   mode = ControllerMode::Hint;
 
@@ -331,7 +346,7 @@ void WindowController::hint(HintMode hintMode) {
   currentHintMode = hintMode;
 }
 void WindowController::acceptCurrent() {
-  QWidget *current = activeOverlay()->selected();
+  QWidget *current = activeOverlay()->selectedWidget();
   if (current == nullptr) {
     logWarning << "Active overlay has no selected hint";
     return;
@@ -417,7 +432,10 @@ void WindowController::cancel() {
     return;
   }
   logDebug << __PRETTY_FUNCTION__;
-  activeOverlay()->clear();
+  for (auto overlay : p_overlays) {
+    overlay->clear();
+    overlay->hide();
+  }
   mode = ControllerMode::Normal;
   for (auto sc : shortcuts)
     sc->setEnabled(true);

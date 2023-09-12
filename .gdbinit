@@ -9,7 +9,7 @@ end
 
 define preload-gtk4
 set environment LD_PRELOAD=./build/lib/libtetradactyl-gtk4.so
-add-symbol-file ./build/lib/libtetradactyl-gtk4.so
+add-symbol-file ./build/lib/libtetradactyl-gtk4.so -readnow
 end
 
 define debug-gtk4
@@ -23,10 +23,10 @@ end
 
 define preload-qt5
 set environment LD_PRELOAD=./build/lib/libtetradactyl-qt5.so
-add-symbol-file ./build/lib/libtetradactyl-qt5.so
+add-symbol-file ./build/lib/libtetradactyl-qt5.so -readnow
 end
 
 define preload-qt6
 set environment LD_PRELOAD=./build/lib/libtetradactyl-qt6.so
-add-symbol-file ./build/lib/libtetradactyl-qt6.so
+add-symbol-file ./build/lib/libtetradactyl-qt6.so -readnow
 end

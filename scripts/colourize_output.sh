@@ -15,10 +15,19 @@
 # return value must come from original command
 set -o pipefail
 
+function sigabrt_handler () {
+  echo got SIGABRT 2>/dev/null
+  exit 1
+}
+
+trap sigabrt_handler ABRT 
+
 $@ |
-  sed "s/PASS.*/$(ansi --green --no-restore )&$(ansi --white) /g" |
-  sed "s/QWARN.*/$(ansi --yellow --no-restore )&$(ansi --white) /g" |
-  sed "s/QCRIT.*/$(ansi --red --no-restore )&$(ansi --white) /g" |
-  sed "s/FAIL!.*/$(ansi --red --no-restore )&$(ansi --white) /g"
+  sed "s/PASS.*/$(ansi --green --no-restore )&$(ansi --reset-color) /g" |
+  sed "s/QWARN.*/$(ansi --yellow --no-restore )&$(ansi --reset-color) /g" |
+  sed "s/QCRIT.*/$(ansi --red --no-restore )&$(ansi --reset-color) /g" |
+  sed "s/QFATAL.*/$(ansi --red --no-restore )&$(ansi --reset-color) /g" |
+  sed "s/FAIL!.*/$(ansi --red-intense  --bold --no-restore )&$(ansi --reset-color) /g" |
+  sed "s/.*Finished testing.*/$(ansi --blue  --no-restore )&$(ansi --reset-color) /g"
 
 exit $?

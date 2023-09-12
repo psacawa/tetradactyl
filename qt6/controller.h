@@ -55,7 +55,7 @@ class Controller : public QObject {
   Q_OBJECT
 
 public:
-  Controller(QWidget *parent = nullptr);
+  Controller();
   virtual ~Controller();
 
   static const Controller *instance();

@@ -6,7 +6,7 @@ add_subdirectory(launcher)
 
 add_subdirectory(probing)
 
-add_subdirectory(qt6)
+add_subdirectory(qt)
 
 # demos for tests purposes?
 add_subdirectory(demos)

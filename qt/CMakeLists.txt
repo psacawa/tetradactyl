@@ -9,12 +9,32 @@ find_package(fmt)
 find_package(toml11 REQUIRED)
 
 find_package(
-  Qt6
+  Qt5
   COMPONENTS Widgets
   REQUIRED)
 
+# tetradactyl-qt5
+
+add_library(
+  tetradactyl-qt5 SHARED
+  action.cpp
+  controller.cpp
+  filter.cpp
+  hint.cpp
+  overlay.cpp
+  logging.cpp
+  probe.cpp
+  tetradactyl.qrc)
+
+target_link_libraries(tetradactyl-qt5 PRIVATE Qt5::Widgets)
+target_link_libraries(tetradactyl-qt5 PRIVATE Qt5::CorePrivate)
+
+install(TARGETS tetradactyl-qt5)
+
+# tetradactyl-qt6
+
 find_package(
-  Qt5
+  Qt6
   COMPONENTS Widgets
   REQUIRED)
 
@@ -29,15 +49,7 @@ add_library(
   probe.cpp
   tetradactyl.qrc)
 
-add_library(tetradactyl-qt5 SHARED tetradactyl-qt5-stub.cpp)
-target_link_libraries(tetradactyl-qt5 PRIVATE Qt5::Widgets)
-target_link_libraries(tetradactyl-qt5 PRIVATE Qt5::CorePrivate)
-
 target_link_libraries(tetradactyl-qt6 PRIVATE Qt6::Widgets)
-# prywatne nagłówki
 target_link_libraries(tetradactyl-qt6 PRIVATE Qt6::CorePrivate)
 
-target_link_libraries(tetradactyl-qt6 PRIVATE fmt)
-
-install(TARGETS tetradactyl-qt5)
 install(TARGETS tetradactyl-qt6)

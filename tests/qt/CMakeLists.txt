@@ -40,7 +40,7 @@ include_directories("${CMAKE_SOURCE_DIR}")
 function(add_qt6_test _name)
   set(test_name "${_name}_test")
   add_executable(${test_name} ${_name}.cpp common.cpp
-                              "${CMAKE_SOURCE_DIR}/qt6/${_name}.cpp")
+                              "${CMAKE_SOURCE_DIR}/qt/${_name}.cpp")
 
   add_test(NAME ${test_name} COMMAND ${test_name})
   target_link_libraries(${test_name} PRIVATE Qt6::Test Qt6::Widgets)
@@ -52,8 +52,8 @@ endfunction()
 add_qt6_test(controller)
 target_sources(
   controller_test
-  PRIVATE "${CMAKE_SOURCE_DIR}/qt6/overlay.cpp"
-          "${CMAKE_SOURCE_DIR}/qt6/hint.cpp"
-          "${CMAKE_SOURCE_DIR}/qt6/filter.cpp"
-          "${CMAKE_SOURCE_DIR}/qt6/logging.cpp"
-          "${CMAKE_SOURCE_DIR}/qt6/tetradactyl.qrc")
+  PRIVATE "${CMAKE_SOURCE_DIR}/qt/overlay.cpp"
+          "${CMAKE_SOURCE_DIR}/qt/hint.cpp"
+          "${CMAKE_SOURCE_DIR}/qt/filter.cpp"
+          "${CMAKE_SOURCE_DIR}/qt/logging.cpp"
+          "${CMAKE_SOURCE_DIR}/qt/tetradactyl.qrc")

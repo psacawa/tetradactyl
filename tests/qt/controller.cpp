@@ -15,9 +15,6 @@
 
 #include <qnamespace.h>
 #include <qobject.h>
-#include <qt6/controller.h>
-#include <qt6/logging.h>
-#include <qt6/overlay.h>
 #include <qtestcase.h>
 #include <qtestkeyboard.h>
 #include <qtestsupport_core.h>
@@ -25,7 +22,10 @@
 #include <qwidget.h>
 
 #include "common.h"
-#include "qt6/hint.h"
+#include <qt/controller.h>
+#include <qt/hint.h>
+#include <qt/logging.h>
+#include <qt/overlay.h>
 
 #define NUM_BUTTONS 10
 #define NUM_LINEEDITS 2

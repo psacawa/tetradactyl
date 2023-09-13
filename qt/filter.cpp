@@ -50,6 +50,7 @@ bool KeyboardEventFilter::eventFilter(QObject *obj, QEvent *ev = nullptr) {
 
       QKeyEvent *kev = static_cast<QKeyEvent *>(ev);
       // Tetradactyl::ControllerKeymap &keymap = controller->settings.keymap;
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
       QKeyCombination kc = QKeyCombination::fromCombined(kev->key());
 
       // current technique to let input widgets get input is to avoid filtering
@@ -65,6 +66,7 @@ bool KeyboardEventFilter::eventFilter(QObject *obj, QEvent *ev = nullptr) {
         }
         return false;
       }
+#endif
     }
   }
   return false;

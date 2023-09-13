@@ -16,10 +16,11 @@
 #include <QtCore/private/qhooks_p.h>
 
 #include <cstdio>
-#include <qmutex.h>
+
+#include "logging.h"
+#include "version.h"
 
 #include "controller.h"
-#include "logging.h"
 #include "probe.h"
 
 LOGGING_CATEGORY_COLOR("tetradactyl.probe", Qt::red);
@@ -81,7 +82,7 @@ void ObjectProbe::addQObjectCallback(QObject *obj) {
     return;
 
   {
-    QMutexLocker<QMutex> locker(&self->mutex);
+    TETRA_MUTEX_LOCKER locker(&self->mutex);
     instance()->objectsBeingCreated.push_back(obj);
     if (!instance()->timer.isActive()) {
       instance()->timer.start();
@@ -99,10 +100,10 @@ void ObjectProbe::removeQObjectCallback(QObject *obj) {
   // if object is queued to be processed in objectsBeingCreated, we must remove
   // it, else segfault later
   {
-    QMutexLocker<QMutex> locker(&instance()->mutex);
+    TETRA_MUTEX_LOCKER locker(&instance()->mutex);
     int index = self->objectsBeingCreated.indexOf(obj);
     if (index >= 0)
-      self->objectsBeingCreated.remove(index);
+      self->objectsBeingCreated.removeAt(index);
   }
   if (nextRemoveQObjectCallback) {
     nextRemoveQObjectCallback(obj);
@@ -137,7 +138,7 @@ void ObjectProbe::processCreatedObjects() {
   Q_ASSERT(QThread::currentThread() == self->thread());
   {
     logDebug << "Processing created objects";
-    QMutexLocker<QMutex> locker(&mutex);
+    TETRA_MUTEX_LOCKER locker(&mutex);
     for (auto obj : objectsBeingCreated) {
       if (interestedObject(obj)) {
         emit objectCreated(obj, QPrivateSignal());

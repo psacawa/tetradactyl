@@ -1,8 +1,12 @@
 // Copyright 2023 Paweł Sacawa. All rights reserved.
 #pragma once
+#include <QDebug>
 #include <QMap>
+#include <QtGlobal>
 
 extern QMap<const char *, Qt::GlobalColor> lcColorMap;
+
+#if (QT_VERSION >= QT_VERSION_CHECK(6, 0, 0))
 
 #define LOGGING_CATEGORY_COLOR(cat, color)                                     \
   static const QLoggingCategory &lcThis() {                                    \
@@ -15,6 +19,15 @@ extern QMap<const char *, Qt::GlobalColor> lcColorMap;
 #define logInfo QT_MESSAGE_LOGGER_COMMON(lcThis, QtInfoMsg).info()
 #define logWarning QT_MESSAGE_LOGGER_COMMON(lcThis, QtWarningMsg).warning()
 #define logCritical QT_MESSAGE_LOGGER_COMMON(lcThis, QtCriticalMsg).critical()
+#else
+
+// TODO 13/09/20 psacawa: figure out Qt5 logging
+#define LOGGING_CATEGORY_COLOR(cat, color)
+#define logDebug qDebug()
+#define logInfo qInfo()
+#define logWarning qWarning()
+#define logCritical qCritical()
+#endif
 
 #define GREEN_INTENSE "\x1b\x5b\x39\x32\x6d"
 #define RED_INTENSE "\x1b\x5b\x39\x31\x6d"

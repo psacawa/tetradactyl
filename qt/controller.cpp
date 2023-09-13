@@ -311,13 +311,13 @@ void WindowController::addOverlay(QWidget *target) {
   });
 }
 
-void WindowController::removeOverlay(QWidget *overlay, bool fromSignal) {
+void WindowController::removeOverlay(Overlay *overlay, bool fromSignal) {
   if (!fromSignal) {
     delete overlay;
   }
   int idx = p_overlays.indexOf(overlay);
   if (idx >= 0) {
-    p_overlays.remove(idx);
+    p_overlays.removeAt(idx);
   }
 }
 

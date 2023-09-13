@@ -24,7 +24,7 @@ add_compile_definitions("TETRADACTYL_VERSION=${CMAKE_PROJECT_VERSION}")
 # libtetradactyl + libtetradactyl-dynamic
 add_subdirectory(launcher)
 
-add_subdirectory(qt6)
+add_subdirectory(qt)
 
 # preferred build system for gtk is meson add_subdirectory(gtk4)
 

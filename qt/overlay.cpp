@@ -2,12 +2,11 @@
 #include <QDebug>
 #include <QLoggingCategory>
 #include <QPainter>
-#include <iterator>
-#include <qassert.h>
+
+#include <qobject.h>
 
 #include <algorithm>
 #include <iterator>
-#include <qobject.h>
 
 #include "hint.h"
 #include "logging.h"
@@ -100,7 +99,7 @@ void Overlay::removeHint(HintLabel *hint) {
   if (hintDatum != hintData.end()) {
     int index = hintDatum - hintData.begin();
     Q_ASSERT(index >= 0);
-    hintData.remove(index);
+    hintData.removeAt(index);
   } else {
     logWarning << hint << "not a hint controlled by" << this;
   }

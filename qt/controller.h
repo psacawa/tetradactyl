@@ -107,7 +107,7 @@ public:
   QWidget *target();
   bool earlyKeyEventFilter(QKeyEvent *ev);
   void addOverlay(QWidget *target);
-  void removeOverlay(QWidget *overlay, bool fromSignal);
+  void removeOverlay(Overlay *overlay, bool fromSignal);
 
 public slots:
 

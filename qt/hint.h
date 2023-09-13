@@ -12,17 +12,20 @@ class HintLabel : public QLabel {
 public:
   Q_PROPERTY(bool selected READ isSelected WRITE setSelected);
 
-  HintLabel(QString label, QWidget *target, Overlay *parent);
+  HintLabel(QString label, QWidget *target, Overlay *parent,
+            QPoint positionInTarget = QPoint(0, 0));
 
   inline bool isSelected();
   void setSelected(bool);
 
   void paintEvent(QPaintEvent *) override;
 
+  QPoint positionInOverlay;
   QWidget *target;
 
 private:
   bool selected;
+  QPoint positionInTarget;
 };
 
 inline bool HintLabel::isSelected() { return selected; }

@@ -8,20 +8,15 @@ namespace Tetradactyl {
 
 class HintLabel;
 
-struct HintData {
-  HintLabel *label;
-  QPoint position;
-};
-
 class Overlay : public QWidget {
   Q_OBJECT
 public:
   Overlay(QWidget *target);
-  virtual ~Overlay() {}
+  virtual ~Overlay();
 
   void addHint(QString text, QWidget *widget);
   void removeHint(HintLabel *hint);
-  QList<HintLabel *> hints();
+  const QList<HintLabel *> &hints();
   QList<HintLabel *> visibleHints();
   void clear();
   int updateHints(QString &);
@@ -32,7 +27,10 @@ public:
   void paintEvent(QPaintEvent *event) override;
 
 private:
-  QList<HintData> hintData;
+  QList<HintLabel *> p_hints;
   HintLabel *p_selectedHint;
 };
+
+inline const QList<HintLabel *> &Overlay::hints() { return p_hints; }
+
 } // namespace Tetradactyl

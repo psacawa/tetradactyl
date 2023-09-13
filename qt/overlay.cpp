@@ -25,52 +25,43 @@ Overlay::Overlay(QWidget *target) : QWidget(target), p_selectedHint(nullptr) {
   hide();
 }
 
-// Possible to do this nonsense statically?
-QList<HintLabel *> Overlay::hints() {
-  QList<HintLabel *> ret;
-  ret.reserve(children().size());
-  for (auto child : children())
-    ret.append(qobject_cast<HintLabel *>(child));
-  return ret;
-}
 QList<HintLabel *> Overlay::visibleHints() {
-  auto allHints = hints();
   QList<HintLabel *> ret;
-  copy_if(allHints.begin(), allHints.end(), std::back_inserter(ret),
+  copy_if(p_hints.begin(), p_hints.end(), std::back_inserter(ret),
           [](HintLabel *hint) { return hint->isVisible(); });
   return ret;
 }
 
 void Overlay::addHint(QString text, QWidget *target) {
-  HintData data = {new HintLabel(text, target, this),
-                   target->mapTo(parentWidget(), QPoint(0, 0))};
-  data.label->show();
-  hintData.append(data);
+  HintLabel *newHint = new HintLabel(text, target, this);
+  newHint->show();
+  p_hints.append(newHint);
   update();
+}
+
+Overlay::~Overlay() {
+  // TODO 13/09/20 psacawa: finish this
 }
 
 void Overlay::nextHint(bool forward) {
   logInfo << __PRETTY_FUNCTION__;
-  Q_ASSERT(hintData.length() > 0);
-  QList<HintData>::iterator selectedData =
-      find_if(hintData.begin(), hintData.end(),
-              [this](HintData &data) { return data.label == p_selectedHint; });
-  if (selectedData == hintData.end()) {
+  Q_ASSERT(p_hints.length() > 0);
+  int idx = p_hints.indexOf(selectedHint());
+  if (idx < 0) {
     Q_ASSERT(p_selectedHint == nullptr);
-    p_selectedHint = hintData.at(0).label;
+    p_selectedHint = p_hints.at(0);
   } else {
     p_selectedHint->setSelected(false);
-    int idx = std::distance(hintData.begin(), selectedData);
-    Q_ASSERT(idx < hintData.length());
+    Q_ASSERT(idx < p_hints.length());
     int step = forward ? 1 : -1;
     // Work around C's stupid negative modulus
     do {
       idx += step;
-      if (idx == hintData.length())
+      if (idx == p_hints.length())
         idx = 0;
       else if (idx < 0)
-        idx = hintData.length() - 1;
-      p_selectedHint = hintData.at(idx).label;
+        idx = p_hints.length() - 1;
+      p_selectedHint = p_hints.at(idx);
     } while (!p_selectedHint->isVisible());
   }
   p_selectedHint->setSelected(true);
@@ -84,33 +75,26 @@ void Overlay::resetSelection(HintLabel *label) {
   if (label) {
     p_selectedHint = label;
     p_selectedHint->setSelected(true);
-  } else if (hintData.length() > 0) {
-    p_selectedHint = hintData.at(0).label;
+  } else if (p_hints.length() > 0) {
+    p_selectedHint = p_hints.at(0);
     p_selectedHint->setSelected(true);
   }
 }
 
 void Overlay::removeHint(HintLabel *hint) {
   Q_ASSERT(hint->parentWidget() == this);
-  // int index = hints.indexOf(hint);
-  const auto &hintDatum =
-      find_if(hintData.begin(), hintData.end(),
-              [hint](HintData &data) { return data.label == hint; });
-  if (hintDatum != hintData.end()) {
-    int index = hintDatum - hintData.begin();
-    Q_ASSERT(index >= 0);
-    hintData.removeAt(index);
-  } else {
-    logWarning << hint << "not a hint controlled by" << this;
-  }
+  int idx = p_hints.indexOf(hint);
+  Q_ASSERT(idx >= 0);
+  p_hints.removeAt(idx);
+  logWarning << hint << "not a hint controlled by" << this;
   update();
 }
 
 void Overlay::clear() {
-  for (auto data : hintData) {
-    delete data.label;
+  for (auto hint : p_hints) {
+    delete hint;
   }
-  hintData.clear();
+  p_hints.clear();
   p_selectedHint = nullptr;
   update();
 }
@@ -123,12 +107,12 @@ QWidget *Overlay::selectedWidget() {
 // Update hint visibility. Return number of visible hints.
 int Overlay::updateHints(QString &buffer) {
   int numHintsVisible = 0;
-  for (auto hint : hintData) {
-    if (hint.label->text().startsWith(buffer)) {
+  for (auto hint : p_hints) {
+    if (hint->text().startsWith(buffer)) {
       numHintsVisible++;
-      hint.label->show();
+      hint->show();
     } else {
-      hint.label->hide();
+      hint->hide();
     }
   }
   if (!p_selectedHint->isVisible()) {
@@ -136,9 +120,9 @@ int Overlay::updateHints(QString &buffer) {
     if (numHintsVisible == 0) {
       p_selectedHint = nullptr;
     } else {
-      for (auto hint : hintData) {
-        if (hint.label->isVisible()) {
-          resetSelection(hint.label);
+      for (auto hint : p_hints) {
+        if (hint->isVisible()) {
+          resetSelection(hint);
           break;
         }
       }
@@ -152,9 +136,9 @@ int Overlay::updateHints(QString &buffer) {
 void Overlay::paintEvent(QPaintEvent *event) {
   logInfo << __PRETTY_FUNCTION__ << event;
   QPainter p(this);
-  for (auto hint : hintData) {
-    if (hint.label->isVisible()) {
-      hint.label->render(&p, mapTo(parentWidget(), hint.position));
+  for (auto hint : p_hints) {
+    if (hint->isVisible()) {
+      hint->render(&p, mapTo(parentWidget(), hint->positionInOverlay));
     }
   }
 }

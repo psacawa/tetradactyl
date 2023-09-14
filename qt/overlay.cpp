@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <iterator>
 
+#include "action.h"
 #include "hint.h"
 #include "logging.h"
 #include "overlay.h"
@@ -32,8 +33,9 @@ QList<HintLabel *> Overlay::visibleHints() {
   return ret;
 }
 
-void Overlay::addHint(QString text, QWidget *target, QPoint position) {
-  HintLabel *newHint = new HintLabel(text, target, this, position);
+void Overlay::addHint(QString text, QWidgetActionProxy *widgetProxy) {
+  HintLabel *newHint =
+      new HintLabel(text, widgetProxy->widget, this, widgetProxy);
   newHint->show();
   p_hints.append(newHint);
   update();
@@ -54,7 +56,6 @@ void Overlay::nextHint(bool forward) {
     p_selectedHint->setSelected(false);
     Q_ASSERT(idx < p_hints.length());
     int step = forward ? 1 : -1;
-    // Work around C's stupid negative modulus
     do {
       idx += step;
       if (idx == p_hints.length())

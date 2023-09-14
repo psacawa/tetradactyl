@@ -355,23 +355,24 @@ void WindowController::hint(HintMode hintMode) {
   currentHintMode = hintMode;
 }
 void WindowController::acceptCurrent() {
-  QWidget *current = activeOverlay()->selectedWidget();
-  if (current == nullptr) {
+  HintLabel *hint = activeOverlay()->selectedHint();
+  if (hint == nullptr) {
     logWarning << "Active overlay has no selected hint";
     return;
   }
-  accept(current);
+  QWidgetActionProxy *proxy = hint->proxy;
+  accept(proxy);
 }
 
-void WindowController::accept(QWidget *widget) {
+void WindowController::accept(QWidgetActionProxy *widgetProxy) {
   if (!(mode == ControllerMode::Hint)) {
     logWarning << __PRETTY_FUNCTION__ << "from" << mode;
     return;
   }
-  logInfo << "Accepted " << widget << "in" << currentHintMode;
-  QWidgetActionProxy *proxy =
-      QWidgetActionProxy::getForMetaObject(widget->metaObject());
-  proxy->actGeneric(currentAction, widget);
+  QWidget *w = widgetProxy->widget;
+  logInfo << "Accepted " << w << "at" << widgetProxy->positionInWidget << "in"
+          << currentHintMode;
+  widgetProxy->actGeneric(currentAction);
   cancel();
 }
 
@@ -413,6 +414,8 @@ void WindowController::cancel() {
     overlay->hide();
   }
   mode = ControllerMode::Normal;
+  delete currentAction;
+  currentAction = nullptr;
   for (auto sc : shortcuts)
     sc->setEnabled(true);
 }

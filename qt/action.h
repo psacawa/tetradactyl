@@ -3,6 +3,7 @@
 #include <QAbstractItemView>
 #include <QList>
 #include <QMetaObject>
+#include <QModelIndex>
 #include <QStackedWidget>
 #include <QTabBar>
 #include <QWidget>
@@ -14,19 +15,18 @@
 
 // c++ forbids  forward reference to enum HintMode
 #include "actionmacros.h"
+#include "common.h"
 #include "controller.h"
 
 using std::map;
 
 namespace Tetradactyl {
 
-struct HintData {
-  QWidget *widget;
-  QPoint point = QPoint(0, 0);
-};
+// Actions
 
 // Facilitates multi-stage actions, such as menu navigation. Also hold context
 // that informs how the hinting procedure proceeds.
+
 class BaseAction : public QObject {
   Q_OBJECT
 public:
@@ -35,7 +35,7 @@ public:
   virtual void act();
   BaseAction(WindowController *controller) : winController(controller) {}
   virtual ~BaseAction() {}
-  virtual void accept(QWidget *widget);
+  virtual void accept(QWidgetActionProxy *proxy);
   virtual bool done() = 0;
 
   static BaseAction *createActionByHintMode(HintMode, WindowController *);
@@ -78,14 +78,13 @@ class ContextMenuAction : public BaseAction {
 public:
   ContextMenuAction(WindowController *controller);
   virtual ~ContextMenuAction() {}
+  bool done();
 };
-
-extern map<HintMode, BaseAction *> actionRegistry;
 
 // Widget Proxies
 
 // A speculative idea: The action-specific code is accompanoed by an inheritance
-// hierarchy of "widget proxy" classse that mirrors the QWidget inheritance
+// hierarchy of "widget proxy" classes that mirrors the QWidget inheritance
 // hierarchy. These tell whether/how to implement the routines in a manner
 // specific to the widget, while still permitting code reuse via the
 // inheritance. Context is passed to the actor methods via the actions, which
@@ -115,14 +114,11 @@ extern map<HintMode, BaseAction *> actionRegistry;
 // QWidgetActionProxy
 //
 
-class QWidgetActionProxy {
+class QWidgetActionProxyStatic {
 public:
-  QWidgetActionProxy() {}
-  virtual ~QWidgetActionProxy() {}
-
-  inline static bool visible(QWidget *w);
-
   // can the widget itself be hinted/actioned?
+
+  virtual bool isHintableGeneric(BaseAction *action, QWidget *widget);
   virtual bool isActivatable(ActivateAction *action, QWidget *widget) {
     return false;
   }
@@ -136,39 +132,53 @@ public:
   // how to recurse the hinting under the
   // widget?
   virtual void hintGeneric(BaseAction *action, QWidget *widget,
-                           QList<HintData> &ret);
+                           QList<QWidgetActionProxy *> &ret);
   virtual void hintActivatable(ActivateAction *action, QWidget *widget,
-                               QList<HintData> &ret);
+                               QList<QWidgetActionProxy *> &ret);
   virtual void hintYankable(YankAction *action, QWidget *widget,
-                            QList<HintData> &ret);
+                            QList<QWidgetActionProxy *> &ret);
   virtual void hintEditable(EditAction *action, QWidget *widget,
-                            QList<HintData> &ret);
+                            QList<QWidgetActionProxy *> &ret);
   virtual void hintFocusable(FocusAction *action, QWidget *widget,
-                             QList<HintData> &ret);
+                             QList<QWidgetActionProxy *> &ret);
   virtual void hintContextMenuable(ContextMenuAction *action, QWidget *widget,
-                                   QList<HintData> &ret) {
-    return;
-  }
+                                   QList<QWidgetActionProxy *> &ret);
+};
 
+struct WidgetHintingData {
+  const QMetaObject *actionProxyMO;
+  QWidgetActionProxyStatic *staticMethods;
+};
+
+extern map<const QMetaObject *, WidgetHintingData> QWidgetMetadataRegistry;
+
+class QWidgetActionProxy : public QObject {
+  Q_OBJECT
+public:
+  Q_INVOKABLE QWidgetActionProxy(QWidget *w,
+                                 QPoint _positionInWidget = QPoint(0, 0))
+      : widget(w), positionInWidget(_positionInWidget) {}
+  virtual ~QWidgetActionProxy() {}
+
+  inline static bool visible(QWidget *w);
   // how to action widget type?
-  bool actGeneric(BaseAction *, QWidget *widget);
-  virtual bool activate(ActivateAction *action, QWidget *widget) {
-    return false;
-  }
-  virtual bool yank(YankAction *action, QWidget *widget) { return false; }
-  virtual bool edit(EditAction *action, QWidget *widget) { return false; }
-  virtual bool focus(FocusAction *action, QWidget *widget) {
+  bool actGeneric(BaseAction *);
+  virtual bool activate(ActivateAction *action) { return false; }
+  virtual bool yank(YankAction *action) { return false; }
+  virtual bool edit(EditAction *action) { return false; }
+  virtual bool focus(FocusAction *action) {
     widget->setFocus();
     return true;
   }
-  virtual bool contextMenu(ContextMenuAction *action, QWidget *widget) {
-    return false;
-  }
+  virtual bool contextMenu(ContextMenuAction *action) { return false; }
 
-  static QWidgetActionProxy *getForMetaObject(const QMetaObject *mo);
+  static const WidgetHintingData
+  getMetadataForMetaObject(const QMetaObject *mo);
+  static QWidgetActionProxy *createForMetaObject(const QMetaObject *mo,
+                                                 QWidget *w);
 
-private:
-  static map<const QMetaObject *, QWidgetActionProxy *> registry;
+  QWidget *widget;
+  QPoint positionInWidget;
 };
 
 inline bool QWidgetActionProxy::visible(QWidget *w) {
@@ -177,27 +187,31 @@ inline bool QWidgetActionProxy::visible(QWidget *w) {
 
 // QAbstractButtonActionProxy
 
-class QAbstractButtonActionProxy : public QWidgetActionProxy {
-public:
-  QAbstractButtonActionProxy() {}
-  virtual ~QAbstractButtonActionProxy() {}
-
+class QAbstractButtonActionProxyStatic : public QWidgetActionProxyStatic {
   ACTIONPROXY_TRUE_SELF_ACTIVATABLE_DEF
   ACTIONPROXY_TRUE_SELF_YANKABLE_DEF
   ACTIONPROXY_TRUE_SELF_FOCUSABLE_DEF
 
   ACTIONPROXY_NULL_RECURSE_DEF
+};
 
-  virtual bool activate(ActivateAction *action, QWidget *widget) override;
-  virtual bool focus(FocusAction *action, QWidget *widget) override;
-  virtual bool yank(YankAction *action, QWidget *widget) override;
+class QAbstractButtonActionProxy : public QWidgetActionProxy {
+  Q_OBJECT
+public:
+  Q_INVOKABLE QAbstractButtonActionProxy(QWidget *w) : QWidgetActionProxy(w) {}
+  virtual ~QAbstractButtonActionProxy() {}
+
+  virtual bool activate(ActivateAction *action);
+  virtual bool focus(FocusAction *action);
+  virtual bool yank(YankAction *action);
 };
 
 // QAbstractItemViewActionProxy
 
+class QAbstractItemViewActionProxyStatic : public QWidgetActionProxyStatic {};
+
 class QAbstractItemViewActionProxy : public QWidget {
-public:
-  QAbstractItemViewActionProxy() {}
+  Q_INVOKABLE QAbstractItemViewActionProxy() {}
   virtual ~QAbstractItemViewActionProxy() {}
 
 private:
@@ -206,56 +220,79 @@ private:
 
 // QGroupBoxActionProxy
 
+class QGroupBoxActionProxyStatic : public QWidgetActionProxyStatic {
+
+  virtual bool isActivatable(ActivateAction *action, QWidget *widget);
+};
+
 class QGroupBoxActionProxy : public QWidgetActionProxy {
+  Q_OBJECT
 public:
-  virtual bool isActivatable(ActivateAction *action, QWidget *widget) override;
-  virtual bool activate(ActivateAction *action, QWidget *widget) override;
+  Q_INVOKABLE QGroupBoxActionProxy(QWidget *w) : QWidgetActionProxy(w) {}
+  virtual bool activate(ActivateAction *action) override;
 };
 
 // QLabelActionProxy
-
-class QLabelActionProxy : public QWidgetActionProxy {
-public:
+class QLabelActionProxyStatic : public QWidgetActionProxyStatic {
   ACTIONPROXY_TRUE_SELF_YANKABLE_DEF
   ACTIONPROXY_NULL_RECURSE_DEF
-  virtual bool yank(YankAction *action, QWidget *widget) override;
+};
+
+class QLabelActionProxy : public QWidgetActionProxy {
+  Q_OBJECT
+public:
+  Q_INVOKABLE QLabelActionProxy(QWidget *w) : QWidgetActionProxy(w) {}
+  virtual bool yank(YankAction *action) override;
 };
 
 // QLineEditActionProxy
 
-class QLineEditActionProxy : public QWidgetActionProxy {
-public:
+class QLineEditActionProxyStatic : public QWidgetActionProxyStatic {
   ACTIONPROXY_TRUE_SELF_EDITABLE_DEF
   ACTIONPROXY_TRUE_SELF_FOCUSABLE_DEF
+};
+
+class QLineEditActionProxy : public QWidgetActionProxy {
+  Q_OBJECT
+public:
+  Q_INVOKABLE QLineEditActionProxy(QWidget *w) : QWidgetActionProxy(w) {}
 
   ACTIONPROXY_DEFAULT_ACTION_EDITABLE_DEF
 };
 
 // QTabBarActionProxy
 
+class QTabBarActionProxyStatic : public QWidgetActionProxyStatic {
+  virtual void hintActivatable(ActivateAction *action, QWidget *widget,
+                               QList<QWidgetActionProxy *> &ret) override;
+
+  static QList<QPoint> probeTabLocations(QTabBar *bar);
+};
+
 class QTabBarActionProxy : public QWidgetActionProxy {
+  Q_OBJECT
 public:
-  QTabBarActionProxy() {}
+  Q_INVOKABLE QTabBarActionProxy(int idx, QPoint positionInWidget, QWidget *w)
+      : QWidgetActionProxy(w, positionInWidget), tabIndex(idx) {}
   virtual ~QTabBarActionProxy() {}
 
-  void hintActivatable(ActivateAction *action, QWidget *widget,
-                       QList<HintData> &ret) override;
-
-  bool activate(ActivateAction *action, QWidget *widget) override;
+  bool activate(ActivateAction *action) override;
 
 private:
-  QList<QPoint> probeTabLocations(QTabBar *bar);
   int tabIndex;
 };
 
 // QStackedWidgetActionProxy
 
-class QStackedWidgetActionProxy : public QWidgetActionProxy {
-public:
-  QStackedWidgetActionProxy() {}
-  virtual ~QStackedWidgetActionProxy() {}
-
+class QStackedWidgetActionProxyStatic : public QWidgetActionProxyStatic {
   ACTIONPROXY_NULL_RECURSE_DEF
+};
+
+class QStackedWidgetActionProxy : public QWidgetActionProxy {
+  Q_OBJECT
+public:
+  Q_INVOKABLE QStackedWidgetActionProxy(QWidget *w) : QWidgetActionProxy(w) {}
+  virtual ~QStackedWidgetActionProxy() {}
 };
 
 } // namespace Tetradactyl

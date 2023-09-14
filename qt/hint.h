@@ -7,6 +7,9 @@
 #include "overlay.h"
 
 namespace Tetradactyl {
+
+class QWidgetActionProxy;
+
 class HintLabel : public QLabel {
   Q_OBJECT
 public:
@@ -14,7 +17,8 @@ public:
   Q_PROPERTY(QPoint positionInTarget READ getPositionInTarget);
 
   HintLabel(QString label, QWidget *target, Overlay *parent,
-            QPoint positionInTarget = QPoint(0, 0));
+            QWidgetActionProxy *proxy);
+  virtual ~HintLabel();
 
   inline bool isSelected();
   void setSelected(bool);
@@ -22,6 +26,7 @@ public:
 
   void paintEvent(QPaintEvent *) override;
 
+  QWidgetActionProxy *proxy;
   QPoint positionInOverlay;
   QWidget *target;
 

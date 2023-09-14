@@ -3,6 +3,7 @@
 #include <QString>
 #include <qobject.h>
 
+#include "action.h"
 #include "controller.h"
 #include "hint.h"
 #include "overlay.h"
@@ -10,13 +11,15 @@
 namespace Tetradactyl {
 
 HintLabel::HintLabel(QString text, QWidget *w, Overlay *overlay,
-                     QPoint _positionRelativeToTarget)
-    : QLabel(text, overlay), selected(false),
-      positionInTarget(_positionRelativeToTarget) {
+                     QWidgetActionProxy *_proxy)
+    : QLabel(text, overlay), proxy(_proxy), selected(false) {
+  positionInTarget = proxy->positionInWidget;
   setStyleSheet(Tetradactyl::Controller::stylesheet);
   target = w;
   positionInOverlay = target->mapTo(overlay->parentWidget(), positionInTarget);
 }
+
+HintLabel::~HintLabel() {}
 
 /*
  * QtWidgets' CSS implemenation is not dyamic like the browser layout engine is.

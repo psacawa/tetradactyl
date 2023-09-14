@@ -2,6 +2,11 @@
 // Sacawa. All rights reserved.
 #pragma once
 
+// Casts widget to subclass klass. Set to  variable instance
+#define QOBJECT_CAST_ASSERT(klass, widget)                                     \
+  klass *instance = qobject_cast<klass *>(widget);                                    \
+  Q_ASSERT(instance != nullptr);
+
 // Macros to declare/define inline widget hintable probing ActionProxy methods.
 
 // FALSE: I'm not hintable
@@ -34,24 +39,24 @@
 #define ACTIONPROXY_TRUE_SELF_ACTIVATABLE_DEF                                  \
   virtual bool isActivatable(ActivateAction *action, QWidget *widget)          \
       override {                                                               \
-    return false;                                                              \
+    return true;                                                               \
   }
 #define ACTIONPROXY_TRUE_SELF_YANKABLE_DEF                                     \
   virtual bool isYankable(YankAction *action, QWidget *widget) override {      \
-    return false;                                                              \
+    return true;                                                               \
   }
 #define ACTIONPROXY_TRUE_SELF_EDITABLE_DEF                                     \
   virtual bool isEditable(EditAction *action, QWidget *widget) override {      \
-    return false;                                                              \
+    return true;                                                               \
   }
 #define ACTIONPROXY_TRUE_SELF_FOCUSABLE_DEF                                    \
   virtual bool isFocusable(FocusAction *action, QWidget *widget) override {    \
-    return false;                                                              \
+    return true;                                                               \
   }
 #define ACTIONPROXY_TRUE_SELF_CONTEXT_MENUABLE_DEF                             \
   virtual bool isContextMenuable(ContextMenuAction *action, QWidget *widget)   \
       override {                                                               \
-    return false;                                                              \
+    return true;                                                               \
   }
 
 #define ACTIONPROXY_FALSE_SELF_DEF                                             \
@@ -120,6 +125,8 @@
     return false;                                                              \
   }
 
+// Stub implementations which are *not* the implementations on
+// QWidgetActionProxy. Mostly not even  useful.
 #define ACTIONPROXY_DEFAULT_ACTION_ACTIVATABLE_DEF(klass)                      \
   virtual bool activate(ActivateAction *action, QWidget *widget) override {    \
     (klass) *instance = qobject_cast<(klass) *>(widget);                       \
@@ -133,12 +140,14 @@
     clipboard->setText(instance->text());                                      \
     return true;                                                               \
   }
-#define ACTIONPROXY_DEFAULT_ACTION_EDITABLE_DEF(klass)                         \
+
+// May be used eventually to launch external editor via IME
+#define ACTIONPROXY_DEFAULT_ACTION_EDITABLE_DEF                                \
   virtual bool edit(EditAction *action, QWidget *widget) override {            \
     widget->setFocus();                                                        \
     return true;                                                               \
   }
-#define ACTIONPROXY_DEFAULT_ACTION_FOCUSABLE_DEF(klass)                        \
+#define ACTIONPROXY_DEFAULT_ACTION_FOCUSABLE_DEF                               \
   virtual bool focus(FocusAction *action, QWidget *widget) override {          \
     widget->setFocus();                                                        \
     return true;                                                               \

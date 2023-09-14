@@ -8,48 +8,52 @@ set(CMAKE_AUTORCC ON)
 find_package(fmt)
 find_package(toml11 REQUIRED)
 
-find_package(
-  Qt5
-  COMPONENTS Widgets
-  REQUIRED)
+if(TETRADACTYL_QT5)
+  # tetradactyl-qt5
 
-# tetradactyl-qt5
+  find_package(
+    Qt5
+    COMPONENTS Widgets
+    REQUIRED)
 
-add_library(
-  tetradactyl-qt5 SHARED
-  action.cpp
-  controller.cpp
-  filter.cpp
-  hint.cpp
-  overlay.cpp
-  logging.cpp
-  probe.cpp
-  tetradactyl.qrc)
+  add_library(
+    tetradactyl-qt5 SHARED
+    action.cpp
+    controller.cpp
+    filter.cpp
+    hint.cpp
+    overlay.cpp
+    logging.cpp
+    probe.cpp
+    tetradactyl.qrc)
 
-target_link_libraries(tetradactyl-qt5 PRIVATE Qt5::Widgets)
-target_link_libraries(tetradactyl-qt5 PRIVATE Qt5::CorePrivate)
+  target_link_libraries(tetradactyl-qt5 PRIVATE Qt5::Widgets)
+  target_link_libraries(tetradactyl-qt5 PRIVATE Qt5::CorePrivate)
 
-install(TARGETS tetradactyl-qt5)
+  install(TARGETS tetradactyl-qt5)
+endif()
 
-# tetradactyl-qt6
+if(TETRADACTYL_QT6)
+  # tetradactyl-qt6
 
-find_package(
-  Qt6
-  COMPONENTS Widgets
-  REQUIRED)
+  find_package(
+    Qt6
+    COMPONENTS Widgets
+    REQUIRED)
 
-add_library(
-  tetradactyl-qt6 SHARED
-  action.cpp
-  controller.cpp
-  filter.cpp
-  hint.cpp
-  overlay.cpp
-  logging.cpp
-  probe.cpp
-  tetradactyl.qrc)
+  add_library(
+    tetradactyl-qt6 SHARED
+    action.cpp
+    controller.cpp
+    filter.cpp
+    hint.cpp
+    overlay.cpp
+    logging.cpp
+    probe.cpp
+    tetradactyl.qrc)
 
-target_link_libraries(tetradactyl-qt6 PRIVATE Qt6::Widgets)
-target_link_libraries(tetradactyl-qt6 PRIVATE Qt6::CorePrivate)
+  target_link_libraries(tetradactyl-qt6 PRIVATE Qt6::Widgets)
+  target_link_libraries(tetradactyl-qt6 PRIVATE Qt6::CorePrivate)
 
-install(TARGETS tetradactyl-qt6)
+  install(TARGETS tetradactyl-qt6)
+endif()

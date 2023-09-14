@@ -1,6 +1,7 @@
 // Copyright 2023 Paweł Sacawa. All rights reserved.
 #pragma once
 #include <QDebug>
+#include <QLoggingCategory>
 #include <QMap>
 #include <QtGlobal>
 
@@ -33,8 +34,8 @@ extern QMap<const char *, Qt::GlobalColor> lcColorMap;
 #define RED_INTENSE "\x1b\x5b\x39\x31\x6d"
 #define BLUE_INTENSE "\x1b\x5b\x39\x34\x6d"
 #define YELLOW_INTENSE "\x1b\x5b\x39\x33\x6d"
-#define MAGENTA_INTENSE "\x1b\x5b\x39\x35\x6d\x0a"
-#define CYAN_INTENSE "\x1b\x5b\x39\x36\x6d\x0a"
+#define MAGENTA_INTENSE "\x1b\x5b\x39\x35\x6d"
+#define CYAN_INTENSE "\x1b\x5b\x39\x36\x6d"
 #define BOLD "\x1b\x5b\x31\x6d\x0a"
 #define RESET_FOREGROUND "\x1b\x5b\x33\x39\x6d"
 

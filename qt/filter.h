@@ -47,7 +47,8 @@ private:
   QList<const QMetaObject *> disinterestedMetaObjects = {};
   QList<QEvent::Type> interestedEventTypes = {
       // QEvent::KeyPress,
-      QEvent::Shortcut, QEvent::Show,
+      QEvent::Shortcut
+      // , QEvent::Show,
       // QEvent::ShowToParent
   };
   QList<QEvent::Type> disinterestedEventTypes = {};

@@ -9,13 +9,13 @@
 
 namespace Tetradactyl {
 
-HintLabel::HintLabel(QString text, QWidget *w, Overlay *parent,
+HintLabel::HintLabel(QString text, QWidget *w, Overlay *overlay,
                      QPoint _positionRelativeToTarget)
-    : QLabel(text, parent), selected(false),
+    : QLabel(text, overlay), selected(false),
       positionInTarget(_positionRelativeToTarget) {
   setStyleSheet(Tetradactyl::Controller::stylesheet);
   target = w;
-  positionInOverlay = target->mapTo(parent->parentWidget(), positionInTarget);
+  positionInOverlay = target->mapTo(overlay->parentWidget(), positionInTarget);
 }
 
 /*

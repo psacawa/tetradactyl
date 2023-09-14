@@ -5,6 +5,9 @@
 #include <QWidget>
 
 #include <map>
+#include <qabstractbutton.h>
+#include <qassert.h>
+#include <qobject.h>
 
 // c++ forbids  forward reference to enum HintMode
 #include "actionmacros.h"
@@ -21,64 +24,60 @@ struct HintData {
 
 // Facilitates multi-stage actions, such as menu navigation. Also hold context
 // that informs how the hinting procedure proceeds.
-class AbstractUiAction {
+class BaseAction : public QObject {
+  Q_OBJECT
 public:
   HintMode mode;
   WindowController *winController;
-  virtual void getHintables(QWidget *root, QList<HintData> &list) = 0;
-  AbstractUiAction(WindowController *controller) : winController(controller) {}
-  virtual ~AbstractUiAction() {}
-  virtual void accept(QWidget *widget) = 0;
+  virtual void act();
+  BaseAction(WindowController *controller) : winController(controller) {}
+  virtual ~BaseAction() {}
+  virtual void accept(QWidget *widget);
   virtual bool done() = 0;
 
-  static AbstractUiAction *createActionByHintMode(HintMode);
+  static BaseAction *createActionByHintMode(HintMode, WindowController *);
 };
 
-class ActivateAction : public AbstractUiAction {
+class ActivateAction : public BaseAction {
+  Q_OBJECT
 public:
-  static const QList<const QMetaObject *> acceptableMetaObjects;
   ActivateAction(WindowController *controller);
-  void getHintables(QWidget *root, QList<HintData> &list) override;
-  void accept(QWidget *widget) override;
-  virtual bool done() override;
   virtual ~ActivateAction() {}
+  virtual bool done() override;
 };
 
-class EditAction : public AbstractUiAction {
+class EditAction : public BaseAction {
+  Q_OBJECT
 public:
-  static const QList<const QMetaObject *> acceptableMetaObjects;
   EditAction(WindowController *controller);
-  void getHintables(QWidget *root, QList<HintData> &list) override;
-  void accept(QWidget *widget) override;
   virtual ~EditAction() {}
+  virtual bool done() override;
 };
 
-class FocusAction : public AbstractUiAction {
+class FocusAction : public BaseAction {
+  Q_OBJECT
 public:
-  static const QList<const QMetaObject *> acceptableMetaObjects;
   FocusAction(WindowController *controller);
-  void getHintables(QWidget *root, QList<HintData> &list) override;
-  void accept(QWidget *widget) override;
   virtual ~FocusAction() {}
+  virtual bool done() override;
 };
 
-class YankAction : public AbstractUiAction {
+class YankAction : public BaseAction {
+  Q_OBJECT
 public:
-  static const QList<const QMetaObject *> acceptableMetaObjects;
   YankAction(WindowController *controller);
-  void getHintables(QWidget *root, QList<HintData> &list) override;
   virtual ~YankAction() {}
+  virtual bool done() override;
 };
 
-class ContextMenuAction : public AbstractUiAction {
+class ContextMenuAction : public BaseAction {
+  Q_OBJECT
 public:
-  static const QList<const QMetaObject *> acceptableMetaObjects;
   ContextMenuAction(WindowController *controller);
-  void getHintables(QWidget *root, QList<HintData> &list) override;
   virtual ~ContextMenuAction() {}
 };
 
-extern map<HintMode, AbstractUiAction *> actionRegistry;
+extern map<HintMode, BaseAction *> actionRegistry;
 
 // Widget Proxies
 
@@ -115,9 +114,7 @@ public:
   QWidgetActionProxy() {}
   virtual ~QWidgetActionProxy() {}
 
-  inline static bool visible(QWidget *w) {
-    return w->isVisible() && w->isEnabled();
-  }
+  inline static bool visible(QWidget *w);
 
   // can the widget itself be hinted/actioned?
   virtual bool isActivatable(ActivateAction *action, QWidget *widget) {
@@ -132,26 +129,23 @@ public:
 
   // how to recurse the hinting under the
   // widget?
+  virtual void hintGeneric(BaseAction *action, QWidget *widget,
+                           QList<HintData> &ret);
   virtual void hintActivatable(ActivateAction *action, QWidget *widget,
                                QList<HintData> &ret);
   virtual void hintYankable(YankAction *action, QWidget *widget,
-                            QList<HintData> &ret) {
-    return;
-  }
+                            QList<HintData> &ret);
   virtual void hintEditable(EditAction *action, QWidget *widget,
-                            QList<HintData> &ret) {
-    return;
-  }
+                            QList<HintData> &ret);
   virtual void hintFocusable(FocusAction *action, QWidget *widget,
-                             QList<HintData> &ret) {
-    return;
-  }
+                             QList<HintData> &ret);
   virtual void hintContextMenuable(ContextMenuAction *action, QWidget *widget,
                                    QList<HintData> &ret) {
     return;
   }
 
   // how to action widget type?
+  bool actGeneric(BaseAction *, QWidget *widget);
   virtual bool activate(ActivateAction *action, QWidget *widget) {
     return false;
   }
@@ -171,11 +165,13 @@ private:
   static map<const QMetaObject *, QWidgetActionProxy *> registry;
 };
 
-//
-// QAbstractButtonActionProxy
-//
+inline bool QWidgetActionProxy::visible(QWidget *w) {
+  return w->isVisible() && w->isEnabled();
+}
 
-class QAbstractButtonActionProxy : QWidgetActionProxy {
+// QAbstractButtonActionProxy
+
+class QAbstractButtonActionProxy : public QWidgetActionProxy {
 public:
   QAbstractButtonActionProxy() {}
   virtual ~QAbstractButtonActionProxy() {}
@@ -186,25 +182,36 @@ public:
 
   ACTIONPROXY_NULL_RECURSE_DEF
 
-  virtual bool activate(ActivateAction *action, QWidget *widget) override {
-    return false;
-  }
-  virtual bool yank(YankAction *action, QWidget *widget) override {
-    return false;
-  }
+  virtual bool activate(ActivateAction *action, QWidget *widget) override;
+  virtual bool focus(FocusAction *action, QWidget *widget) override;
+  virtual bool yank(YankAction *action, QWidget *widget) override;
 };
 
-class QLabelActionProxy : QWidgetActionProxy {
+// QGroupBoxActionProxy
+
+class QGroupBoxActionProxy : public QWidgetActionProxy {
+public:
+  virtual bool isActivatable(ActivateAction *action, QWidget *widget) override;
+  virtual bool activate(ActivateAction *action, QWidget *widget) override;
+};
+
+// QLabelActionProxy
+
+class QLabelActionProxy : public QWidgetActionProxy {
 public:
   ACTIONPROXY_TRUE_SELF_YANKABLE_DEF
   ACTIONPROXY_NULL_RECURSE_DEF
   virtual bool yank(YankAction *action, QWidget *widget) override;
 };
 
-class QGroupBoxActionProxy : QWidgetActionProxy {
+// QLineEditActionProxy
+
+class QLineEditActionProxy : public QWidgetActionProxy {
 public:
-  virtual bool isActivatable(ActivateAction *action, QWidget *widget) override;
-  virtual bool activate(ActivateAction *action, QWidget *widget) override;
+  ACTIONPROXY_TRUE_SELF_EDITABLE_DEF
+  ACTIONPROXY_TRUE_SELF_FOCUSABLE_DEF
+
+  ACTIONPROXY_DEFAULT_ACTION_EDITABLE_DEF
 };
 
 } // namespace Tetradactyl

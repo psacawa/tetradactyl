@@ -23,6 +23,8 @@ Q_NAMESPACE
 
 class HintLabel;
 class Overlay;
+class BaseAction;
+class QWidgetActionProxy;
 
 class WindowController;
 
@@ -108,6 +110,7 @@ public:
   bool earlyKeyEventFilter(QKeyEvent *ev);
   void addOverlay(QWidget *target);
   void removeOverlay(Overlay *overlay, bool fromSignal);
+  bool isActing();
 
 public slots:
 
@@ -125,6 +128,7 @@ private:
   void initializeOverlays();
   void tryAttachController(QWidget *widget);
 
+  BaseAction *currentAction;
   Controller *controller;
   QWidget *p_target;
   QList<Overlay *> p_overlays;
@@ -141,6 +145,7 @@ inline const QList<Overlay *> &WindowController::overlays() {
 inline Overlay *WindowController::mainOverlay() { return p_overlays.at(0); }
 // TODO 10/09/20 psacawa: rozwiń
 inline Overlay *WindowController::activeOverlay() { return mainOverlay(); }
+inline bool WindowController::isActing() { return currentAction != nullptr; }
 
 class HintGenerator {
 

@@ -5,10 +5,7 @@ class FunctionalLauncherTest : public QObject {
   Q_OBJECT
 public slots:
 
-  void test1() {
-    Tetradactyl::WidgetBackend backend = Tetradactyl::WidgetBackend::Gtk3;
-    QVERIFY(0);
-  }
+  void test1() { QVERIFY(0); }
 };
 
 QTEST_MAIN(FunctionalLauncherTest);

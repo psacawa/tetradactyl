@@ -9,116 +9,126 @@
 #include <QTabWidget>
 #include <QTextEdit>
 #include <QWidget>
+#include <qassert.h>
 #include <qlist.h>
 #include <qobject.h>
 
 #include <algorithm>
 #include <iterator>
 #include <map>
+#include <qtpreprocessorsupport.h>
 
 #include "action.h"
+#include "actionmacros.h"
+#include "hint.h"
+#include "logging.h"
 
 using std::map;
+
+LOGGING_CATEGORY_COLOR("tetradactyl.action", Qt::magenta);
 
 namespace Tetradactyl {
 
 // ACTIONS
 
-map<HintMode, AbstractUiAction *> actionRegistry = {{}};
-
-AbstractUiAction *AbstractUiAction::createActionByHintMode(HintMode mode) {
-  for (auto [mode_iter, action] : actionRegistry) {
-    if (mode_iter == mode)
-      return action;
+// To be replaced when actions need options
+BaseAction *
+BaseAction::createActionByHintMode(HintMode mode,
+                                         WindowController *winController) {
+  switch (mode) {
+  case HintMode::Activatable:
+    return new ActivateAction(winController);
+  case HintMode::Editable:
+    return new EditAction(winController);
+  case HintMode::Focusable:
+    return new FocusAction(winController);
+  case HintMode::Yankable:
+    return new YankAction(winController);
+  default:
+    logCritical << "BaseAction for HintMode" << mode << "not available in"
+                << __PRETTY_FUNCTION__;
+    Q_UNIMPLEMENTED();
   }
   Q_UNREACHABLE();
 }
 
+void BaseAction::accept(QWidget *widget) {
+  QWidgetActionProxy *proxy = QWidgetActionProxy::getForMetaObject(
+      winController->target()->metaObject());
+  proxy->actGeneric(this, widget);
+}
+
 // ActivateAction
 
-const QList<const QMetaObject *> ActivateAction::acceptableMetaObjects = {
-    &QAbstractButton::staticMetaObject};
-
 ActivateAction::ActivateAction(WindowController *controller)
-    : AbstractUiAction(controller) {
+    : BaseAction(controller) {
   mode = HintMode::Activatable;
 }
 
-void ActivateAction::getHintables(QWidget *root, QList<HintData> &ret) {}
-
-void ActivateAction::accept(QWidget *widget) {
-  QAbstractButton *button = qobject_cast<QAbstractButton *>(widget);
-  button->click();
+void BaseAction::act() {
+  QWidgetActionProxy *proxy = QWidgetActionProxy::getForMetaObject(
+      winController->target()->metaObject());
+  QList<HintData> hintData;
+  proxy->hintGeneric(this, winController->target(), hintData);
+  HintGenerator hintStringGenerator(Controller::settings.hintChars,
+                                    hintData.length());
+  for (auto datum : hintData) {
+    string hintStr = *hintStringGenerator;
+    logDebug << "Hinting " << datum.widget << " with " << hintStr;
+    winController->mainOverlay()->addHint(
+        QString::fromStdString(*hintStringGenerator), datum.widget);
+    hintStringGenerator++;
+  }
+  winController->mainOverlay()->setVisible(true);
+  winController->mainOverlay()->resetSelection();
 }
 
 bool ActivateAction::done() { return true; }
 
 // EditAction
 
-const QList<const QMetaObject *> EditAction::acceptableMetaObjects = {
-    &QLineEdit::staticMetaObject, &QTextEdit::staticMetaObject};
-
 EditAction::EditAction(WindowController *controller)
-    : AbstractUiAction(controller) {
+    : BaseAction(controller) {
   mode = HintMode::Editable;
 }
 
-void EditAction::getHintables(QWidget *root, QList<HintData> &ret) {
-  /*
-   *   QList<HintData> descendants = root->findChildren<QWidget *>();
-   *   auto filterLambda = [](QWidget *widget) {
-   *     const QMetaObject *candidateMO = widget->metaObject();
-   *     if (!widget->isVisible() || !widget->isEnabled())
-   *       return false;
-   *
-   *     for (auto mo : acceptableMetaObjects) {
-   *       if (candidateMO->inherits(mo)) {
-   *         return true;
-   *       }
-   *     }
-   *     return true;
-   *   };
-   *   copy_if(descendants.begin(), descendants.end(), std::back_inserter(ret),
-   *           filterLambda);
-   */
-}
-void EditAction::accept(QWidget *widget) { widget->setFocus(); }
+bool EditAction::done() { return true; }
 
 // FocusAction
 
 FocusAction::FocusAction(WindowController *controller)
-    : AbstractUiAction(controller) {
+    : BaseAction(controller) {
   mode = HintMode::Focusable;
 }
 
-void FocusAction::getHintables(QWidget *root, QList<HintData> &list) { return; }
-
-void FocusAction::accept(QWidget *widget) {}
+bool FocusAction::done() { return true; }
 
 // YankAction
 
 YankAction::YankAction(WindowController *controller)
-    : AbstractUiAction(controller) {
+    : BaseAction(controller) {
   mode = HintMode::Yankable;
 }
 
-void YankAction::getHintables(QWidget *root, QList<HintData> &list) { return; }
+bool YankAction::done() { return true; }
 
-// ContextMenuAction
+// // ContextMenuAction
 
-ContextMenuAction::ContextMenuAction(WindowController *controller)
-    : AbstractUiAction(controller) {
-  mode = HintMode::Contextable;
-}
+// ContextMenuAction::ContextMenuAction(WindowController *controller)
+//     : BaseAction(controller) {
+//   mode = HintMode::Contextable;
+// }
 
-void ContextMenuAction::getHintables(QWidget *root, QList<HintData> &list) {
-  return;
-}
+// QList<QWidget *> ContextMenuAction::getHintables(QWidget *root) { return; }
 
 // WIDGET PROXIES
 
-map<const QMetaObject *, QWidgetActionProxy *> QWidgetActionProxy::registry =
-    {};
+map<const QMetaObject *, QWidgetActionProxy *> QWidgetActionProxy::registry = {
+    {&QLabel::staticMetaObject, new QLabelActionProxy},
+    {&QAbstractButton::staticMetaObject, new QAbstractButtonActionProxy},
+    {&QGroupBox::staticMetaObject, new QAbstractButtonActionProxy},
+    {&QWidget::staticMetaObject, new QWidgetActionProxy},
+    {&QLineEdit::staticMetaObject, new QLineEditActionProxy}};
 
 QWidgetActionProxy *
 QWidgetActionProxy::getForMetaObject(const QMetaObject *mo) {
@@ -130,6 +140,52 @@ QWidgetActionProxy::getForMetaObject(const QMetaObject *mo) {
     mo = mo->superClass();
   }
   return registry.at(&QWidget::staticMetaObject);
+}
+
+// QWidgetActionProxy
+
+bool QWidgetActionProxy::actGeneric(BaseAction *action, QWidget *widget) {
+  switch (action->mode) {
+  case Activatable:
+    return this->activate(qobject_cast<ActivateAction *>(action), widget);
+  case Editable:
+    return this->edit(qobject_cast<EditAction *>(action), widget);
+  case Focusable:
+    return this->focus(qobject_cast<FocusAction *>(action), widget);
+  case Yankable:
+    return this->yank(qobject_cast<YankAction *>(action), widget);
+  case Contextable:
+    return this->contextMenu(qobject_cast<ContextMenuAction *>(action), widget);
+  default:
+    logCritical << "BaseAction for HintMode" << action->mode
+                << "not available in" << __PRETTY_FUNCTION__;
+    Q_UNIMPLEMENTED();
+  }
+  Q_UNREACHABLE();
+}
+
+void QWidgetActionProxy::hintGeneric(BaseAction *action, QWidget *widget,
+                                     QList<HintData> &ret) {
+  switch (action->mode) {
+  case Activatable:
+    return this->hintActivatable(qobject_cast<ActivateAction *>(action), widget,
+                                 ret);
+  case Editable:
+    return this->hintEditable(qobject_cast<EditAction *>(action), widget, ret);
+  case Focusable:
+    return this->hintFocusable(qobject_cast<FocusAction *>(action), widget,
+                               ret);
+  case Yankable:
+    return this->hintYankable(qobject_cast<YankAction *>(action), widget, ret);
+  case Contextable:
+    return this->hintContextMenuable(qobject_cast<ContextMenuAction *>(action),
+                                     widget, ret);
+  default:
+    logCritical << "BaseAction for HintMode" << action->mode
+                << "not available in" << __PRETTY_FUNCTION__;
+    Q_UNIMPLEMENTED();
+  }
+  Q_UNREACHABLE();
 }
 
 bool QWidgetActionProxy::isContextMenuable(ContextMenuAction *action,
@@ -148,13 +204,104 @@ void QWidgetActionProxy::hintActivatable(ActivateAction *action,
     QWidget *widget = qobject_cast<QWidget *>(child);
     if (widget && widget->isVisible() && widget->isEnabled()) {
       const QMetaObject *mo = widget->metaObject();
+      // not interested in Tetradactyl's widgets
+      if (mo == &HintLabel::staticMetaObject ||
+          mo == &Overlay::staticMetaObject)
+        continue;
+
       QWidgetActionProxy *proxy = QWidgetActionProxy::getForMetaObject(mo);
-      if (proxy->isActivatable(action, widget)) {
+      if (proxy->isActivatable(action, widget))
         ret.append(HintData{widget});
-      }
+
       proxy->hintActivatable(action, widget, ret);
     }
   }
+}
+
+// For now, this is very WET. We can eventually use PMFs to  kill these copied
+// implementations.
+void QWidgetActionProxy::hintEditable(EditAction *action, QWidget *widget,
+                                      QList<HintData> &ret) {
+  for (auto child : widget->children()) {
+    QWidget *widget = qobject_cast<QWidget *>(child);
+    if (widget && widget->isVisible() && widget->isEnabled()) {
+      const QMetaObject *mo = widget->metaObject();
+      // not interested in Tetradactyl's widgets
+      if (mo == &HintLabel::staticMetaObject ||
+          mo == &Overlay::staticMetaObject)
+        continue;
+
+      QWidgetActionProxy *proxy = QWidgetActionProxy::getForMetaObject(mo);
+      if (proxy->isEditable(action, widget))
+        ret.append(HintData{widget});
+
+      proxy->hintEditable(action, widget, ret);
+    }
+  }
+}
+
+void QWidgetActionProxy::hintYankable(YankAction *action, QWidget *widget,
+                                      QList<HintData> &ret) {
+  for (auto child : widget->children()) {
+    QWidget *widget = qobject_cast<QWidget *>(child);
+    if (widget && widget->isVisible() && widget->isEnabled()) {
+      const QMetaObject *mo = widget->metaObject();
+      // not interested in Tetradactyl's widgets
+      if (mo == &HintLabel::staticMetaObject ||
+          mo == &Overlay::staticMetaObject)
+        continue;
+
+      QWidgetActionProxy *proxy = QWidgetActionProxy::getForMetaObject(mo);
+      if (proxy->isYankable(action, widget))
+        ret.append(HintData{widget});
+
+      proxy->hintYankable(action, widget, ret);
+    }
+  }
+}
+
+void QWidgetActionProxy::hintFocusable(FocusAction *action, QWidget *widget,
+                                       QList<HintData> &ret) {
+  for (auto child : widget->children()) {
+    QWidget *widget = qobject_cast<QWidget *>(child);
+    if (widget && widget->isVisible() && widget->isEnabled()) {
+      const QMetaObject *mo = widget->metaObject();
+      // not interested in Tetradactyl's widgets
+      if (mo == &HintLabel::staticMetaObject ||
+          mo == &Overlay::staticMetaObject)
+        continue;
+
+      QWidgetActionProxy *proxy = QWidgetActionProxy::getForMetaObject(mo);
+      if (proxy->isFocusable(action, widget))
+        ret.append(HintData{widget});
+
+      proxy->hintFocusable(action, widget, ret);
+    }
+  }
+}
+
+// QAbstractButtonActionProxy
+
+bool QAbstractButtonActionProxy::activate(ActivateAction *action,
+                                          QWidget *widget) {
+  QOBJECT_CAST_ASSERT(QAbstractButton, widget);
+  instance->setDown(true);
+  instance->click();
+  return true;
+}
+
+bool QAbstractButtonActionProxy::focus(FocusAction *action, QWidget *widget) {
+  QOBJECT_CAST_ASSERT(QAbstractButton, widget);
+  QWidgetActionProxy::focus(action, widget);
+  instance->setDown(true);
+  return true;
+}
+
+bool QAbstractButtonActionProxy::yank(YankAction *action, QWidget *widget) {
+  QOBJECT_CAST_ASSERT(QAbstractButton, widget);
+  QClipboard *clipboard = QGuiApplication::clipboard();
+  clipboard->setText(instance->text());
+  return true;
 }
 
 // QGroupBoxActionProxy
@@ -165,14 +312,15 @@ bool QGroupBoxActionProxy::isActivatable(ActivateAction *action,
 }
 
 bool QGroupBoxActionProxy::activate(ActivateAction *action, QWidget *widget) {
-  QGroupBox *groupBox = qobject_cast<QGroupBox *>(widget);
-  groupBox->setChecked(groupBox->isChecked());
+  QOBJECT_CAST_ASSERT(QGroupBox, widget);
+  instance->setChecked(!instance->isChecked());
   return true;
 }
 
+// QLabelActionProxy
 
 bool QLabelActionProxy::yank(YankAction *action, QWidget *widget) {
-  QLabel *instance = qobject_cast<QLabel *>(widget);
+  QOBJECT_CAST_ASSERT(QLabel, widget);
   QClipboard *clipboard = QGuiApplication::clipboard();
   clipboard->setText(instance->text());
   return true;

@@ -29,6 +29,7 @@
 #include <qvariant.h>
 #include <vector>
 
+#include "action.h"
 #include "controller.h"
 #include "filter.h"
 #include "hint.h"
@@ -329,18 +330,8 @@ void WindowController::hint(HintMode hintMode) {
   }
   logDebug << __PRETTY_FUNCTION__;
   hintBuffer = "";
-  QList<QWidget *> hintables = this->getHintables(hintMode);
-  HintGenerator hintStringGenerator(Controller::settings.hintChars,
-                                    hintables.length());
-  for (auto widget : hintables) {
-    string hintStr = *hintStringGenerator;
-    logDebug << "Hinting " << widget << " with " << hintStr.c_str();
-    mainOverlay()->addHint(QString::fromStdString(*hintStringGenerator),
-                           widget);
-    hintStringGenerator++;
-  }
-  mainOverlay()->setVisible(true);
-  mainOverlay()->resetSelection();
+  currentAction = BaseAction::createActionByHintMode(hintMode, this);
+  currentAction->act();
   mode = ControllerMode::Hint;
 
   // In hint mode, just disable shortcuts. Need something cleaner?
@@ -364,46 +355,9 @@ void WindowController::accept(QWidget *widget) {
     return;
   }
   logInfo << "Accepted " << widget << "in" << currentHintMode;
-  switch (currentHintMode) {
-  case Activatable: {
-    if (auto button = qobject_cast<QAbstractButton *>(widget)) {
-      button->click();
-    } else {
-      logWarning << "Don't know how to activate " << widget << "in"
-                 << currentHintMode;
-    }
-    break;
-  }
-  case Focusable:
-    // TODO 24/08/20 psacawa: set focussed GUI state for button...
-    widget->setFocus();
-    if (QAbstractButton *button = qobject_cast<QAbstractButton *>(widget)) {
-      button->setDown(true);
-    }
-  case Editable: {
-    widget->setFocus();
-    /*
-     * if (const auto lineEdit = qobject_cast<QLineEdit *>(widget)) {
-     * } else {
-     *   else_block
-     * }
-     */
-    break;
-  }
-  case Yankable: {
-    if (QLabel *label = qobject_cast<QLabel *>(widget)) {
-      QClipboard *clipboard = qApp->clipboard();
-      QString text = label->text();
-      clipboard->setText(text);
-    } else {
-      logWarning << "unimplemented";
-    }
-    break;
-  }
-  default:
-    Q_UNREACHABLE();
-    break;
-  }
+  QWidgetActionProxy *proxy =
+      QWidgetActionProxy::getForMetaObject(widget->metaObject());
+  proxy->actGeneric(currentAction, widget);
   cancel();
 }
 

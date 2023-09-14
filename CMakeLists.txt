@@ -18,6 +18,10 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 add_compile_options(-Wall -Werror=return-type -Werror=unknown-pragmas)
 add_compile_definitions("TETRADACTYL_VERSION=${CMAKE_PROJECT_VERSION}")
 
+# features
+option(TETRADACTYL_QT5 "libtetradactyl-qt5" ON)
+option(TETRADACTYL_QT6 "libtetradactyl-qt6" ON)
+
 # TODO 16/08/20 psacawa: finish this add_subdirectory(common)
 # include_directories(common)
 

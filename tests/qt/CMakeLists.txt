@@ -24,36 +24,37 @@ function(import_qt6_examples _module)
   endforeach()
 endfunction()
 
-#
-# Qt6 Tests
-#
-
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Widgets Test)
-import_qt6_examples(widgets)
+if(TETRADACTYL_QT6)
+  # Qt6 Tests
 
-include_directories("${CMAKE_SOURCE_DIR}")
+  find_package(Qt6 REQUIRED COMPONENTS Widgets Test)
+  import_qt6_examples(widgets)
 
-function(add_qt6_test _name)
-  set(test_name "${_name}_test")
-  add_executable(${test_name} ${_name}.cpp common.cpp
-                              "${CMAKE_SOURCE_DIR}/qt/${_name}.cpp")
+  include_directories("${CMAKE_SOURCE_DIR}")
 
-  add_test(NAME ${test_name} COMMAND ${test_name})
-  target_link_libraries(${test_name} PRIVATE Qt6::Test Qt6::Widgets)
-  set_tests_properties(
-    ${test_name} PROPERTIES LABELS "controller;qt6" ENVIRONMENT
-                            "QT_QPA_PLATFORM=offscreen")
-endfunction()
+  function(add_qt6_test _name)
+    set(test_name "${_name}_test")
+    add_executable(${test_name} ${_name}.cpp common.cpp
+                                "${CMAKE_SOURCE_DIR}/qt/${_name}.cpp")
 
-add_qt6_test(controller)
-target_sources(
-  controller_test
-  PRIVATE "${CMAKE_SOURCE_DIR}/qt/overlay.cpp"
-          "${CMAKE_SOURCE_DIR}/qt/hint.cpp"
-          "${CMAKE_SOURCE_DIR}/qt/filter.cpp"
-          "${CMAKE_SOURCE_DIR}/qt/logging.cpp"
-          "${CMAKE_SOURCE_DIR}/qt/tetradactyl.qrc")
+    add_test(NAME ${test_name} COMMAND ${test_name})
+    target_link_libraries(${test_name} PRIVATE Qt6::Test Qt6::Widgets)
+    set_tests_properties(
+      ${test_name} PROPERTIES LABELS "controller;qt6" ENVIRONMENT
+                              "QT_QPA_PLATFORM=offscreen")
+  endfunction()
+
+  add_qt6_test(controller)
+  target_sources(
+    controller_test
+    PRIVATE "${CMAKE_SOURCE_DIR}/qt/overlay.cpp"
+            "${CMAKE_SOURCE_DIR}/qt/hint.cpp"
+            "${CMAKE_SOURCE_DIR}/qt/filter.cpp"
+            "${CMAKE_SOURCE_DIR}/qt/logging.cpp"
+            "${CMAKE_SOURCE_DIR}/qt/action.cpp"
+            "${CMAKE_SOURCE_DIR}/qt/tetradactyl.qrc")
+endif()

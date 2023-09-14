@@ -12,7 +12,7 @@
 #include "logging.h"
 #include "overlay.h"
 
-using std::find_if, std::copy_if;
+using std::copy_if;
 
 LOGGING_CATEGORY_COLOR("tetradactyl.overlay", Qt::yellow);
 
@@ -32,8 +32,8 @@ QList<HintLabel *> Overlay::visibleHints() {
   return ret;
 }
 
-void Overlay::addHint(QString text, QWidget *target) {
-  HintLabel *newHint = new HintLabel(text, target, this);
+void Overlay::addHint(QString text, QWidget *target, QPoint position) {
+  HintLabel *newHint = new HintLabel(text, target, this, position);
   newHint->show();
   p_hints.append(newHint);
   update();

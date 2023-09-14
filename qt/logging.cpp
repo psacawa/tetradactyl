@@ -13,10 +13,10 @@ static QMap<Qt::GlobalColor, QByteArray> ansiTermColorMap = {
     {Qt::cyan, CYAN_INTENSE}, {Qt::magenta, MAGENTA_INTENSE},
 };
 
-void colorMessageHandler(QtMsgType type, const QMessageLogContext &ctx,
+void colorMessageHandler(QtMsgType severity, const QMessageLogContext &ctx,
                          const QString &msg) {
 
-  QByteArray prefix, suffix;
+  QByteArray prefix, suffix, severityStr;
   Qt::GlobalColor color =
       lcColorMap.value(ctx.category, Qt::GlobalColor::color0);
   if (color != Qt::GlobalColor::color0) {
@@ -27,6 +27,20 @@ void colorMessageHandler(QtMsgType type, const QMessageLogContext &ctx,
       qWarning() << "color not found " << ctx.category;
     }
   }
-  fprintf(stderr, "%s%s%s: %s\n", prefix.data(), ctx.category, suffix.data(),
-          msg.toLocal8Bit().data());
+  switch (severity) {
+  case QtWarningMsg:
+    severityStr = "(" BLACK YELLOW_BG "WARNING" RESET ")";
+    break;
+  case QtCriticalMsg:
+    severityStr = "(" RED_BG "CRITICAL" RESET_BACKGROUND ")";
+    break;
+  case QtFatalMsg:
+    severityStr = "(" RED_BG "FATAL" RESET_BACKGROUND ")";
+    break;
+  default:
+    break;
+  }
+
+  fprintf(stderr, "%s%s%s%s: %s\n", prefix.data(), ctx.category, suffix.data(),
+          severityStr.data(), msg.toLocal8Bit().data());
 }

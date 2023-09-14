@@ -30,14 +30,23 @@ extern QMap<const char *, Qt::GlobalColor> lcColorMap;
 #define logCritical qCritical()
 #endif
 
+#define BLACK "\x1b\x5b\x33\x30\x6d"
+
 #define GREEN_INTENSE "\x1b\x5b\x39\x32\x6d"
 #define RED_INTENSE "\x1b\x5b\x39\x31\x6d"
 #define BLUE_INTENSE "\x1b\x5b\x39\x34\x6d"
 #define YELLOW_INTENSE "\x1b\x5b\x39\x33\x6d"
 #define MAGENTA_INTENSE "\x1b\x5b\x39\x35\x6d"
 #define CYAN_INTENSE "\x1b\x5b\x39\x36\x6d"
-#define BOLD "\x1b\x5b\x31\x6d\x0a"
+
+#define YELLOW_BG "\x1b\x5b\x34\x33\x6d"
+#define ORANGE_BG "\x1b\x5b\x34\x31\x6d"
+#define RED_BG "\x1b\x5b\x34\x31\x6d"
+
+#define BOLD "\x1b\x5b\x31\x6d"
 #define RESET_FOREGROUND "\x1b\x5b\x33\x39\x6d"
+#define RESET_BACKGROUND "\x1b\x5b\x34\x39\x6d"
+#define RESET RESET_BACKGROUND RESET_FOREGROUND
 
 void colorMessageHandler(QtMsgType type, const QMessageLogContext &ctx,
                          const QString &msg);

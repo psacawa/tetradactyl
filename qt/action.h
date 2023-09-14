@@ -1,7 +1,10 @@
 // Copyright 2023 Paweł Sacawa. All rights reserved.
 #pragma once
+#include <QAbstractItemView>
 #include <QList>
 #include <QMetaObject>
+#include <QStackedWidget>
+#include <QTabBar>
 #include <QWidget>
 
 #include <map>
@@ -97,10 +100,13 @@ extern map<HintMode, BaseAction *> actionRegistry;
 // widget is enabled and visible: hint*able is responsible for calling
 // visible(QWidget*) for the children it wishes to recurse to.
 
-// Therefore, according to current *doctrine*, e.g. a TabWidget would handle
-// hintable tabs and  recurse to the underlying QStackedWdiget in
+// Therefore, according to current *doctrine*, e.g. a QTabBar would handle
+// hintable tabs and recurse to the underlying QStackedWdiget in
 // hintActivatable. Itself, it is not activatable. Likewise, QMenu handles it's
-// options in hintActivatable. This doctrine lasts until the next surprise.
+// options in hintActivatable. NB this holds whether or not the hintable
+// "subwidgets" are real widgets in the true sense, or rather are pseudo-widgets
+// implemented by QStyle::drawControl etc. (short-sighthed?) This doctrine lasts
+// until the next surprise.
 
 // In actionmacros.h we define preprocessor macros to cut  down on boilerplate
 // code for each QWidget subclass.
@@ -187,6 +193,17 @@ public:
   virtual bool yank(YankAction *action, QWidget *widget) override;
 };
 
+// QAbstractItemViewActionProxy
+
+class QAbstractItemViewActionProxy : public QWidget {
+public:
+  QAbstractItemViewActionProxy() {}
+  virtual ~QAbstractItemViewActionProxy() {}
+
+private:
+  /* data */
+};
+
 // QGroupBoxActionProxy
 
 class QGroupBoxActionProxy : public QWidgetActionProxy {
@@ -212,6 +229,33 @@ public:
   ACTIONPROXY_TRUE_SELF_FOCUSABLE_DEF
 
   ACTIONPROXY_DEFAULT_ACTION_EDITABLE_DEF
+};
+
+// QTabBarActionProxy
+
+class QTabBarActionProxy : public QWidgetActionProxy {
+public:
+  QTabBarActionProxy() {}
+  virtual ~QTabBarActionProxy() {}
+
+  void hintActivatable(ActivateAction *action, QWidget *widget,
+                       QList<HintData> &ret) override;
+
+  bool activate(ActivateAction *action, QWidget *widget) override;
+
+private:
+  QList<QPoint> probeTabLocations(QTabBar *bar);
+  int tabIndex;
+};
+
+// QStackedWidgetActionProxy
+
+class QStackedWidgetActionProxy : public QWidgetActionProxy {
+public:
+  QStackedWidgetActionProxy() {}
+  virtual ~QStackedWidgetActionProxy() {}
+
+  ACTIONPROXY_NULL_RECURSE_DEF
 };
 
 } // namespace Tetradactyl

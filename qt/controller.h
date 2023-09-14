@@ -142,7 +142,6 @@ private:
 inline const QList<Overlay *> &WindowController::overlays() {
   return p_overlays;
 }
-inline Overlay *WindowController::mainOverlay() { return p_overlays.at(0); }
 // TODO 10/09/20 psacawa: rozwiń
 inline Overlay *WindowController::activeOverlay() { return mainOverlay(); }
 inline bool WindowController::isActing() { return currentAction != nullptr; }

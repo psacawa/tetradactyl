@@ -14,7 +14,7 @@ public:
   Overlay(QWidget *target);
   virtual ~Overlay();
 
-  void addHint(QString text, QWidget *widget);
+  void addHint(QString text, QWidget *widget, QPoint position = QPoint(0, 0));
   void removeHint(HintLabel *hint);
   const QList<HintLabel *> &hints();
   QList<HintLabel *> visibleHints();

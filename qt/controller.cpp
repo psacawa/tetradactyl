@@ -20,6 +20,7 @@
 
 #include <algorithm>
 #include <iterator>
+#include <qassert.h>
 #include <qdebug.h>
 #include <qglobal.h>
 #include <qlist.h>
@@ -295,6 +296,19 @@ void WindowController::initializeOverlays() {
   }
 }
 
+// The main overlay is considered to the be the one that has the others as
+// descendants.
+inline Overlay *WindowController::mainOverlay() {
+  // TODO 14/09/20 psacawa: finish this
+  for (auto overlay : p_overlays) {
+    if (overlay->parentWidget()->parentWidget() == nullptr) {
+      return overlay;
+    }
+  }
+  logCritical << "No Main overlay found with the following available: "
+              << p_overlays;
+  return p_overlays.at(0);
+}
 // As with tryAttachToWindow, can be called to attach to existing
 // overlayable widget, or in response to one being created.
 void WindowController::tryAttachController(QWidget *target) {

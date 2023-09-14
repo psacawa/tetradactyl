@@ -239,18 +239,19 @@ void ControllerTest::testHintYank() {
   QTest::keyClick(win, Qt::Key_Y);
   QVERIFY(overlay->isVisible());
   auto hints = overlay->hints();
-  QCOMPARE(hints.length(), 2);
+  QCOMPARE(hints.length(), NUM_BUTTONS + NUM_LABELS);
   for (auto hint : hints)
-    QVERIFY2(hint->target->metaObject() == &QLabel::staticMetaObject,
-             "The hints in yank mode point to QLabel instances");
+    QVERIFY2(hint->target->metaObject() == &QLabel::staticMetaObject ||
+                 hint->target->metaObject() == &QPushButton::staticMetaObject,
+             "The hints in yank mode point to QLabel or QPushButton instances");
   QClipboard *clipboard = QGuiApplication::clipboard();
   QSignalSpy clipboardChangedSpy(clipboard, &QClipboard::changed);
-  QSignalSpy selectionChangedSpy(clipboard, &QClipboard::selectionChanged);
+  QTest::keyClick(win, Qt::Key_A);
   QTest::keyClick(win, Qt::Key_A);
   QCOMPARE(clipboardChangedSpy.count(), 1);
   qInfo() << clipboard->text();
   // label0 text copied
-  QCOMPARE(clipboard->text(), labels.at(0)->text());
+  QCOMPARE(clipboard->text(), buttons.at(0)->text());
 
   QVERIFY(!overlay->isVisible());
   QCOMPARE(overlay->hints().length(), 0);

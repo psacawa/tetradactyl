@@ -9,6 +9,7 @@
 #include <QTabWidget>
 #include <QTextEdit>
 #include <QWidget>
+#include <cstring>
 #include <qassert.h>
 #include <qlist.h>
 #include <qobject.h>
@@ -34,7 +35,7 @@ namespace Tetradactyl {
 // To be replaced when actions need options
 BaseAction *
 BaseAction::createActionByHintMode(HintMode mode,
-                                         WindowController *winController) {
+                                   WindowController *winController) {
   switch (mode) {
   case HintMode::Activatable:
     return new ActivateAction(winController);
@@ -76,7 +77,8 @@ void BaseAction::act() {
     string hintStr = *hintStringGenerator;
     logDebug << "Hinting " << datum.widget << " with " << hintStr;
     winController->mainOverlay()->addHint(
-        QString::fromStdString(*hintStringGenerator), datum.widget);
+        QString::fromStdString(*hintStringGenerator), datum.widget,
+        datum.point);
     hintStringGenerator++;
   }
   winController->mainOverlay()->setVisible(true);
@@ -87,8 +89,7 @@ bool ActivateAction::done() { return true; }
 
 // EditAction
 
-EditAction::EditAction(WindowController *controller)
-    : BaseAction(controller) {
+EditAction::EditAction(WindowController *controller) : BaseAction(controller) {
   mode = HintMode::Editable;
 }
 
@@ -105,8 +106,7 @@ bool FocusAction::done() { return true; }
 
 // YankAction
 
-YankAction::YankAction(WindowController *controller)
-    : BaseAction(controller) {
+YankAction::YankAction(WindowController *controller) : BaseAction(controller) {
   mode = HintMode::Yankable;
 }
 
@@ -128,17 +128,31 @@ map<const QMetaObject *, QWidgetActionProxy *> QWidgetActionProxy::registry = {
     {&QAbstractButton::staticMetaObject, new QAbstractButtonActionProxy},
     {&QGroupBox::staticMetaObject, new QAbstractButtonActionProxy},
     {&QWidget::staticMetaObject, new QWidgetActionProxy},
+    {&QTabBar::staticMetaObject, new QTabBarActionProxy},
+    {&QStackedWidget::staticMetaObject, new QStackedWidgetActionProxy},
     {&QLineEdit::staticMetaObject, new QLineEditActionProxy}};
 
 QWidgetActionProxy *
 QWidgetActionProxy::getForMetaObject(const QMetaObject *mo) {
-  while (mo != &QWidget::staticMetaObject) {
-    auto search = registry.find(mo);
+  const QMetaObject *iter = mo;
+  while (iter != &QWidget::staticMetaObject) {
+    auto search = registry.find(iter);
     if (search != registry.end()) {
       return search->second;
     }
-    mo = mo->superClass();
+    iter = iter->superClass();
   }
+  // Send a warning if a base Qt widget had no ActionProxy. This is detected by
+  // the first ancestor of the widget (in the sense of inheritance) having a
+  // className starting with "Q".
+  if (mo != &QWidget::staticMetaObject) {
+    const QMetaObject *iter = mo;
+    while (strncmp(iter->className(), "Q", 1) != 0)
+      iter = iter->superClass();
+    logWarning << "No ActionProxy class found for QMetaObject of"
+               << mo->className() << "which inherits" << iter->className();
+  }
+
   return registry.at(&QWidget::staticMetaObject);
 }
 
@@ -324,6 +338,49 @@ bool QLabelActionProxy::yank(YankAction *action, QWidget *widget) {
   QClipboard *clipboard = QGuiApplication::clipboard();
   clipboard->setText(instance->text());
   return true;
+}
+
+// QTabBarActionProxy
+
+void QTabBarActionProxy::hintActivatable(ActivateAction *action,
+                                         QWidget *widget,
+                                         QList<HintData> &ret) {
+  QOBJECT_CAST_ASSERT(QTabBar, widget);
+  auto tabHintLocations = probeTabLocations(instance);
+  for (int idx = 0; idx != instance->count(); ++idx) {
+    if (instance->isTabVisible(idx) && instance->isTabEnabled(idx)) {
+      ret.push_back(
+          HintData{.widget = instance, .point = tabHintLocations.at(idx)});
+    }
+  }
+}
+
+bool QTabBarActionProxy::activate(ActivateAction *action, QWidget *widget) {
+  QOBJECT_CAST_ASSERT(QTabBar, widget);
+  instance->setCurrentIndex(1);
+  return true;
+}
+
+// Very silly code that dynamically probes tab positions until we set up the
+// style spy to supply this information.
+QList<QPoint> QTabBarActionProxy::probeTabLocations(QTabBar *bar) {
+  QList<QPoint> ret;
+  const int step = 5;
+  int currentIdx = 0;
+  for (int x = 0; x != bar->rect().width(); x += step) {
+
+    if (bar->tabAt(QPoint(x, 0)) == currentIdx) {
+      int i = 0;
+      for (; i != step + 1; ++i) {
+        if (bar->tabAt(QPoint(x - i, 0)) != currentIdx) {
+          break;
+        }
+      }
+      ret.push_back(QPoint(x - i + 1, 0));
+      currentIdx++;
+    }
+  }
+  return ret;
 }
 
 } // namespace Tetradactyl

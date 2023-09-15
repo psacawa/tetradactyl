@@ -8,17 +8,9 @@ set(CMAKE_AUTORCC ON)
 find_package(fmt)
 find_package(toml11 REQUIRED)
 
-if(TETRADACTYL_QT5)
-  # tetradactyl-qt5
-
-  find_package(
-    Qt5
-    COMPONENTS Widgets
-    REQUIRED)
-
-  add_library(
-    tetradactyl-qt5 SHARED
+set(QT_COMMON_SOURCES
     action.cpp
+    common.cpp
     modelviewproxies.cpp
     controller.cpp
     filter.cpp
@@ -28,6 +20,15 @@ if(TETRADACTYL_QT5)
     probe.cpp
     tetradactyl.qrc)
 
+if(TETRADACTYL_QT5)
+  # tetradactyl-qt5
+
+  find_package(
+    Qt5
+    COMPONENTS Widgets
+    REQUIRED)
+
+  add_library(tetradactyl-qt5 SHARED "${QT_COMMON_SOURCES}")
   target_link_libraries(tetradactyl-qt5 PRIVATE Qt5::Widgets)
   target_link_libraries(tetradactyl-qt5 PRIVATE Qt5::CorePrivate)
 
@@ -42,17 +43,7 @@ if(TETRADACTYL_QT6)
     COMPONENTS Widgets
     REQUIRED)
 
-  add_library(
-    tetradactyl-qt6 SHARED
-    action.cpp
-    modelviewproxies.cpp
-    controller.cpp
-    filter.cpp
-    hint.cpp
-    overlay.cpp
-    logging.cpp
-    probe.cpp
-    tetradactyl.qrc)
+  add_library(tetradactyl-qt6 SHARED ${QT_COMMON_SOURCES})
 
   target_link_libraries(tetradactyl-qt6 PRIVATE Qt6::Widgets)
   target_link_libraries(tetradactyl-qt6 PRIVATE Qt6::CorePrivate)

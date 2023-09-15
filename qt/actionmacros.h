@@ -3,7 +3,7 @@
 
 // Casts widget to subclass klass. Set to  variable instance
 #define QOBJECT_CAST_ASSERT(klass, widget)                                     \
-  klass *instance = qobject_cast<klass *>(this->widget);                       \
+  klass *instance = qobject_cast<klass *>(widget);                             \
   Q_ASSERT(instance != nullptr);
 
 // Macros to declare/define inline widget hintable probing ActionProxy methods.

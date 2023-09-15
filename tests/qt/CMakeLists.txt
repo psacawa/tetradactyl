@@ -65,6 +65,7 @@ if(TETRADACTYL_QT6)
             "${CMAKE_SOURCE_DIR}/qt/hint.cpp"
             "${CMAKE_SOURCE_DIR}/qt/modelviewproxies.cpp"
             "${CMAKE_SOURCE_DIR}/qt/logging.cpp"
+            "${CMAKE_SOURCE_DIR}/qt/common.cpp"
             "${CMAKE_SOURCE_DIR}/qt/overlay.cpp"
             "${CMAKE_SOURCE_DIR}/qt/tetradactyl.qrc")
 

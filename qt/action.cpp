@@ -22,6 +22,7 @@
 
 #include "action.h"
 #include "actionmacros.h"
+#include "common.h"
 #include "hint.h"
 #include "logging.h"
 
@@ -266,8 +267,8 @@ bool QWidgetActionProxyStatic::isContextMenuable(ContextMenuAction *action,
          widget->contextMenuPolicy() == Qt::CustomContextMenu;
 }
 
-void hintGenericHelper(BaseAction *action, QWidget *widget,
-                       QList<QWidgetActionProxy *> &proxies) {
+static void hintGenericHelper(BaseAction *action, QWidget *widget,
+                              QList<QWidgetActionProxy *> &proxies) {
   for (auto child : widget->children()) {
     QWidget *widget = qobject_cast<QWidget *>(child);
     if (widget && widget->isVisible() && widget->isEnabled()) {
@@ -362,6 +363,53 @@ bool QLabelActionProxy::yank(YankAction *action) {
   QClipboard *clipboard = QGuiApplication::clipboard();
   clipboard->setText(instance->text());
   return true;
+}
+
+// QStackedWidgetActionProxy
+
+void stackedWidgetHintHelper(BaseAction *action, QWidget *widget,
+                             QList<QWidgetActionProxy *> &proxies) {
+  QOBJECT_CAST_ASSERT(QStackedWidget, widget);
+  QWidget *childWidget = instance->currentWidget();
+  if (childWidget && childWidget->isVisible() && childWidget->isEnabled()) {
+    const QMetaObject *mo = childWidget->metaObject();
+    // QStackedWidget chid should never be Tetradactyl widget
+    Q_ASSERT(!isTetradactylMetaObject(mo));
+    auto metadata = QWidgetActionProxy::getMetadataForMetaObject(mo);
+    if (metadata.staticMethods->isHintableGeneric(action, widget)) {
+      QWidgetActionProxy *proxy =
+          QWidgetActionProxy::createForMetaObject(mo, widget);
+
+      // fix this up
+      proxies.append(proxy);
+    }
+
+    metadata.staticMethods->hintGeneric(action, widget, proxies);
+  }
+}
+
+void QStackedWidgetActionProxyStatic::hintActivatable(
+    ActivateAction *action, QWidget *widget,
+    QList<QWidgetActionProxy *> &proxies) {
+  stackedWidgetHintHelper(action, widget, proxies);
+}
+void QStackedWidgetActionProxyStatic::hintEditable(
+    EditAction *action, QWidget *widget, QList<QWidgetActionProxy *> &proxies) {
+  stackedWidgetHintHelper(action, widget, proxies);
+}
+void QStackedWidgetActionProxyStatic::hintFocusable(
+    FocusAction *action, QWidget *widget,
+    QList<QWidgetActionProxy *> &proxies) {
+  stackedWidgetHintHelper(action, widget, proxies);
+}
+void QStackedWidgetActionProxyStatic::hintContextMenuable(
+    ContextMenuAction *action, QWidget *widget,
+    QList<QWidgetActionProxy *> &proxies) {
+  stackedWidgetHintHelper(action, widget, proxies);
+}
+void QStackedWidgetActionProxyStatic::hintYankable(
+    YankAction *action, QWidget *widget, QList<QWidgetActionProxy *> &proxies) {
+  stackedWidgetHintHelper(action, widget, proxies);
 }
 
 // QTabBarActionProxy

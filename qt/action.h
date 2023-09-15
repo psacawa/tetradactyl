@@ -273,7 +273,16 @@ private:
 // QStackedWidgetActionProxy
 
 class QStackedWidgetActionProxyStatic : public QWidgetActionProxyStatic {
-  ACTIONPROXY_NULL_RECURSE_DEF
+  void hintActivatable(ActivateAction *action, QWidget *widget,
+                       QList<QWidgetActionProxy *> &proxies) override;
+  void hintEditable(EditAction *action, QWidget *widget,
+                    QList<QWidgetActionProxy *> &proxies) override;
+  void hintFocusable(FocusAction *action, QWidget *widget,
+                     QList<QWidgetActionProxy *> &proxies) override;
+  void hintContextMenuable(ContextMenuAction *action, QWidget *widget,
+                           QList<QWidgetActionProxy *> &proxies) override;
+  void hintYankable(YankAction *action, QWidget *widget,
+                    QList<QWidgetActionProxy *> &proxies) override;
 };
 
 class QStackedWidgetActionProxy : public QWidgetActionProxy {

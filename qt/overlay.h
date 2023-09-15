@@ -1,5 +1,6 @@
 // Copyright 2023 Paweł Sacawa. All rights reserved.
 #pragma once
+#include <QLayout>
 #include <QString>
 #include <QWidget>
 #include <qlist.h>
@@ -10,6 +11,7 @@ namespace Tetradactyl {
 
 class HintLabel;
 class QWidgetActionProxy;
+class OverlayLayout;
 
 class Overlay : public QWidget {
   Q_OBJECT
@@ -17,6 +19,7 @@ public:
   Overlay(QWidget *target);
   virtual ~Overlay();
 
+  OverlayLayout *overlayLayout();
   void addHint(QString text, QWidgetActionProxy *widgetProxy);
   void removeHint(HintLabel *hint);
   const QList<HintLabel *> &hints();
@@ -27,7 +30,6 @@ public:
   void nextHint(bool forward);
   HintLabel *selectedHint();
   QWidget *selectedWidget();
-  void paintEvent(QPaintEvent *event) override;
 
 private:
   QList<HintLabel *> p_hints;
@@ -35,5 +37,28 @@ private:
 };
 
 inline const QList<HintLabel *> &Overlay::hints() { return p_hints; }
+
+class OverlayLayout : public QLayout {
+  Q_OBJECT
+public:
+  OverlayLayout(Overlay *overlay) : QLayout(overlay) {}
+  virtual ~OverlayLayout();
+
+  int count() const override;
+  void addHint(HintLabel *hint);
+  void addItem(QLayoutItem *) override;
+  void setGeometry(const QRect &) override;
+  QLayoutItem *itemAt(int index) const override;
+  QLayoutItem *takeAt(int index) override;
+  QSize sizeHint() const override;
+  QSize minimumSize() const override;
+
+private:
+  QList<QLayoutItem *> items;
+};
+
+inline OverlayLayout *Overlay::overlayLayout() {
+  return static_cast<OverlayLayout *>(layout());
+}
 
 } // namespace Tetradactyl

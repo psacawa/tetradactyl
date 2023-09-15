@@ -1,5 +1,6 @@
 // Copyright 2023 Paweł Sacawa. All rights reserved.
 #include <QDebug>
+#include <QLayoutItem>
 #include <QLoggingCategory>
 #include <QPainter>
 
@@ -23,6 +24,7 @@ Overlay::Overlay(QWidget *target) : QWidget(target), p_selectedHint(nullptr) {
   Q_ASSERT(target != nullptr);
   // Since Overlay is not in any layout, this is needed.
   setFixedSize(2000, 2000);
+  setLayout(new OverlayLayout(this));
   setAttribute(Qt::WA_TransparentForMouseEvents);
   hide();
 }
@@ -37,7 +39,7 @@ QList<HintLabel *> Overlay::visibleHints() {
 void Overlay::addHint(QString text, QWidgetActionProxy *widgetProxy) {
   HintLabel *newHint =
       new HintLabel(text, widgetProxy->widget, this, widgetProxy);
-  newHint->show();
+  overlayLayout()->addHint(newHint);
   p_hints.append(newHint);
   update();
 }
@@ -135,14 +137,40 @@ int Overlay::updateHints(QString &buffer) {
   return numHintsVisible;
 }
 
-void Overlay::paintEvent(QPaintEvent *event) {
-  logInfo << __PRETTY_FUNCTION__ << event;
-  QPainter p(this);
-  for (auto hint : p_hints) {
-    if (hint->isVisible()) {
-      hint->render(&p, mapTo(parentWidget(), hint->positionInOverlay));
-    }
+OverlayLayout::~OverlayLayout() {
+  QLayoutItem *item;
+  while ((item = takeAt(0)))
+    delete item;
+}
+
+int OverlayLayout::count() const { return items.length(); }
+
+void OverlayLayout::addHint(HintLabel *hint) { addItem(new QWidgetItem(hint)); }
+void OverlayLayout::addItem(QLayoutItem *item) { items.append(item); }
+
+// Perform the layout. Must make sure that hints don't occlude one another or
+// escape the window geometry here.
+void OverlayLayout::setGeometry(const QRect &updateRect) {
+  for (auto item : items) {
+    HintLabel *hint = qobject_cast<HintLabel *>(item->widget());
+    item->setGeometry(QRect(hint->positionInOverlay, hint->sizeHint()));
   }
 }
+
+QLayoutItem *OverlayLayout::itemAt(int index) const {
+  return items.value(index, nullptr);
+}
+
+QLayoutItem *OverlayLayout::takeAt(int index) {
+  QLayoutItem *item = items.value(index, nullptr);
+  if (item != nullptr) {
+    items.removeAt(index);
+  }
+  return item;
+}
+
+QSize OverlayLayout::sizeHint() const { return minimumSize(); };
+
+QSize OverlayLayout::minimumSize() const { return QSize(2000, 2000); };
 
 } // namespace Tetradactyl

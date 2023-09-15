@@ -36,7 +36,7 @@ using Tetradactyl::HintLabel;
 using Tetradactyl::Overlay;
 using Tetradactyl::WindowController;
 
-class ControllerTest : public QObject {
+class BasicControllerTest : public QObject {
   Q_OBJECT
 private slots:
   void initTestCase();
@@ -62,12 +62,12 @@ private:
   Overlay *overlay;
 };
 
-void ControllerTest::initTestCase() {
+void BasicControllerTest::initTestCase() {
   // QLoggingCategory::setFilterRules(QStringLiteral("tetradactyl.*.info=false"));
 }
 
 // create a basic window with buttons, text inputs, and labels
-void ControllerTest::init() {
+void BasicControllerTest::init() {
   win = new QWidget;
   layout = new QVBoxLayout(win);
   for (int i = 0; i != NUM_BUTTONS; ++i) {
@@ -92,7 +92,7 @@ void ControllerTest::init() {
   waitForWindowActiveOrFail(win);
 }
 
-void ControllerTest::cleanup() {
+void BasicControllerTest::cleanup() {
   delete controller;
   delete win;
   buttons.clear();
@@ -100,7 +100,7 @@ void ControllerTest::cleanup() {
   labels.clear();
 }
 
-void ControllerTest::testControllersAndOverlayCreation() {
+void BasicControllerTest::testControllersAndOverlayCreation() {
   QVERIFY2(controller != nullptr,
            "Tetradactyl::Controller instance was created");
   QVERIFY2(controller->windows().length() == 1,
@@ -112,7 +112,7 @@ void ControllerTest::testControllersAndOverlayCreation() {
   QVERIFY(!overlay->isVisible());
 }
 
-void ControllerTest::testHintActivate() {
+void BasicControllerTest::testHintActivate() {
   QTest::keyClick(win, Qt::Key_F);
   QList<HintLabel *> overlayChildren = overlay->hints();
   QTRY_VERIFY2(overlayChildren.length() == NUM_BUTTONS,
@@ -140,7 +140,7 @@ void ControllerTest::testHintActivate() {
   QVERIFY2(!overlay->isVisible(), "Overlay invisible after hint accepted");
 }
 
-void ControllerTest::testHintCancel() {
+void BasicControllerTest::testHintCancel() {
   QTest::keyClick(win, Qt::Key_F);
   QTRY_COMPARE(overlay->hints().length(), NUM_BUTTONS);
   QTest::keyClick(win, Qt::Key_Escape);
@@ -150,7 +150,7 @@ void ControllerTest::testHintCancel() {
   // TODO 12/09/20 psacawa: finish this
 }
 
-void ControllerTest::testHintVisibilityAfterPushPopKey() {
+void BasicControllerTest::testHintVisibilityAfterPushPopKey() {
 
   // hint with F
   QTest::keyClick(win, Qt::Key_F);
@@ -191,7 +191,7 @@ void ControllerTest::testHintVisibilityAfterPushPopKey() {
   QVERIFY2(overlay->selectedHint()->text() == "SA", "selectedHint is the same");
 }
 
-void ControllerTest::testHintNextHint() {
+void BasicControllerTest::testHintNextHint() {
   QTest::keyClick(win, Qt::Key_F);
   QTest::keyClick(win, Qt::Key_S);
   // 3 of 10 hints visible
@@ -216,7 +216,7 @@ void ControllerTest::testHintNextHint() {
            "shift+tab wraps backward to the last visible hint");
 }
 
-void ControllerTest::testHintFocusInput() {
+void BasicControllerTest::testHintFocusInput() {
   QTest::keyClick(win, Qt::Key_G);
   QTest::keyClick(win, Qt::Key_I);
   QList<HintLabel *> hints = overlay->visibleHints();
@@ -235,7 +235,7 @@ void ControllerTest::testHintFocusInput() {
   QVERIFY2(win->focusWidget() == target,
            "Accepting focus input action set focus to selected QLineEdit");
 }
-void ControllerTest::testHintYank() {
+void BasicControllerTest::testHintYank() {
   QTest::keyClick(win, Qt::Key_Y);
   QVERIFY(overlay->isVisible());
   auto hints = overlay->hints();
@@ -256,7 +256,7 @@ void ControllerTest::testHintYank() {
   QVERIFY(!overlay->isVisible());
   QCOMPARE(overlay->hints().length(), 0);
 }
-void ControllerTest::testHintFocus() {
+void BasicControllerTest::testHintFocus() {
   QTest::keyClick(win, Qt::Key_Semicolon);
   QCOMPARE(overlay->hints().length(), NUM_BUTTONS + NUM_LINEEDITS);
   for (auto hint : overlay->hints()) {
@@ -273,5 +273,5 @@ void ControllerTest::testHintFocus() {
            "Accepted widget for HintMode::Focusable has focus set");
 }
 
-QTEST_MAIN(ControllerTest);
-#include "controller.moc"
+QTEST_MAIN(BasicControllerTest);
+#include "basiccontroller_test.moc"

@@ -1,5 +1,4 @@
-// Copyright 2023 Paweł Sacawa. All rights reserved. Copyright 2023 Paweł
-// Sacawa. All rights reserved.
+// Copyright 2023 Paweł Sacawa. All rights reserved.
 #include <cstdio>
 #include <cstdlib>
 

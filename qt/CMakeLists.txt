@@ -19,6 +19,7 @@ if(TETRADACTYL_QT5)
   add_library(
     tetradactyl-qt5 SHARED
     action.cpp
+    modelviewproxies.cpp
     controller.cpp
     filter.cpp
     hint.cpp
@@ -44,6 +45,7 @@ if(TETRADACTYL_QT6)
   add_library(
     tetradactyl-qt6 SHARED
     action.cpp
+    modelviewproxies.cpp
     controller.cpp
     filter.cpp
     hint.cpp

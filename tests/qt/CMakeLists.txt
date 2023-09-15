@@ -36,25 +36,43 @@ if(TETRADACTYL_QT6)
 
   include_directories("${CMAKE_SOURCE_DIR}")
 
-  function(add_qt6_test _name)
-    set(test_name "${_name}_test")
-    add_executable(${test_name} ${_name}.cpp common.cpp
-                                "${CMAKE_SOURCE_DIR}/qt/${_name}.cpp")
+  function(add_qt6_test _test_name)
+    cmake_parse_arguments(PARSE_ARGV 0 ADD_QT6_TEST "" LABELS "")
+    add_executable(${_test_name} ${_test_name}.cpp common.cpp)
 
-    add_test(NAME ${test_name} COMMAND ${test_name})
-    target_link_libraries(${test_name} PRIVATE Qt6::Test Qt6::Widgets)
-    set_tests_properties(
-      ${test_name} PROPERTIES LABELS "controller;qt6" ENVIRONMENT
-                              "QT_QPA_PLATFORM=offscreen")
+    set(_test_env "QT_QPA_PLATFORM=offscreen")
+
+    # LD_PRELOAD=libtetradactyl-qt6.so if inject is a label
+    list(FIND ADD_QT6_TEST_LABELS inject _test_needs_preload)
+    if(${_test_needs_preload} GREATER_EQUAL 0)
+      list(APPEND _test_env "LD_PRELOAD=$<TARGET_FILE:tetradactyl-qt6>")
+    endif()
+
+    add_test(NAME ${_test_name} COMMAND ${_test_name})
+    target_link_libraries(${_test_name} PRIVATE Qt6::Test Qt6::Widgets)
+    set_tests_properties(${_test_name} PROPERTIES ENVIRONMENT "${_test_env}")
+    message(STATUS "${ADD_QT6_TEST_LABELS}")
+    set_tests_properties(${_test_name} PROPERTIES LABELS
+                                                  "${ADD_QT6_TEST_LABELS}")
   endfunction()
 
-  add_qt6_test(controller)
+  add_qt6_test(basiccontroller_test LABELS "controller;qt6")
   target_sources(
-    controller_test
-    PRIVATE "${CMAKE_SOURCE_DIR}/qt/overlay.cpp"
-            "${CMAKE_SOURCE_DIR}/qt/hint.cpp"
+    basiccontroller_test
+    PRIVATE "${CMAKE_SOURCE_DIR}/qt/action.cpp"
+            "${CMAKE_SOURCE_DIR}/qt/controller.cpp"
             "${CMAKE_SOURCE_DIR}/qt/filter.cpp"
+            "${CMAKE_SOURCE_DIR}/qt/hint.cpp"
+            "${CMAKE_SOURCE_DIR}/qt/modelviewproxies.cpp"
             "${CMAKE_SOURCE_DIR}/qt/logging.cpp"
-            "${CMAKE_SOURCE_DIR}/qt/action.cpp"
+            "${CMAKE_SOURCE_DIR}/qt/overlay.cpp"
             "${CMAKE_SOURCE_DIR}/qt/tetradactyl.qrc")
+
+  # TODO 15/09/20 psacawa: how to gracefully test external examples?
+  # add_qt6_test(tabbar_test LABELS "tabbar;linux;inject;controller;qt6")
+  # target_sources( tabbar_test PRIVATE "${CMAKE_SOURCE_DIR}/qt/action.cpp"
+  # "${CMAKE_SOURCE_DIR}/qt/controller.cpp" "${CMAKE_SOURCE_DIR}/qt/filter.cpp"
+  # "${CMAKE_SOURCE_DIR}/qt/hint.cpp" "${CMAKE_SOURCE_DIR}/qt/logging.cpp"
+  # "${CMAKE_SOURCE_DIR}/qt/overlay.cpp"
+  # "${CMAKE_SOURCE_DIR}/qt/tetradactyl.qrc")
 endif()

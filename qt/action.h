@@ -1,11 +1,11 @@
 // Copyright 2023 Paweł Sacawa. All rights reserved.
 #pragma once
-#include <QAbstractItemView>
 #include <QList>
 #include <QMetaObject>
 #include <QModelIndex>
 #include <QStackedWidget>
 #include <QTabBar>
+#include <QTableView>
 #include <QWidget>
 
 #include <map>
@@ -132,17 +132,17 @@ public:
   // how to recurse the hinting under the
   // widget?
   virtual void hintGeneric(BaseAction *action, QWidget *widget,
-                           QList<QWidgetActionProxy *> &ret);
+                           QList<QWidgetActionProxy *> &proxies);
   virtual void hintActivatable(ActivateAction *action, QWidget *widget,
-                               QList<QWidgetActionProxy *> &ret);
+                               QList<QWidgetActionProxy *> &proxies);
   virtual void hintYankable(YankAction *action, QWidget *widget,
-                            QList<QWidgetActionProxy *> &ret);
+                            QList<QWidgetActionProxy *> &proxies);
   virtual void hintEditable(EditAction *action, QWidget *widget,
-                            QList<QWidgetActionProxy *> &ret);
+                            QList<QWidgetActionProxy *> &proxies);
   virtual void hintFocusable(FocusAction *action, QWidget *widget,
-                             QList<QWidgetActionProxy *> &ret);
+                             QList<QWidgetActionProxy *> &proxies);
   virtual void hintContextMenuable(ContextMenuAction *action, QWidget *widget,
-                                   QList<QWidgetActionProxy *> &ret);
+                                   QList<QWidgetActionProxy *> &proxies);
 };
 
 struct WidgetHintingData {
@@ -206,18 +206,6 @@ public:
   virtual bool yank(YankAction *action);
 };
 
-// QAbstractItemViewActionProxy
-
-class QAbstractItemViewActionProxyStatic : public QWidgetActionProxyStatic {};
-
-class QAbstractItemViewActionProxy : public QWidget {
-  Q_INVOKABLE QAbstractItemViewActionProxy() {}
-  virtual ~QAbstractItemViewActionProxy() {}
-
-private:
-  /* data */
-};
-
 // QGroupBoxActionProxy
 
 class QGroupBoxActionProxyStatic : public QWidgetActionProxyStatic {
@@ -264,7 +252,7 @@ public:
 
 class QTabBarActionProxyStatic : public QWidgetActionProxyStatic {
   virtual void hintActivatable(ActivateAction *action, QWidget *widget,
-                               QList<QWidgetActionProxy *> &ret) override;
+                               QList<QWidgetActionProxy *> &proxies) override;
 
   static QList<QPoint> probeTabLocations(QTabBar *bar);
 };
@@ -293,6 +281,63 @@ class QStackedWidgetActionProxy : public QWidgetActionProxy {
 public:
   Q_INVOKABLE QStackedWidgetActionProxy(QWidget *w) : QWidgetActionProxy(w) {}
   virtual ~QStackedWidgetActionProxy() {}
+};
+
+// MODEL VIEW ACTION PROXIES
+
+// QAbstractItemViewActionProxy
+
+// What does activation mean for these views?
+
+class QAbstractItemViewActionProxyStatic : public QWidgetActionProxyStatic {
+public:
+};
+
+class QAbstractItemViewActionProxy : public QWidgetActionProxy {
+  Q_OBJECT
+public:
+  Q_INVOKABLE QAbstractItemViewActionProxy(QModelIndex idx,
+                                           QPoint _positionInWidget, QWidget *w)
+      : QWidgetActionProxy(w, _positionInWidget), modelIndex(idx) {}
+
+  virtual bool edit(EditAction *action) override;
+  virtual bool focus(FocusAction *action) override;
+
+private:
+  QModelIndex modelIndex;
+  QPoint positionInWidget;
+};
+
+// QListViewActionProxy
+
+class QListViewActionProxyStatic : public QAbstractItemViewActionProxyStatic {
+public:
+  virtual void hintEditable(EditAction *action, QWidget *widget,
+                            QList<QWidgetActionProxy *> &proxies) override;
+  virtual void hintFocusable(FocusAction *action, QWidget *widget,
+                             QList<QWidgetActionProxy *> &proxies) override;
+};
+class QListViewActionProxy : public QAbstractItemViewActionProxy {
+  Q_OBJECT
+public:
+  using QAbstractItemViewActionProxy::QAbstractItemViewActionProxy;
+  virtual ~QListViewActionProxy() {}
+};
+
+// QTableViewActionProxy
+
+class QTableViewActionProxyStatic : public QAbstractItemViewActionProxyStatic {
+public:
+  virtual void hintEditable(EditAction *action, QWidget *widget,
+                            QList<QWidgetActionProxy *> &proxies) override;
+  virtual void hintFocusable(FocusAction *action, QWidget *widget,
+                             QList<QWidgetActionProxy *> &proxies) override;
+};
+class QTableViewActionProxy : public QAbstractItemViewActionProxy {
+  Q_OBJECT
+public:
+  using QAbstractItemViewActionProxy::QAbstractItemViewActionProxy;
+  virtual ~QTableViewActionProxy() {}
 };
 
 } // namespace Tetradactyl

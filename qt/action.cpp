@@ -148,8 +148,10 @@ map<const QMetaObject *, WidgetHintingData> QWidgetMetadataRegistry = {
      {&QStackedWidgetActionProxy::staticMetaObject,
       new QStackedWidgetActionProxyStatic}},
     {&QLineEdit::staticMetaObject,
-     {&QLineEditActionProxy::staticMetaObject,
-      new QLineEditActionProxyStatic}}};
+     {&QLineEditActionProxy::staticMetaObject, new QLineEditActionProxyStatic}},
+    {&QTableView::staticMetaObject,
+     {&QTableViewActionProxy::staticMetaObject,
+      new QTableViewActionProxyStatic}}};
 
 const WidgetHintingData
 QWidgetActionProxy::getMetadataForMetaObject(const QMetaObject *widgetMO) {
@@ -232,20 +234,21 @@ bool QWidgetActionProxy::actGeneric(BaseAction *action) {
   Q_UNREACHABLE();
 }
 
-void QWidgetActionProxyStatic::hintGeneric(BaseAction *action, QWidget *widget,
-                                           QList<QWidgetActionProxy *> &ret) {
+void QWidgetActionProxyStatic::hintGeneric(
+    BaseAction *action, QWidget *widget, QList<QWidgetActionProxy *> &proxies) {
   switch (action->mode) {
   case Activatable:
-    return hintActivatable(qobject_cast<ActivateAction *>(action), widget, ret);
+    return hintActivatable(qobject_cast<ActivateAction *>(action), widget,
+                           proxies);
   case Editable:
-    return hintEditable(qobject_cast<EditAction *>(action), widget, ret);
+    return hintEditable(qobject_cast<EditAction *>(action), widget, proxies);
   case Focusable:
-    return hintFocusable(qobject_cast<FocusAction *>(action), widget, ret);
+    return hintFocusable(qobject_cast<FocusAction *>(action), widget, proxies);
   case Yankable:
-    return hintYankable(qobject_cast<YankAction *>(action), widget, ret);
+    return hintYankable(qobject_cast<YankAction *>(action), widget, proxies);
   case Contextable:
     return hintContextMenuable(qobject_cast<ContextMenuAction *>(action),
-                               widget, ret);
+                               widget, proxies);
   default:
     logCritical << "BaseAction for HintMode" << action->mode
                 << "not available in" << __PRETTY_FUNCTION__;
@@ -264,7 +267,7 @@ bool QWidgetActionProxyStatic::isContextMenuable(ContextMenuAction *action,
 }
 
 void hintGenericHelper(BaseAction *action, QWidget *widget,
-                       QList<QWidgetActionProxy *> &ret) {
+                       QList<QWidgetActionProxy *> &proxies) {
   for (auto child : widget->children()) {
     QWidget *widget = qobject_cast<QWidget *>(child);
     if (widget && widget->isVisible() && widget->isEnabled()) {
@@ -280,39 +283,40 @@ void hintGenericHelper(BaseAction *action, QWidget *widget,
             QWidgetActionProxy::createForMetaObject(mo, widget);
 
         // fix this up
-        ret.append(proxy);
+        proxies.append(proxy);
       }
 
-      metadata.staticMethods->hintGeneric(action, widget, ret);
+      metadata.staticMethods->hintGeneric(action, widget, proxies);
     }
   }
 }
 
 void QWidgetActionProxyStatic::hintActivatable(
-    ActivateAction *action, QWidget *widget, QList<QWidgetActionProxy *> &ret) {
-  hintGenericHelper(action, widget, ret);
+    ActivateAction *action, QWidget *widget,
+    QList<QWidgetActionProxy *> &proxies) {
+  hintGenericHelper(action, widget, proxies);
 }
 
-void QWidgetActionProxyStatic::hintEditable(EditAction *action, QWidget *widget,
-                                            QList<QWidgetActionProxy *> &ret) {
-  hintGenericHelper(action, widget, ret);
+void QWidgetActionProxyStatic::hintEditable(
+    EditAction *action, QWidget *widget, QList<QWidgetActionProxy *> &proxies) {
+  hintGenericHelper(action, widget, proxies);
 }
 
-void QWidgetActionProxyStatic::hintFocusable(FocusAction *action,
-                                             QWidget *widget,
-                                             QList<QWidgetActionProxy *> &ret) {
-  hintGenericHelper(action, widget, ret);
+void QWidgetActionProxyStatic::hintFocusable(
+    FocusAction *action, QWidget *widget,
+    QList<QWidgetActionProxy *> &proxies) {
+  hintGenericHelper(action, widget, proxies);
 }
 
-void QWidgetActionProxyStatic::hintYankable(YankAction *action, QWidget *widget,
-                                            QList<QWidgetActionProxy *> &ret) {
-  hintGenericHelper(action, widget, ret);
+void QWidgetActionProxyStatic::hintYankable(
+    YankAction *action, QWidget *widget, QList<QWidgetActionProxy *> &proxies) {
+  hintGenericHelper(action, widget, proxies);
 }
 
 void QWidgetActionProxyStatic::hintContextMenuable(
     ContextMenuAction *action, QWidget *widget,
-    QList<QWidgetActionProxy *> &ret) {
-  hintGenericHelper(action, widget, ret);
+    QList<QWidgetActionProxy *> &proxies) {
+  hintGenericHelper(action, widget, proxies);
 }
 
 // QAbstractButtonActionProxy
@@ -363,7 +367,8 @@ bool QLabelActionProxy::yank(YankAction *action) {
 // QTabBarActionProxy
 
 void QTabBarActionProxyStatic::hintActivatable(
-    ActivateAction *action, QWidget *widget, QList<QWidgetActionProxy *> &ret) {
+    ActivateAction *action, QWidget *widget,
+    QList<QWidgetActionProxy *> &proxies) {
   QTabBar *instance = qobject_cast<QTabBar *>(widget);
   auto tabHintLocations = probeTabLocations(instance);
 
@@ -374,7 +379,7 @@ void QTabBarActionProxyStatic::hintActivatable(
     if (instance->isTabVisible(idx) && instance->isTabEnabled(idx)) {
       QTabBarActionProxy *proxy =
           new QTabBarActionProxy(idx, tabHintLocations.at(idx), instance);
-      ret.push_back(proxy
+      proxies.push_back(proxy
 
       );
     }
@@ -384,7 +389,7 @@ void QTabBarActionProxyStatic::hintActivatable(
 // Very silly code that dynamically probes tab positions until we set up the
 // style spy to supply this information.
 QList<QPoint> QTabBarActionProxyStatic::probeTabLocations(QTabBar *bar) {
-  QList<QPoint> ret;
+  QList<QPoint> points;
   const int step = 5;
   int currentIdx = 0;
   for (int x = 0; x < bar->rect().width(); x += step) {
@@ -394,11 +399,11 @@ QList<QPoint> QTabBarActionProxyStatic::probeTabLocations(QTabBar *bar) {
         if (bar->tabAt(QPoint(x - i, 0)) != currentIdx)
           break;
       }
-      ret.push_back(QPoint(x - i + 1, 0));
+      points.push_back(QPoint(x - i + 1, 0));
       currentIdx++;
     }
   }
-  return ret;
+  return points;
 }
 
 bool QTabBarActionProxy::activate(ActivateAction *action) {

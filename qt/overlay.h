@@ -54,11 +54,15 @@ public:
   QSize minimumSize() const override;
 
 private:
+  Overlay *overlay() const;
   QList<QLayoutItem *> items;
 };
 
 inline OverlayLayout *Overlay::overlayLayout() {
   return static_cast<OverlayLayout *>(layout());
+}
+inline Overlay *OverlayLayout::overlay() const {
+  return qobject_cast<Overlay *>(parentWidget());
 }
 
 } // namespace Tetradactyl

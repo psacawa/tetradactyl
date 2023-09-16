@@ -20,7 +20,6 @@
 
 #include <algorithm>
 #include <iterator>
-#include <qassert.h>
 #include <qdebug.h>
 #include <qglobal.h>
 #include <qlist.h>
@@ -199,12 +198,16 @@ void WindowController::initializeShortcuts() {
                                           [this] { hint(HintMode::Yankable); });
   QShortcut *focusShortcut = new QShortcut(
       keymap.focus, p_target, [this] { hint(HintMode::Focusable); });
+  QShortcut *contextMenuShortcut =
+      new QShortcut(keymap.activateContext, p_target,
+                    [this] { hint(HintMode::Contextable); });
   QShortcut *cancelShortcut =
       new QShortcut(keymap.cancel, p_target, [this] { cancel(); });
   shortcuts.append(activateShortcut);
   shortcuts.append(editShortcut);
   shortcuts.append(yankShortcut);
   shortcuts.append(focusShortcut);
+  shortcuts.append(contextMenuShortcut);
   shortcuts.append(cancelShortcut);
 }
 
@@ -342,7 +345,7 @@ void WindowController::hint(HintMode hintMode) {
     logWarning << __PRETTY_FUNCTION__ << "from" << mode;
     return;
   }
-  logDebug << __PRETTY_FUNCTION__;
+  logInfo << __PRETTY_FUNCTION__ << hintMode;
   hintBuffer = "";
   currentAction = BaseAction::createActionByHintMode(hintMode, this);
   currentAction->act();

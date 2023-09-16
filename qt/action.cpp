@@ -1,24 +1,23 @@
 // Copyright 2023 Paweł Sacawa. All rights reserved.
 #include <QAbstractButton>
 #include <QClipboard>
+#include <QContextMenuEvent>
 #include <QGroupBox>
 #include <QGuiApplication>
 #include <QLabel>
 #include <QLineEdit>
 #include <QList>
+#include <QMenu>
 #include <QTabWidget>
 #include <QTextEdit>
 #include <QWidget>
 #include <cstring>
-#include <qassert.h>
 #include <qlist.h>
-#include <qminmax.h>
 #include <qobject.h>
 
 #include <algorithm>
 #include <iterator>
 #include <map>
-#include <qtpreprocessorsupport.h>
 
 #include "action.h"
 #include "actionmacros.h"
@@ -81,7 +80,8 @@ void BaseAction::act() {
                                     hintData.length());
   for (QWidgetActionProxy *actionProxy : hintData) {
     string hintStr = *hintStringGenerator;
-    logDebug << "Hinting " << actionProxy->widget << " with " << hintStr;
+    logDebug << "Hinting " << actionProxy->widget << " with "
+             << QString::fromStdString(hintStr);
     winController->mainOverlay()->addHint(
         QString::fromStdString(*hintStringGenerator), actionProxy);
     hintStringGenerator++;
@@ -187,7 +187,7 @@ QWidgetActionProxy *
 QWidgetActionProxy::createForMetaObject(const QMetaObject *widgetMO,
                                         QWidget *w) {
   WidgetHintingData metadata = getMetadataForMetaObject(widgetMO);
-  QObject *obj = metadata.actionProxyMO->newInstance(w);
+  QObject *obj = metadata.actionProxyMO->newInstance(Q_ARG(QWidget *, w));
   Q_ASSERT(obj != nullptr);
   return reinterpret_cast<QWidgetActionProxy *>(obj);
 }
@@ -260,10 +260,14 @@ void QWidgetActionProxyStatic::hintGeneric(
 
 bool QWidgetActionProxyStatic::isContextMenuable(ContextMenuAction *action,
                                                  QWidget *widget) {
-  // This leaves the uncommon possibilty that the client implemented a context
-  // menu by implementing contextMenuEvent(QContextMenuEvent*) on the widget
-  // subclass.
-  return widget->contextMenuPolicy() == Qt::ActionsContextMenu ||
+  // We must accept Qt::DefaultContextMenu because of the common case that the
+  // client implemented a context menu by overriding
+  // contextMenuEvent(QContextMenuEvent*) on the widget subclass. Use of this
+  // technique is widespead. Unfortunately, since it's the default, it isn't
+  // possible to distinguish this from the case where no such override exists
+  // via normal means.
+  return widget->contextMenuPolicy() == Qt::DefaultContextMenu ||
+         widget->contextMenuPolicy() == Qt::ActionsContextMenu ||
          widget->contextMenuPolicy() == Qt::CustomContextMenu;
 }
 
@@ -274,8 +278,7 @@ static void hintGenericHelper(BaseAction *action, QWidget *widget,
     if (widget && widget->isVisible() && widget->isEnabled()) {
       const QMetaObject *mo = widget->metaObject();
       // not interested in Tetradactyl's widgets
-      if (mo == &HintLabel::staticMetaObject ||
-          mo == &Overlay::staticMetaObject)
+      if (isTetradactylMetaObject(mo))
         continue;
 
       auto metadata = QWidgetActionProxy::getMetadataForMetaObject(mo);
@@ -318,6 +321,36 @@ void QWidgetActionProxyStatic::hintContextMenuable(
     ContextMenuAction *action, QWidget *widget,
     QList<QWidgetActionProxy *> &proxies) {
   hintGenericHelper(action, widget, proxies);
+}
+
+bool QWidgetActionProxy::contextMenu(ContextMenuAction *action) {
+  Qt::ContextMenuPolicy policy = widget->contextMenuPolicy();
+  const QPoint globalPos = widget->mapTo(widget->window(), QPoint(0, 0));
+  switch (policy) {
+  case Qt::DefaultContextMenu: {
+    // Pray to God this reaches the right widget.
+    QContextMenuEvent cmev(QContextMenuEvent::Mouse, QPoint(0, 0), globalPos);
+    logInfo << "Sending QContextMenuEvent" << &cmev << "to receiver" << widget;
+    QCoreApplication::instance()->sendEvent(widget, &cmev);
+    break;
+  }
+  case Qt::ActionsContextMenu: {
+    QMenu::exec(widget->actions(), globalPos, nullptr, widget);
+    break;
+  }
+  case Qt::CustomContextMenu: {
+    // TODO 16/09/20 psacawa: Special logic must  be added for instances of
+    // QAbstractScrollArea
+    // cf: https://doc.qt.io/qt-6/qwidget.html#customContextMenuRequested
+    emit widget->customContextMenuRequested(QPoint(0, 0));
+    break;
+  }
+  default:
+    logWarning << "Unexpected ContextMenuPolicy" << policy << "for widget"
+               << widget;
+    return false;
+  }
+  return true;
 }
 
 // QAbstractButtonActionProxy

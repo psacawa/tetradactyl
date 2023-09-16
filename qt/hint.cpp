@@ -18,7 +18,6 @@ HintLabel::HintLabel(QString text, QWidget *w, Overlay *overlay,
   target = w;
   positionInOverlay = target->mapTo(overlay->parentWidget(), positionInTarget);
 }
-
 HintLabel::~HintLabel() {}
 
 /*

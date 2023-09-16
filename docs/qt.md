@@ -2,11 +2,11 @@
 
 ### Intercepting Control
 
-In Qt C++ we have several methods of intercepting control, with varying domains of applicapility. They are listed below in decreasing order of portability/ease: 
+In Qt C++ we have several methods of intercepting control, with varying domains of applicapility. They are listed below in decreasing order of portability/ease:
 
 - Install `QObject` event filter.
 - Accepting ShortcutOverride
-- Install probe using QT's startup/object creation hooks.  
+- Install probe using QT's startup/object creation hooks.
 - Intercept dynamic linker via `LD_PRELOAD` etc.
 - Attach overlay widget to intercept mouse events.
 - Install custom style to snoop on primitive element rendering.
@@ -53,3 +53,15 @@ Qt uses C++ with the MOC code genertor. To use the symbols in the same way as C,
 3. C++ has more complex semantics, and many function calls are implicit (constructors, destructors). The logic to determine them is in the compiler. Also their signatures may actually differ from their ABI, so it's not a matter of just tranmitting the received arguments.
 
 This is a big challenge to any Tetradactyl backend targetting a C++ framework.
+
+## Particular Widgets/Events
+
+### Context Menu
+
+Three (main) modes of using context menus in Qt:
+
+- `contextMenuPolicy == Qt::ActionsContextMenu`, default menu with the `QWidget::actions`. This is fine.
+- `contextMenuPolicy == Qt::CustomContextMenu`, sends a signal. It's fine.
+- `contextMenuPolicy == Qt::DefaultContextMenu`, `QApplication::notify` will call `contextMenuEvent` virtual method, which is hopefully overwritten.
+
+Short of inspecting the vtable, there is really no simple way to detect the third (default) case. `notify` will always return `true`. Event filters act before we reach the event handler. Overview of prominent codebases seems to indicate usage is roughly evenly split between `CustomContextMenu` and `DefaultContextMenu`. It may be necessary to trigger the `ContextMenuEvent` just to probe whether any menu was created. But that's stupid...

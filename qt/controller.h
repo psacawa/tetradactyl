@@ -122,7 +122,7 @@ public slots:
 
 private:
   bool eventFilter(QObject *obj, QEvent *ev);
-  void accept(QWidgetActionProxy* widgetProxy);
+  void accept(QWidgetActionProxy *widgetProxy);
   void filterHints();
   void initializeShortcuts();
   void initializeOverlays();

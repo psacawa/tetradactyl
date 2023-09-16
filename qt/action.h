@@ -10,7 +10,6 @@
 
 #include <map>
 #include <qabstractbutton.h>
-#include <qassert.h>
 #include <qobject.h>
 
 // c++ forbids  forward reference to enum HintMode
@@ -170,7 +169,7 @@ public:
     widget->setFocus();
     return true;
   }
-  virtual bool contextMenu(ContextMenuAction *action) { return false; }
+  virtual bool contextMenu(ContextMenuAction *action);
 
   static const WidgetHintingData
   getMetadataForMetaObject(const QMetaObject *mo);
@@ -246,6 +245,22 @@ public:
   Q_INVOKABLE QLineEditActionProxy(QWidget *w) : QWidgetActionProxy(w) {}
 
   ACTIONPROXY_DEFAULT_ACTION_EDITABLE_DEF
+};
+
+// QMenuBarActionProxy
+
+class QMenuBarActionProxyStatic : public QWidgetActionProxyStatic {
+public:
+  virtual void hintActivatable(ActivateAction *action, QWidget *widget,
+                               QList<QWidgetActionProxy *> &proxies) override;
+  virtual void hintFocusable(FocusAction *action, QWidget *widget,
+                             QList<QWidgetActionProxy *> &proxies) override;
+};
+
+class QMenuBarActionProxy : public QWidgetActionProxy {
+  Q_OBJECT
+public:
+  virtual ~QMenuBarActionProxy() {}
 };
 
 // QTabBarActionProxy
@@ -326,6 +341,7 @@ public:
   virtual void hintFocusable(FocusAction *action, QWidget *widget,
                              QList<QWidgetActionProxy *> &proxies) override;
 };
+
 class QListViewActionProxy : public QAbstractItemViewActionProxy {
   Q_OBJECT
 public:

@@ -153,7 +153,14 @@ void OverlayLayout::addItem(QLayoutItem *item) { items.append(item); }
 void OverlayLayout::setGeometry(const QRect &updateRect) {
   for (auto item : items) {
     HintLabel *hint = qobject_cast<HintLabel *>(item->widget());
-    item->setGeometry(QRect(hint->positionInOverlay, hint->sizeHint()));
+    QRect hintGeometry = QRect(hint->positionInOverlay, hint->sizeHint());
+    QRect hostGeometry = overlay()->parentWidget()->geometry();
+    if (!hintGeometry.intersects(hintGeometry)) {
+      logWarning << "Creating hint " << hint << "at" << hintGeometry
+                 << "which doesn't intersect overlay host geometry"
+                 << hostGeometry;
+    }
+    item->setGeometry(hintGeometry);
   }
 }
 

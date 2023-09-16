@@ -15,6 +15,7 @@
 #include <qt/overlay.h>
 
 // from "git://qtbase/examples/widgets/dialogs/tabdialog"
+#include <qtestsupport_core.h>
 #include <tabdialog/tabdialog.h>
 
 namespace Tetradactyl {
@@ -28,6 +29,9 @@ private slots:
   void hintTest();
   void tabDisabledTest();
   void tabInvisibleTest();
+  void yankTest();
+
+  // scroll bar is covered by QPushButton tests
 
 private:
   TabDialog *tabDialog;
@@ -64,15 +68,24 @@ void TabBarTest::basicSetupTest() {
 
 void TabBarTest::hintTest() {
   QTest::keyClick(tabDialog, Qt::Key_F);
-  QList<HintLabel *> hints = overlay->hints();
-  QList<HintLabel *> tabBarHints = overlay->findHintsByTarget<QWidget>();
 
+  QCOMPARE(hintedSpy->count(), 1);
   QTRY_COMPARE(overlay->findHintsByTarget<QTabBar>().length(), 3);
 
   QSignalSpy tabChangedSpy(tabBar, &QTabBar::currentChanged);
   QTest::keyClick(tabDialog, Qt::Key_S);
   QTRY_COMPARE(tabChangedSpy.count(), 1);
+  QCOMPARE(acceptedSpy->count(), 1);
   QCOMPARE(tabBar->currentIndex(), 1);
+  QCOMPARE(acceptedSpy->count(), 1);
+  auto acceptedSignalArgs = acceptedSpy->takeFirst();
+  QCOMPARE(acceptedSignalArgs.at(0), HintMode::Activatable);
+  QObject *obj = qvariant_cast<QObject *>(acceptedSignalArgs.at(1));
+  QCOMPARE(qobject_cast<QTabBar *>(obj), tabBar);
+  QPoint position = acceptedSignalArgs.at(2).toPoint();
+  QVERIFY2(tabBar->tabAt(position) == 1,
+           "WindowController::accepted signal indicates hint accepted at "
+           "second tab");
 }
 
 void TabBarTest::tabDisabledTest() {
@@ -91,7 +104,21 @@ void TabBarTest::tabInvisibleTest() {
                    tabBar->count(),
                "Not all tabs are hint because some are inVisible");
   qInfo() << overlay->findHintsByTarget<QTabBar>().length();
-  // scroll bar
+}
+
+void TabBarTest::yankTest() {
+  QTest::keyClick(tabDialog, Qt::Key_Y);
+  QCOMPARE(hintedSpy->count(), 1);
+  QCOMPARE(hintedSpy->takeFirst().at(0), Yankable);
+  QTRY_COMPARE_EQ(overlay->findHintsByTarget<QTabBar>().length(),
+                  tabBar->count());
+  // input the second hint
+  QString secondHintText = overlay->findHintsByTarget<QTabBar>().at(1)->text();
+  for (auto ch : secondHintText)
+    QTest::keyClick(tabDialog, static_cast<Qt::Key>(ch.toLatin1()));
+
+  QCOMPARE(acceptedSpy->count(), 1);
+  QCOMPARE(acceptedSpy->takeFirst().at(0), Yankable);
 }
 
 } // namespace Tetradactyl

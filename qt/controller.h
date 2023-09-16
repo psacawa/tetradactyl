@@ -63,7 +63,6 @@ public:
   static const Controller *instance();
   const QList<WindowController *> &windows() const;
 
-
   static ControllerSettings settings;
   static QString stylesheet;
 
@@ -121,7 +120,15 @@ public slots:
   void pushKey(char ch);
   void popKey();
 
+signals:
+  void hinted(HintMode mode);
+  // Can be more detailed about the accepted hint
+  void accepted(HintMode mode, QWidget *widget,
+                QPoint positionInWidget = QPoint(0, 0));
+  void cancelled(HintMode mode);
+
 private:
+  void cleanupHints();
   bool eventFilter(QObject *obj, QEvent *ev);
   void accept(QWidgetActionProxy *widgetProxy);
   void filterHints();

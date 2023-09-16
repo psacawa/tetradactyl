@@ -356,6 +356,7 @@ void WindowController::hint(HintMode hintMode) {
     sc->setEnabled(false);
 
   currentHintMode = hintMode;
+  emit hinted(hintMode);
 }
 void WindowController::acceptCurrent() {
   HintLabel *hint = activeOverlay()->selectedHint();
@@ -376,7 +377,10 @@ void WindowController::accept(QWidgetActionProxy *widgetProxy) {
   logInfo << "Accepted " << w << "at" << widgetProxy->positionInWidget << "in"
           << currentHintMode;
   widgetProxy->actGeneric(currentAction);
-  cancel();
+  cleanupHints();
+  emit accepted(currentHintMode, widgetProxy->widget,
+                widgetProxy->positionInWidget);
+  mode = Normal;
 }
 
 void WindowController::pushKey(char ch) {
@@ -406,21 +410,26 @@ QWidget *WindowController::target() {
   return dynamic_cast<QWidget *>(this->p_target);
 }
 
-void WindowController::cancel() {
-  if (!(mode == ControllerMode::Hint)) {
-    logWarning << __PRETTY_FUNCTION__ << "from" << mode;
-    return;
-  }
+void WindowController::cleanupHints() {
   logDebug << __PRETTY_FUNCTION__;
   for (auto overlay : p_overlays) {
     overlay->clear();
     overlay->hide();
   }
-  mode = ControllerMode::Normal;
   delete currentAction;
   currentAction = nullptr;
   for (auto sc : shortcuts)
     sc->setEnabled(true);
+}
+
+void WindowController::cancel() {
+  if (!(mode == ControllerMode::Hint)) {
+    logWarning << __PRETTY_FUNCTION__ << "from" << mode;
+    return;
+  }
+  cleanupHints();
+  emit cancelled(currentHintMode);
+  mode = ControllerMode::Normal;
 }
 
 // For now the  hinting proceed only by type: QObjects whose meta-object

@@ -447,9 +447,8 @@ void QStackedWidgetActionProxyStatic::hintYankable(
 
 // QTabBarActionProxy
 
-void QTabBarActionProxyStatic::hintActivatable(
-    ActivateAction *action, QWidget *widget,
-    QList<QWidgetActionProxy *> &proxies) {
+void QTabBarActionProxyStatic::hintHelper(
+    BaseAction *action, QWidget *widget, QList<QWidgetActionProxy *> &proxies) {
   QTabBar *instance = qobject_cast<QTabBar *>(widget);
   auto tabHintLocations = probeTabLocations(instance);
 
@@ -465,6 +464,17 @@ void QTabBarActionProxyStatic::hintActivatable(
       );
     }
   }
+}
+
+void QTabBarActionProxyStatic::hintActivatable(
+    ActivateAction *action, QWidget *widget,
+    QList<QWidgetActionProxy *> &proxies) {
+  QTabBarActionProxyStatic::hintHelper(action, widget, proxies);
+}
+
+void QTabBarActionProxyStatic::hintYankable(
+    YankAction *action, QWidget *widget, QList<QWidgetActionProxy *> &proxies) {
+  QTabBarActionProxyStatic::hintHelper(action, widget, proxies);
 }
 
 // Very silly code that dynamically probes tab positions until we set up the
@@ -490,6 +500,13 @@ QList<QPoint> QTabBarActionProxyStatic::probeTabLocations(QTabBar *bar) {
 bool QTabBarActionProxy::activate(ActivateAction *action) {
   QOBJECT_CAST_ASSERT(QTabBar, widget);
   instance->setCurrentIndex(tabIndex);
+  return true;
+}
+
+bool QTabBarActionProxy::yank(YankAction *action) {
+  QOBJECT_CAST_ASSERT(QTabBar, widget);
+  QClipboard *clipboard = QGuiApplication::clipboard();
+  clipboard->setText(instance->tabText(tabIndex));
   return true;
 }
 

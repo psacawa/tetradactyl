@@ -268,8 +268,12 @@ public:
 class QTabBarActionProxyStatic : public QWidgetActionProxyStatic {
   virtual void hintActivatable(ActivateAction *action, QWidget *widget,
                                QList<QWidgetActionProxy *> &proxies) override;
+  void hintYankable(YankAction *action, QWidget *widget,
+                    QList<QWidgetActionProxy *> &proxies) override;
 
   static QList<QPoint> probeTabLocations(QTabBar *bar);
+  static void hintHelper(BaseAction *action, QWidget *widget,
+                         QList<QWidgetActionProxy *> &proxies);
 };
 
 class QTabBarActionProxy : public QWidgetActionProxy {
@@ -280,6 +284,7 @@ public:
   virtual ~QTabBarActionProxy() {}
 
   bool activate(ActivateAction *action) override;
+  bool yank(YankAction *action) override;
 
 private:
   int tabIndex;

@@ -1,9 +1,10 @@
 // Copyright 2023 Paweł Sacawa. All rights reserved.
 #pragma once
 
+#include <QSignalSpy>
 #include <QWidget>
 
-#include "qt/controller.h"
+#include <qt/controller.h>
 
 namespace Tetradactyl {
 
@@ -19,11 +20,18 @@ protected:
     controller = Controller::instance();
     windowController = controller->windows().at(0);
     overlay = windowController->mainOverlay();
+
+    hintedSpy = new QSignalSpy(windowController, &WindowController::hinted);
+    acceptedSpy = new QSignalSpy(windowController, &WindowController::accepted);
+    cancelledSpy =
+        new QSignalSpy(windowController, &WindowController::cancelled);
   }
 
   const Controller *controller;
   WindowController *windowController;
   Overlay *overlay;
+
+  QSignalSpy *hintedSpy, *acceptedSpy, *cancelledSpy;
 };
 
 void waitForWindowActiveOrFail(QWidget *);

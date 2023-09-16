@@ -4,6 +4,8 @@
 
 #include <qt/controller.h>
 
+#include "common.h"
+
 namespace Tetradactyl {
 
 void waitForWindowActiveOrFail(QWidget *win) {

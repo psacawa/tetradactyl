@@ -141,11 +141,18 @@ void BasicControllerTest::testHintActivate() {
 }
 
 void BasicControllerTest::testHintCancel() {
+  QSignalSpy cancelledSpy(windowController, &WindowController::cancelled);
+  QSignalSpy acceptedSpy(windowController, &WindowController::accepted);
   QTest::keyClick(win, Qt::Key_F);
   QTRY_COMPARE(overlay->hints().length(), NUM_BUTTONS);
   QTest::keyClick(win, Qt::Key_Escape);
   QTRY_COMPARE(overlay->hints().length(), 0);
-  QVERIFY2(!overlay->isVisible(), "Overlay invisible after hinting canceled");
+  QVERIFY2(acceptedSpy.count() == 0,
+           "Cancelling doesn't cause the accepted signal to be fired");
+  QCOMPARE(cancelledSpy.count(), 1);
+  auto cancelledSignalArgs = cancelledSpy.takeFirst();
+  QCOMPARE(cancelledSignalArgs.at(0), Tetradactyl::HintMode::Activatable);
+  QVERIFY2(!overlay->isVisible(), "Overlay invisible after hinting cancelled");
 
   // TODO 12/09/20 psacawa: finish this
 }

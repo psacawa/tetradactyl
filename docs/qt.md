@@ -1,6 +1,6 @@
-## Notes
+# Notes
 
-### Intercepting Control
+## Intercepting Control
 
 In Qt C++ we have several methods of intercepting control, with varying domains of applicapility. They are listed below in decreasing order of portability/ease:
 
@@ -20,7 +20,7 @@ In combination with the above, we get techniques of speculative value:
 
 Whether this is worthwhile is hard to say.
 
-### Rendering
+## Rendering
 
 Two basic techniques for rendering the hint where we need it to be:
 
@@ -54,9 +54,9 @@ Qt uses C++ with the MOC code genertor. To use the symbols in the same way as C,
 
 This is a big challenge to any Tetradactyl backend targetting a C++ framework.
 
-## Particular Widgets/Events
+# Particular Widgets/Events
 
-### Context Menu
+## Context Menu
 
 Three (main) modes of using context menus in Qt:
 
@@ -65,3 +65,7 @@ Three (main) modes of using context menus in Qt:
 - `contextMenuPolicy == Qt::DefaultContextMenu`, `QApplication::notify` will call `contextMenuEvent` virtual method, which is hopefully overwritten.
 
 Short of inspecting the vtable, there is really no simple way to detect the third (default) case. `notify` will always return `true`. Event filters act before we reach the event handler. Overview of prominent codebases seems to indicate usage is roughly evenly split between `CustomContextMenu` and `DefaultContextMenu`. It may be necessary to trigger the `ContextMenuEvent` just to probe whether any menu was created. But that's stupid...
+
+## ABI
+
+Qt outright refuses to interoperate with library sibling versions other than it's own. Therefore if we have e.g. vlc which uses  `libQt5Widgets` (in `qtbase`) and `libQt5Widgets` (not), then when the  application is run via Tetradactyl the libs loaded can be respectively  `/usr/local/Qt-5.15.10/lib/libQt5Widgets.so.5.15.10` and `/usr/lib/x86_64-linux-gnu/libQt5Svg.so.5.15.6`. This means we must in princip distribute the entirety of qt super module to clients to ensure interoperation.

@@ -23,11 +23,17 @@ extern QMap<const char *, Qt::GlobalColor> lcColorMap;
 #else
 
 // TODO 13/09/20 psacawa: figure out Qt5 logging
-#define LOGGING_CATEGORY_COLOR(cat, color)
-#define logDebug qDebug()
-#define logInfo qInfo()
-#define logWarning qWarning()
-#define logCritical qCritical()
+#define LOGGING_CATEGORY_COLOR(cat, color)                                     \
+  static const QLoggingCategory &lcThis() {                                    \
+    static const QLoggingCategory category(cat);                               \
+    lcColorMap.insert(cat, color);                                             \
+    return category;                                                           \
+  }
+
+#define logDebug qCDebug(lcThis)
+#define logInfo qCInfo(lcThis)
+#define logWarning qCWarning(lcThis)
+#define logCritical qCCritical(lcThis)
 #endif
 
 #define BLACK "\x1b\x5b\x33\x30\x6d"

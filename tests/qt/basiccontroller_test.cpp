@@ -89,7 +89,7 @@ void BasicControllerTest::init() {
   controller = Controller::instance();
   windowController = controller->windows().at(0);
   overlay = windowController->overlays().at(0);
-  waitForWindowActiveOrFail(win);
+  Tetradactyl::waitForWindowActiveOrFail(win);
 }
 
 void BasicControllerTest::cleanup() {

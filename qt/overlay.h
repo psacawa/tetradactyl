@@ -12,6 +12,10 @@ namespace Tetradactyl {
 class HintLabel;
 class QWidgetActionProxy;
 class OverlayLayout;
+class Overlay;
+
+QList<HintLabel *> findHintsByTargetHelper(Overlay *overlay,
+                                           const QMetaObject *mo);
 
 class Overlay : public QWidget {
   Q_OBJECT
@@ -30,6 +34,12 @@ public:
   void nextHint(bool forward);
   HintLabel *selectedHint();
   QWidget *selectedWidget();
+
+  template <typename T> inline QList<HintLabel *> findHintsByTarget() {
+    typedef typename std::remove_cv<typename std::remove_pointer<T>::type>::type
+        ObjType;
+    return findHintsByTargetHelper(this, &ObjType::staticMetaObject);
+  }
 
 private:
   QList<HintLabel *> p_hints;

@@ -99,7 +99,7 @@ public:
 // visible(QWidget*) for the children it wishes to recurse to.
 
 // Therefore, according to current *doctrine*, e.g. a QTabBar would handle
-// hintable tabs and recurse to the underlying QStackedWdiget in
+// hintable tabs and recurse to the underlying QStackedWidget in
 // hintActivatable. Itself, it is not activatable. Likewise, QMenu handles it's
 // options in hintActivatable. NB this holds whether or not the hintable
 // "subwidgets" are real widgets in the true sense, or rather are pseudo-widgets

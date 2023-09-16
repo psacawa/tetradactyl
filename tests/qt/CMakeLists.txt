@@ -9,6 +9,8 @@ set(QT_EXAMPLES_SOURCE_PATH
     CACHE PATH
           "Path to base Qt example source directory i.e. git://qtbase/examples")
 
+add_compile_definitions(TETRADACTYL_QT_TEST)
+
 function(import_qt6_examples _module)
   set("Qt6${_module}Examples_DIR" "${Qt6_DIR}/../../../examples/${_module}")
   if(NOT EXISTS ${Qt6${_module}Examples_DIR})
@@ -51,22 +53,26 @@ function(add_qt6_test _test_name)
   set_tests_properties(${_test_name} PROPERTIES LABELS "${ADD_QT6_TEST_LABELS}")
 endfunction()
 
-# Make simple target/test which uses  all the  sources in  $_example_relpath and
+# Make simple target/test which uses  all the  sources in $_example_relpath and
 # the source file $_test_source using the -include/#pragma weak main trick
 function(add_qt6_test_depending_on_example_demo _test_name _example_relpath)
-  cmake_parse_arguments(PARSE_ARGV 2 arg "" "LIBRARIES" "")
+  cmake_parse_arguments(PARSE_ARGV 2 arg "" "LIBRARIES;LABELS" "")
   set(_example_source_dir "${QT_EXAMPLES_SOURCE_PATH}/${_example_relpath}")
   file(GLOB _example_sources "${_example_source_dir}/*.cpp")
 
   # add_executable(${_test_name} "${TETRADACTYL_SOURCES}" ${_example_sources})
   add_executable(${_test_name} ${_test_name}.cpp common.cpp
                                "${TETRADACTYL_SOURCES}" ${_example_sources})
+  # the trick
   target_compile_options(
     ${_test_name} PRIVATE -include "${CMAKE_CURRENT_SOURCE_DIR}/weak-main.h")
   target_include_directories(${_test_name} PRIVATE "${_example_source_dir}/..")
   target_link_libraries(${_test_name} PRIVATE Qt::Widgets Qt::Test
                                               ${arg_LIBRARIES})
   add_test(NAME ${_test_name} COMMAND ${_test_name})
+  set_tests_properties(${_test_name} PROPERTIES ENVIRONMENT
+                                                "QT_QPA_PLATFORM=offscreen")
+  set_tests_properties(${_test_name} PROPERTIES LABELS "${arg_LABELS}")
 endfunction()
 
 if(TETRADACTYL_QT6)
@@ -74,12 +80,12 @@ if(TETRADACTYL_QT6)
 
   set(TETRADACTYL_SOURCES
       "${CMAKE_SOURCE_DIR}/qt/action.cpp"
+      "${CMAKE_SOURCE_DIR}/qt/common.cpp"
       "${CMAKE_SOURCE_DIR}/qt/controller.cpp"
       "${CMAKE_SOURCE_DIR}/qt/filter.cpp"
       "${CMAKE_SOURCE_DIR}/qt/hint.cpp"
-      "${CMAKE_SOURCE_DIR}/qt/modelviewproxies.cpp"
       "${CMAKE_SOURCE_DIR}/qt/logging.cpp"
-      "${CMAKE_SOURCE_DIR}/qt/common.cpp"
+      "${CMAKE_SOURCE_DIR}/qt/modelviewproxies.cpp"
       "${CMAKE_SOURCE_DIR}/qt/overlay.cpp"
       "${CMAKE_SOURCE_DIR}/qt/tetradactyl.qrc")
 
@@ -91,7 +97,7 @@ if(TETRADACTYL_QT6)
   add_qt6_test(basiccontroller_test LABELS "controller;qt6")
   target_sources(basiccontroller_test PRIVATE ${TETRADACTYL_SOURCES})
 
-  add_qt6_test_depending_on_example_demo(tabbar_test
-                                         "widgets/dialogs/tabdialog")
+  add_qt6_test_depending_on_example_demo(
+    tabbar_test "widgets/dialogs/tabdialog" LABELS "controller;tabbar;qt6")
 
 endif()

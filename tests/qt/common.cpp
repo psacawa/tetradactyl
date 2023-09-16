@@ -2,8 +2,14 @@
 #include <QWidget>
 #include <QtTest>
 
+#include <qt/controller.h>
+
+namespace Tetradactyl {
+
 void waitForWindowActiveOrFail(QWidget *win) {
   win->show();
   if (!QTest::qWaitForWindowActive(win))
     QFAIL("window didn't become active");
 }
+
+} // namespace Tetradactyl

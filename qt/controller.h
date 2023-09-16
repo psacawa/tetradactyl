@@ -63,6 +63,7 @@ public:
   static const Controller *instance();
   const QList<WindowController *> &windows() const;
 
+
   static ControllerSettings settings;
   static QString stylesheet;
 

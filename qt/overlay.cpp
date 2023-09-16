@@ -44,9 +44,7 @@ void Overlay::addHint(QString text, QWidgetActionProxy *widgetProxy) {
   update();
 }
 
-Overlay::~Overlay() {
-  // TODO 13/09/20 psacawa: finish this
-}
+Overlay::~Overlay() {}
 
 void Overlay::nextHint(bool forward) {
   logInfo << __PRETTY_FUNCTION__;
@@ -135,6 +133,16 @@ int Overlay::updateHints(QString &buffer) {
   update();
 
   return numHintsVisible;
+}
+
+QList<HintLabel *> findHintsByTargetHelper(Overlay *overlay,
+                                           const QMetaObject *mo) {
+  QList<HintLabel *> ret;
+  for (auto hint : overlay->hints()) {
+    if (hint->target->metaObject()->inherits(mo))
+      ret.append(hint);
+  }
+  return ret;
 }
 
 OverlayLayout::~OverlayLayout() {

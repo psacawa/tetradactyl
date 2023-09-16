@@ -16,12 +16,13 @@ static QMap<Qt::GlobalColor, QByteArray> ansiTermColorMap = {
 void colorMessageHandler(QtMsgType severity, const QMessageLogContext &ctx,
                          const QString &msg) {
 
-  QByteArray prefix, suffix, severityStr;
+  QByteArray prefix, suffix, categoryStr = ctx.category, severityStr;
+#ifndef TETRADACTYL_QT_TEST
   Qt::GlobalColor color =
       lcColorMap.value(ctx.category, Qt::GlobalColor::color0);
   if (color != Qt::GlobalColor::color0) {
-    prefix = ansiTermColorMap.value(color);
-    suffix = RESET_FOREGROUND;
+    categoryStr = ansiTermColorMap.value(color) + categoryStr +
+                  QByteArrayLiteral(RESET_FOREGROUND);
   } else {
     if (strcmp(ctx.category, "default")) {
       qWarning() << "color not found " << ctx.category;
@@ -40,7 +41,8 @@ void colorMessageHandler(QtMsgType severity, const QMessageLogContext &ctx,
   default:
     break;
   }
+#endif
 
-  fprintf(stderr, "%s%s%s%s: %s\n", prefix.data(), ctx.category, suffix.data(),
-          severityStr.data(), msg.toLocal8Bit().data());
+  fprintf(stderr, "%s%s: %s\n", categoryStr.data(), severityStr.data(),
+          msg.toLocal8Bit().data());
 }

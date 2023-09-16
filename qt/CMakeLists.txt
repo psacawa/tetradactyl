@@ -11,14 +11,15 @@ find_package(toml11 REQUIRED)
 set(QT_COMMON_SOURCES
     action.cpp
     common.cpp
-    modelviewproxies.cpp
     controller.cpp
     filter.cpp
     hint.cpp
-    overlay.cpp
     logging.cpp
+    modelviewproxies.cpp
+    overlay.cpp
     probe.cpp
-    tetradactyl.qrc)
+    tetradactyl.qrc
+    )
 
 if(TETRADACTYL_QT5)
   # tetradactyl-qt5

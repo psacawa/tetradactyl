@@ -32,20 +32,41 @@ public:
   HintMode mode;
   WindowController *winController;
   virtual void act();
-  BaseAction(WindowController *controller) : winController(controller) {}
+  BaseAction(WindowController *controller) : winController(controller) {
+    currentRoot = winController->target();
+
+    // eventually default  to false
+    done = true;
+  }
   virtual ~BaseAction() {}
   virtual void accept(QWidgetActionProxy *proxy);
-  virtual bool done() = 0;
+  void addNextStage(QWidget *root);
+  bool isDone();
+  void finish();
 
   static BaseAction *createActionByHintMode(HintMode, WindowController *);
+
+signals:
+  void stateChanged();
+  void finished();
+
+private:
+  bool done;
+  // Typically this corresponds to the the window widget of the
+  // WindowController. That's the default. In the case of multi-step actions, it
+  // may point to a QMenu Overlay
+  QWidget *currentRoot;
 };
+
+inline bool BaseAction::isDone() { return done; }
+inline void BaseAction::finish() { done = true; }
 
 class ActivateAction : public BaseAction {
   Q_OBJECT
 public:
   ActivateAction(WindowController *controller);
   virtual ~ActivateAction() {}
-  virtual bool done() override;
+  // virtual bool isDone() override;
 };
 
 class EditAction : public BaseAction {
@@ -53,7 +74,7 @@ class EditAction : public BaseAction {
 public:
   EditAction(WindowController *controller);
   virtual ~EditAction() {}
-  virtual bool done() override;
+  // virtual bool isDone() override;
 };
 
 class FocusAction : public BaseAction {
@@ -61,7 +82,7 @@ class FocusAction : public BaseAction {
 public:
   FocusAction(WindowController *controller);
   virtual ~FocusAction() {}
-  virtual bool done() override;
+  // virtual bool isDone() override;
 };
 
 class YankAction : public BaseAction {
@@ -69,7 +90,7 @@ class YankAction : public BaseAction {
 public:
   YankAction(WindowController *controller);
   virtual ~YankAction() {}
-  virtual bool done() override;
+  // virtual bool isDone() override;
 };
 
 class ContextMenuAction : public BaseAction {
@@ -77,37 +98,45 @@ class ContextMenuAction : public BaseAction {
 public:
   ContextMenuAction(WindowController *controller);
   virtual ~ContextMenuAction() {}
-  bool done();
+  // bool isDone();
+};
+
+class MenuBarAction : public BaseAction {
+  Q_OBJECT
+public:
+  MenuBarAction(WindowController *controller);
+  virtual ~MenuBarAction() {}
+  // bool isDone();
 };
 
 // Widget Proxies
 
-// A speculative idea: The action-specific code is accompanoed by an inheritance
-// hierarchy of "widget proxy" classes that mirrors the QWidget inheritance
-// hierarchy. These tell whether/how to implement the routines in a manner
-// specific to the widget, while still permitting code reuse via the
-// inheritance. Context is passed to the actor methods via the actions, which
-// have a context attached to them.
+// A speculative idea: The action-specific code is accompanoed by an
+// inheritance hierarchy of "widget proxy" classes that mirrors the QWidget
+// inheritance hierarchy. These tell whether/how to implement the routines
+// in a manner specific to the widget, while still permitting code reuse via
+// the inheritance. Context is passed to the actor methods via the actions,
+// which have a context attached to them.
 
-// When visiting a widget, you may or may not want to hint it. Separately, you
-// may or may not want to recurse under it to search for more hints.
+// When visiting a widget, you may or may not want to hint it. Separately,
+// you may or may not want to recurse under it to search for more hints.
 // Notwithstanding some edge cases, typically a hinted recursed won't be
 // recursed under. The methods is*able() determine whether the widget itself
-// should generate a hint. The caller does the adding. Conversely, the methods
-// hint*able For now, entering is*able and hint*able methods means that the
-// widget is enabled and visible: hint*able is responsible for calling
-// visible(QWidget*) for the children it wishes to recurse to.
+// should generate a hint. The caller does the adding. Conversely, the
+// methods hint*able For now, entering is*able and hint*able methods means
+// that the widget is enabled and visible: hint*able is responsible for
+// calling visible(QWidget*) for the children it wishes to recurse to.
 
 // Therefore, according to current *doctrine*, e.g. a QTabBar would handle
 // hintable tabs and recurse to the underlying QStackedWidget in
-// hintActivatable. Itself, it is not activatable. Likewise, QMenu handles it's
-// options in hintActivatable. NB this holds whether or not the hintable
-// "subwidgets" are real widgets in the true sense, or rather are pseudo-widgets
-// implemented by QStyle::drawControl etc. (short-sighthed?) This doctrine lasts
-// until the next surprise.
+// hintActivatable. Itself, it is not activatable. Likewise, QMenu handles
+// it's options in hintActivatable. NB this holds whether or not the
+// hintable "subwidgets" are real widgets in the true sense, or rather are
+// pseudo-widgets implemented by QStyle::drawControl etc. (short-sighthed?)
+// This doctrine lasts until the next surprise.
 
-// In actionmacros.h we define preprocessor macros to cut  down on boilerplate
-// code for each QWidget subclass.
+// In actionmacros.h we define preprocessor macros to cut  down on
+// boilerplate code for each QWidget subclass.
 
 //
 // QWidgetActionProxy
@@ -127,6 +156,7 @@ public:
     return false;
   }
   virtual bool isContextMenuable(ContextMenuAction *action, QWidget *widget);
+  virtual bool isMenuable(MenuBarAction *action, QWidget *widget) { return false; }
 
   // how to recurse the hinting under the
   // widget?
@@ -142,6 +172,8 @@ public:
                              QList<QWidgetActionProxy *> &proxies);
   virtual void hintContextMenuable(ContextMenuAction *action, QWidget *widget,
                                    QList<QWidgetActionProxy *> &proxies);
+  virtual void hintMenuable(MenuBarAction *action, QWidget *widget,
+                            QList<QWidgetActionProxy *> &proxies);
 };
 
 struct WidgetHintingData {
@@ -169,6 +201,7 @@ public:
     widget->setFocus();
     return true;
   }
+  virtual bool menu(MenuBarAction *action) { return false; }
   virtual bool contextMenu(ContextMenuAction *action);
 
   static const WidgetHintingData
@@ -205,11 +238,30 @@ public:
   virtual bool yank(YankAction *action);
 };
 
+// QComboBoxActionProxy
+
+class QComboBoxActionProxyStatic : public QWidgetActionProxyStatic {
+  bool isActivatable(ActivateAction *action, QWidget *widget) override;
+  bool isEditable(EditAction *action, QWidget *widget) override;
+  ACTIONPROXY_TRUE_SELF_FOCUSABLE_DEF
+  ACTIONPROXY_TRUE_SELF_YANKABLE_DEF
+};
+
+class QComboBoxActionProxy : public QWidgetActionProxy {
+  Q_OBJECT
+public:
+  Q_INVOKABLE QComboBoxActionProxy(QWidget *w) : QWidgetActionProxy(w) {}
+
+  bool activate(ActivateAction *action) override;
+  // bool focus(FocusAction *action) override;
+  bool yank(YankAction *action) override;
+};
+
 // QGroupBoxActionProxy
 
 class QGroupBoxActionProxyStatic : public QWidgetActionProxyStatic {
 
-  virtual bool isActivatable(ActivateAction *action, QWidget *widget);
+  virtual bool isActivatable(ActivateAction *action, QWidget *widget) override;
 };
 
 class QGroupBoxActionProxy : public QWidgetActionProxy {
@@ -251,16 +303,22 @@ public:
 
 class QMenuBarActionProxyStatic : public QWidgetActionProxyStatic {
 public:
-  virtual void hintActivatable(ActivateAction *action, QWidget *widget,
-                               QList<QWidgetActionProxy *> &proxies) override;
-  virtual void hintFocusable(FocusAction *action, QWidget *widget,
-                             QList<QWidgetActionProxy *> &proxies) override;
+  virtual void hintMenuable(MenuBarAction *action, QWidget *widget,
+                            QList<QWidgetActionProxy *> &proxies);
 };
 
 class QMenuBarActionProxy : public QWidgetActionProxy {
   Q_OBJECT
 public:
+  Q_INVOKABLE QMenuBarActionProxy(QWidget *w, QPoint position,
+                                  QAction *_menuAction)
+      : QWidgetActionProxy(w, position), menuAction(_menuAction) {}
   virtual ~QMenuBarActionProxy() {}
+
+  bool menu(MenuBarAction *action) override;
+
+private:
+  QAction *menuAction;
 };
 
 // QTabBarActionProxy
@@ -299,10 +357,10 @@ class QStackedWidgetActionProxyStatic : public QWidgetActionProxyStatic {
                     QList<QWidgetActionProxy *> &proxies) override;
   void hintFocusable(FocusAction *action, QWidget *widget,
                      QList<QWidgetActionProxy *> &proxies) override;
-  void hintContextMenuable(ContextMenuAction *action, QWidget *widget,
-                           QList<QWidgetActionProxy *> &proxies) override;
   void hintYankable(YankAction *action, QWidget *widget,
                     QList<QWidgetActionProxy *> &proxies) override;
+  void hintContextMenuable(ContextMenuAction *action, QWidget *widget,
+                           QList<QWidgetActionProxy *> &proxies) override;
 };
 
 class QStackedWidgetActionProxy : public QWidgetActionProxy {

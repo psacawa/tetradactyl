@@ -1,13 +1,16 @@
 // Copyright 2023 Paweł Sacawa. All rights reserved.
 #include <QAbstractButton>
 #include <QClipboard>
+#include <QComboBox>
 #include <QContextMenuEvent>
 #include <QGroupBox>
 #include <QGuiApplication>
 #include <QLabel>
 #include <QLineEdit>
 #include <QList>
+#include <QListView>
 #include <QMenu>
+#include <QMenuBar>
 #include <QTabWidget>
 #include <QTextEdit>
 #include <QWidget>
@@ -22,6 +25,7 @@
 #include "action.h"
 #include "actionmacros.h"
 #include "common.h"
+#include "controller.h"
 #include "hint.h"
 #include "logging.h"
 
@@ -48,6 +52,8 @@ BaseAction::createActionByHintMode(HintMode mode,
     return new YankAction(winController);
   case Contextable:
     return new ContextMenuAction(winController);
+  case Menuable:
+    return new MenuBarAction(winController);
   default:
     logCritical << "BaseAction for HintMode" << mode << "not available in"
                 << __PRETTY_FUNCTION__;
@@ -56,9 +62,19 @@ BaseAction::createActionByHintMode(HintMode mode,
   Q_UNREACHABLE();
 }
 
+void BaseAction::addNextStage(QWidget *root) {
+  if (winController->findOverlayForWidget(root) == nullptr) {
+    winController->addOverlay(root);
+  }
+  currentRoot = root;
+  logInfo << "New stage of" << this << "based at root:" << root;
+}
+
 void BaseAction::accept(QWidgetActionProxy *proxy) {
   // TODO 14/09/20 psacawa: remove widget from signature
-  proxy->actGeneric(this);
+  int widgetFinishesAction = proxy->actGeneric(this);
+  if (widgetFinishesAction)
+    finish();
 }
 
 // ActivateAction
@@ -69,13 +85,19 @@ ActivateAction::ActivateAction(WindowController *controller)
 }
 
 void BaseAction::act() {
-  // QWidgetActionProxy *proxy = QWidgetActionProxy::createForMetaObject(
-  //     winController->target()->metaObject());
   QList<QWidgetActionProxy *> hintData;
   // get the hints
-  const QMetaObject *targetMO = winController->target()->metaObject();
+  const QMetaObject *targetMO = currentRoot->metaObject();
   auto metadata = QWidgetActionProxy::getMetadataForMetaObject(targetMO);
-  metadata.staticMethods->hintGeneric(this, winController->target(), hintData);
+  metadata.staticMethods->hintGeneric(this, currentRoot, hintData);
+
+  // Nothing hintable. End the action
+  if (hintData.length() == 0) {
+    logWarning << "Action hinting returned no hintable objects:" << this
+               << currentRoot;
+    finish();
+    return;
+  }
   HintGenerator hintStringGenerator(Controller::settings.hintChars,
                                     hintData.length());
   for (QWidgetActionProxy *actionProxy : hintData) {
@@ -90,15 +112,11 @@ void BaseAction::act() {
   winController->mainOverlay()->resetSelection();
 }
 
-bool ActivateAction::done() { return true; }
-
 // EditAction
 
 EditAction::EditAction(WindowController *controller) : BaseAction(controller) {
   mode = HintMode::Editable;
 }
-
-bool EditAction::done() { return true; }
 
 // FocusAction
 
@@ -107,15 +125,18 @@ FocusAction::FocusAction(WindowController *controller)
   mode = HintMode::Focusable;
 }
 
-bool FocusAction::done() { return true; }
-
 // YankAction
 
 YankAction::YankAction(WindowController *controller) : BaseAction(controller) {
   mode = HintMode::Yankable;
 }
 
-bool YankAction::done() { return true; }
+// MenuBarAction
+
+MenuBarAction::MenuBarAction(WindowController *controller)
+    : BaseAction(controller) {
+  mode = HintMode::Menuable;
+}
 
 // ContextMenuAction
 
@@ -124,35 +145,36 @@ ContextMenuAction::ContextMenuAction(WindowController *controller)
   mode = HintMode::Contextable;
 }
 
-bool ContextMenuAction::done() { return true; }
-
 // QList<QWidget *> ContextMenuAction::getHintables(QWidget *root) { return; }
 
 // WIDGET PROXIES
+
+#define PASTE(a, b) a##b
+#define METADATA_REGISTRY_ENTRY(klass)                                         \
+  {                                                                            \
+    &klass::staticMetaObject, {                                                \
+      &PASTE(klass, ActionProxy::staticMetaObject),                            \
+          new PASTE(klass, ActionProxyStatic)                                  \
+    }                                                                          \
+  }
 
 // A horrific static that enables us to use dynamic dispatch of static methods
 // dependent on a widget's QMetaObject. We get the static methods and
 // ActionProxies via this map.  Find a better way!
 map<const QMetaObject *, WidgetHintingData> QWidgetMetadataRegistry = {
-    {&QLabel::staticMetaObject,
-     {&QLabelActionProxy::staticMetaObject, new QLabelActionProxyStatic}},
-    {&QAbstractButton::staticMetaObject,
-     {&QAbstractButtonActionProxy::staticMetaObject,
-      new QAbstractButtonActionProxyStatic}},
-    {&QGroupBox::staticMetaObject,
-     {&QGroupBoxActionProxy::staticMetaObject, new QGroupBoxActionProxyStatic}},
-    {&QWidget::staticMetaObject,
-     {&QWidgetActionProxy::staticMetaObject, new QWidgetActionProxyStatic}},
-    {&QTabBar::staticMetaObject,
-     {&QTabBarActionProxy::staticMetaObject, new QTabBarActionProxyStatic}},
-    {&QStackedWidget::staticMetaObject,
-     {&QStackedWidgetActionProxy::staticMetaObject,
-      new QStackedWidgetActionProxyStatic}},
-    {&QLineEdit::staticMetaObject,
-     {&QLineEditActionProxy::staticMetaObject, new QLineEditActionProxyStatic}},
-    {&QTableView::staticMetaObject,
-     {&QTableViewActionProxy::staticMetaObject,
-      new QTableViewActionProxyStatic}}};
+    METADATA_REGISTRY_ENTRY(QAbstractButton),
+    METADATA_REGISTRY_ENTRY(QAbstractItemView),
+    METADATA_REGISTRY_ENTRY(QComboBox),
+    METADATA_REGISTRY_ENTRY(QGroupBox),
+    METADATA_REGISTRY_ENTRY(QLabel),
+    METADATA_REGISTRY_ENTRY(QLineEdit),
+    METADATA_REGISTRY_ENTRY(QListView),
+    METADATA_REGISTRY_ENTRY(QMenuBar),
+    METADATA_REGISTRY_ENTRY(QStackedWidget),
+    METADATA_REGISTRY_ENTRY(QTabBar),
+    METADATA_REGISTRY_ENTRY(QTableView),
+    METADATA_REGISTRY_ENTRY(QWidget),
+};
 
 const WidgetHintingData
 QWidgetActionProxy::getMetadataForMetaObject(const QMetaObject *widgetMO) {
@@ -227,6 +249,8 @@ bool QWidgetActionProxy::actGeneric(BaseAction *action) {
     return this->yank(qobject_cast<YankAction *>(action));
   case Contextable:
     return this->contextMenu(qobject_cast<ContextMenuAction *>(action));
+  case Menuable:
+    return this->menu(qobject_cast<MenuBarAction *>(action));
   default:
     logCritical << "BaseAction for HintMode" << action->mode
                 << "not available in" << __PRETTY_FUNCTION__;
@@ -250,6 +274,8 @@ void QWidgetActionProxyStatic::hintGeneric(
   case Contextable:
     return hintContextMenuable(qobject_cast<ContextMenuAction *>(action),
                                widget, proxies);
+  case Menuable:
+    return hintMenuable(qobject_cast<MenuBarAction *>(action), widget, proxies);
   default:
     logCritical << "BaseAction for HintMode" << action->mode
                 << "not available in" << __PRETTY_FUNCTION__;
@@ -285,8 +311,6 @@ static void hintGenericHelper(BaseAction *action, QWidget *widget,
       if (metadata.staticMethods->isHintableGeneric(action, widget)) {
         QWidgetActionProxy *proxy =
             QWidgetActionProxy::createForMetaObject(mo, widget);
-
-        // fix this up
         proxies.append(proxy);
       }
 
@@ -321,6 +345,19 @@ void QWidgetActionProxyStatic::hintContextMenuable(
     ContextMenuAction *action, QWidget *widget,
     QList<QWidgetActionProxy *> &proxies) {
   hintGenericHelper(action, widget, proxies);
+}
+
+// Jump directly to QMenuBar subclasses
+void QWidgetActionProxyStatic::hintMenuable(
+    MenuBarAction *action, QWidget *widget,
+    QList<QWidgetActionProxy *> &proxies) {
+  QList<QMenuBar *> menuBars = widget->findChildren<QMenuBar *>();
+  for (auto menuBar : menuBars) {
+    if (menuBar->isVisible() && menuBar->isEnabled()) {
+      QMenuBarActionProxyStatic menuBarStatic;
+      menuBarStatic.hintMenuable(action, menuBar, proxies);
+    }
+  }
 }
 
 bool QWidgetActionProxy::contextMenu(ContextMenuAction *action) {
@@ -376,6 +413,34 @@ bool QAbstractButtonActionProxy::yank(YankAction *action) {
   return true;
 }
 
+// QComboBoxActionProxy
+
+bool QComboBoxActionProxyStatic::isActivatable(ActivateAction *action,
+                                               QWidget *widget) {
+  QOBJECT_CAST_ASSERT(QComboBox, widget);
+  return instance->count() > 0;
+}
+
+bool QComboBoxActionProxyStatic::isEditable(EditAction *action,
+                                            QWidget *widget) {
+  QOBJECT_CAST_ASSERT(QComboBox, widget);
+  return instance->isEditable();
+}
+
+bool QComboBoxActionProxy::activate(ActivateAction *action) {
+  QOBJECT_CAST_ASSERT(QComboBox, widget);
+  instance->showPopup();
+  // action->addNextStage(instance);
+  return false;
+}
+
+bool QComboBoxActionProxy::yank(YankAction *action) {
+  QOBJECT_CAST_ASSERT(QComboBox, widget);
+  QClipboard *clipboard = QGuiApplication::clipboard();
+  clipboard->setText(instance->currentText());
+  return true;
+}
+
 // QGroupBoxActionProxy
 
 bool QGroupBoxActionProxyStatic::isActivatable(ActivateAction *action,
@@ -396,6 +461,41 @@ bool QLabelActionProxy::yank(YankAction *action) {
   QClipboard *clipboard = QGuiApplication::clipboard();
   clipboard->setText(instance->text());
   return true;
+}
+
+// QMenuBarActionProxy
+
+void QMenuBarActionProxyStatic::hintMenuable(
+    MenuBarAction *action, QWidget *widget,
+    QList<QWidgetActionProxy *> &proxies) {
+  QOBJECT_CAST_ASSERT(QMenuBar, widget);
+  for (auto menuAction : instance->actions()) {
+    if (menuAction->isEnabled()) {
+      QRect geometry = instance->actionGeometry(menuAction);
+      QMenuBarActionProxy *proxy =
+          new QMenuBarActionProxy(instance, geometry.topLeft(), menuAction);
+      proxies.append(proxy);
+    }
+  }
+}
+
+// Helper that should be in Qt itself.
+QMenu *getMenuForMenuBarAction(QMenuBar *menuBar, QAction *action) {
+  for (auto menu : menuBar->findChildren<QMenu *>()) {
+    if (menu->menuAction() == action)
+      return menu;
+  }
+  return nullptr;
+}
+
+bool QMenuBarActionProxy::menu(MenuBarAction *tetradactylAction) {
+  QOBJECT_CAST_ASSERT(QMenuBar, widget);
+  logInfo << "Opening menu of menu bar" << menuAction << instance;
+  QMenu *menu = getMenuForMenuBarAction(instance, menuAction);
+  Q_ASSERT(menu != nullptr);
+  menu->show();
+  tetradactylAction->addNextStage(menu);
+  return false;
 }
 
 // QStackedWidgetActionProxy

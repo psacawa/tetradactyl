@@ -49,7 +49,14 @@ struct ControllerSettings {
   ControllerKeymap keymap;
 };
 
-enum HintMode { Activatable, Editable, Yankable, Focusable, Contextable };
+enum HintMode {
+  Activatable,
+  Editable,
+  Yankable,
+  Focusable,
+  Contextable,
+  Menuable
+};
 Q_ENUM_NS(HintMode);
 
 // Manages global Tetradactyl state of application.
@@ -98,6 +105,8 @@ public:
 
   WindowController(QWidget *target, QObject *parent);
   virtual ~WindowController();
+
+  Overlay *findOverlayForWidget(QWidget *);
   const QList<Overlay *> &overlays();
   Overlay *mainOverlay();
   Overlay *activeOverlay();
@@ -129,6 +138,7 @@ signals:
 
 private:
   void cleanupHints();
+  void cleanupAction();
   bool eventFilter(QObject *obj, QEvent *ev);
   void accept(QWidgetActionProxy *widgetProxy);
   void filterHints();

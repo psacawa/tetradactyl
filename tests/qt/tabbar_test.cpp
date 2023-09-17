@@ -5,17 +5,15 @@
 #include <QTabBar>
 #include <QTabWidget>
 #include <QtTest>
-#include <qtestcase.h>
-#include <qtestkeyboard.h>
 
-#include "common.h"
 #include <qt/common.h>
 #include <qt/controller.h>
 #include <qt/hint.h>
 #include <qt/overlay.h>
 
+#include "common.h"
+
 // from "git://qtbase/examples/widgets/dialogs/tabdialog"
-#include <qtestsupport_core.h>
 #include <tabdialog/tabdialog.h>
 
 namespace Tetradactyl {

@@ -71,7 +71,7 @@ static ControllerSettings baseTestSettings() {
                  .focus = QKeySequence(Qt::Key_Semicolon),
                  .yank = QKeySequence(Qt::Key_Y),
                  .activateMenu = QKeySequence(Qt::Key_M),
-                 .activateContext = QKeySequence(Qt::Key_G, Qt::Key_C),
+                 .activateContext = QKeySequence(Qt::Key_C),
                  .upScroll = QKeySequence(Qt::Key_K),
                  .downScroll = QKeySequence(Qt::Key_J)},
   };
@@ -201,6 +201,8 @@ void WindowController::initializeShortcuts() {
   QShortcut *contextMenuShortcut =
       new QShortcut(keymap.activateContext, p_target,
                     [this] { hint(HintMode::Contextable); });
+  QShortcut *menuShortcut = new QShortcut(keymap.activateMenu, p_target,
+                                          [this] { hint(HintMode::Menuable); });
   QShortcut *cancelShortcut =
       new QShortcut(keymap.cancel, p_target, [this] { cancel(); });
   shortcuts.append(activateShortcut);
@@ -208,6 +210,7 @@ void WindowController::initializeShortcuts() {
   shortcuts.append(yankShortcut);
   shortcuts.append(focusShortcut);
   shortcuts.append(contextMenuShortcut);
+  shortcuts.append(menuShortcut);
   shortcuts.append(cancelShortcut);
 }
 
@@ -227,6 +230,16 @@ WindowController::~WindowController() {
   for (auto shortcut : shortcuts) {
     delete shortcut;
   }
+}
+
+// Find overlay which has the widget as *descendant*, not just as a child, which
+// would be easier
+Overlay *WindowController::findOverlayForWidget(QWidget *widget) {
+  for (auto overlay : p_overlays) {
+    if (overlay->parentWidget()->isAncestorOf(widget))
+      return overlay;
+  }
+  return nullptr;
 }
 
 /*
@@ -345,7 +358,7 @@ void WindowController::hint(HintMode hintMode) {
     logWarning << __PRETTY_FUNCTION__ << "from" << mode;
     return;
   }
-  logInfo << __PRETTY_FUNCTION__ << hintMode;
+  logInfo << "Hinting in " << hintMode <<"at" << target();
   hintBuffer = "";
   currentAction = BaseAction::createActionByHintMode(hintMode, this);
   currentAction->act();
@@ -358,6 +371,7 @@ void WindowController::hint(HintMode hintMode) {
   currentHintMode = hintMode;
   emit hinted(hintMode);
 }
+
 void WindowController::acceptCurrent() {
   HintLabel *hint = activeOverlay()->selectedHint();
   if (hint == nullptr) {
@@ -368,6 +382,7 @@ void WindowController::acceptCurrent() {
   accept(proxy);
 }
 
+// Accept *one* stage of a potentially multi-stage action.
 void WindowController::accept(QWidgetActionProxy *widgetProxy) {
   if (!(mode == ControllerMode::Hint)) {
     logWarning << __PRETTY_FUNCTION__ << "from" << mode;
@@ -380,7 +395,10 @@ void WindowController::accept(QWidgetActionProxy *widgetProxy) {
   cleanupHints();
   emit accepted(currentHintMode, widgetProxy->widget,
                 widgetProxy->positionInWidget);
-  mode = Normal;
+  if (currentAction->isDone()) {
+    cleanupAction();
+    mode = Normal;
+  }
 }
 
 void WindowController::pushKey(char ch) {
@@ -416,10 +434,13 @@ void WindowController::cleanupHints() {
     overlay->clear();
     overlay->hide();
   }
-  delete currentAction;
-  currentAction = nullptr;
   for (auto sc : shortcuts)
     sc->setEnabled(true);
+}
+
+void WindowController::cleanupAction() {
+  delete currentAction;
+  currentAction = nullptr;
 }
 
 void WindowController::cancel() {

@@ -111,14 +111,16 @@ public:
   Overlay *mainOverlay();
   Overlay *activeOverlay();
 
-  QList<QWidget *> getHintables(HintMode mode);
-  ControllerMode mode = ControllerMode::Normal;
+  QList<QWidget *> getHintables(HintMode hintMode);
   HintMode currentHintMode;
+
+  ControllerMode controllerMode();
+  void setControllerMode(ControllerMode mode);
 
   QWidget *target();
   bool earlyKeyEventFilter(QKeyEvent *ev);
   void addOverlay(QWidget *target);
-  void removeOverlay(Overlay *overlay, bool fromSignal);
+  void removeOverlay(Overlay *overlay, bool fromSignal = false);
   bool isActing();
 
 public slots:
@@ -130,11 +132,12 @@ public slots:
   void popKey();
 
 signals:
-  void hinted(HintMode mode);
+  void modeChanged(ControllerMode mode);
+  void hinted(HintMode hintMode);
   // Can be more detailed about the accepted hint
-  void accepted(HintMode mode, QWidget *widget,
+  void accepted(HintMode hintMode, QWidget *widget,
                 QPoint positionInWidget = QPoint(0, 0));
-  void cancelled(HintMode mode);
+  void cancelled(HintMode hintMode);
 
 private:
   void cleanupHints();
@@ -146,6 +149,7 @@ private:
   void initializeOverlays();
   void tryAttachController(QWidget *widget);
 
+  ControllerMode p_controllerMode = ControllerMode::Normal;
   BaseAction *currentAction;
   Controller *controller;
   QWidget *p_target;
@@ -163,6 +167,15 @@ inline const QList<Overlay *> &WindowController::overlays() {
 // TODO 10/09/20 psacawa: rozwiń
 inline Overlay *WindowController::activeOverlay() { return mainOverlay(); }
 inline bool WindowController::isActing() { return currentAction != nullptr; }
+inline WindowController::ControllerMode WindowController::controllerMode() {
+  return p_controllerMode;
+}
+inline void WindowController::setControllerMode(ControllerMode mode) {
+  bool changed = mode != p_controllerMode;
+  p_controllerMode = mode;
+  if (changed)
+    emit modeChanged(mode);
+}
 
 class HintGenerator {
 

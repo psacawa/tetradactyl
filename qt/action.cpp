@@ -77,13 +77,6 @@ void BaseAction::accept(QWidgetActionProxy *proxy) {
     finish();
 }
 
-// ActivateAction
-
-ActivateAction::ActivateAction(WindowController *controller)
-    : BaseAction(controller) {
-  mode = HintMode::Activatable;
-}
-
 void BaseAction::act() {
   QList<QWidgetActionProxy *> hintData;
   // get the hints
@@ -108,8 +101,16 @@ void BaseAction::act() {
         QString::fromStdString(*hintStringGenerator), actionProxy);
     hintStringGenerator++;
   }
-  winController->mainOverlay()->setVisible(true);
   winController->mainOverlay()->resetSelection();
+}
+
+// ActivateAction
+
+ActivateAction::ActivateAction(WindowController *controller)
+    : BaseAction(controller) {
+  mode = HintMode::Activatable;
+  // Activation is by default immediately true, but there are exceptions for
+  // e.g. QComboBox
 }
 
 // EditAction
@@ -136,6 +137,7 @@ YankAction::YankAction(WindowController *controller) : BaseAction(controller) {
 MenuBarAction::MenuBarAction(WindowController *controller)
     : BaseAction(controller) {
   mode = HintMode::Menuable;
+  // For menu actions
 }
 
 // ContextMenuAction
@@ -143,6 +145,7 @@ MenuBarAction::MenuBarAction(WindowController *controller)
 ContextMenuAction::ContextMenuAction(WindowController *controller)
     : BaseAction(controller) {
   mode = HintMode::Contextable;
+  // For menu actions
 }
 
 // QList<QWidget *> ContextMenuAction::getHintables(QWidget *root) { return; }
@@ -490,12 +493,36 @@ QMenu *getMenuForMenuBarAction(QMenuBar *menuBar, QAction *action) {
 
 bool QMenuBarActionProxy::menu(MenuBarAction *tetradactylAction) {
   QOBJECT_CAST_ASSERT(QMenuBar, widget);
-  logInfo << "Opening menu of menu bar" << menuAction << instance;
   QMenu *menu = getMenuForMenuBarAction(instance, menuAction);
   Q_ASSERT(menu != nullptr);
-  menu->show();
+
+  QPoint pos = menu->mapToGlobal(QPoint(0, 0));
+  logInfo << "Opening menu of menu bar" << menuAction << instance << pos;
+  QPoint globalPos = instance->window()->mapToGlobal(QPoint(0, 0));
+  QPoint positionInWindow = instance->actionGeometry(menuAction).bottomLeft();
+  menu->popup(globalPos + positionInWindow);
   tetradactylAction->addNextStage(menu);
   return false;
+}
+
+// QMenuActionProxy
+
+void QMenuActionProxyStatic::hintMenuable(
+    MenuBarAction *action, QWidget *widget,
+    QList<QWidgetActionProxy *> &proxies) {
+  QOBJECT_CAST_ASSERT(QMenu, widget);
+  for (auto menuAction : instance->actions()) {
+    QRect geometry = instance->actionGeometry(menuAction);
+    QMenuBarActionProxy *proxy =
+        new QMenuBarActionProxy(instance, geometry.topLeft(), menuAction);
+    proxies.append(proxy);
+  }
+}
+
+bool QMenuActionProxy::menu(MenuBarAction *action) {
+  // TODO 17/09/20 psacawa: finish this
+  return true;
+  ;
 }
 
 // QStackedWidgetActionProxy

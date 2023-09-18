@@ -109,7 +109,7 @@ void BasicControllerTest::testControllersAndOverlayCreation() {
   QVERIFY2(overlays.length() == 1, "One Tetradactyl::Overlay was created");
   Overlay *overlay = overlays.at(0);
   QVERIFY2(overlay->parent() == win, "Overlay parent is window widget");
-  QVERIFY(!overlay->isVisible());
+  QVERIFY(overlay->isVisible());
 }
 
 void BasicControllerTest::testHintActivate() {
@@ -117,7 +117,6 @@ void BasicControllerTest::testHintActivate() {
   QList<HintLabel *> overlayChildren = overlay->hints();
   QTRY_VERIFY2(overlayChildren.length() == NUM_BUTTONS,
                "Activating fires underlying widgets signal");
-  QVERIFY(overlay->isVisible());
 
   HintLabel *label;
   label = qobject_cast<HintLabel *>(overlayChildren.at(0));
@@ -137,7 +136,8 @@ void BasicControllerTest::testHintActivate() {
            "Activating fires underlying widgets signal");
   overlayChildren = overlay->hints();
   QTRY_VERIFY2(overlayChildren.length() == 0, "Activating removes hint labels");
-  QVERIFY2(!overlay->isVisible(), "Overlay invisible after hint accepted");
+  QVERIFY2(win->findChildren<HintLabel *>().length() == 0,
+           "Hints destroyed after hint accepted");
 }
 
 void BasicControllerTest::testHintCancel() {
@@ -152,7 +152,8 @@ void BasicControllerTest::testHintCancel() {
   QCOMPARE(cancelledSpy.count(), 1);
   auto cancelledSignalArgs = cancelledSpy.takeFirst();
   QCOMPARE(cancelledSignalArgs.at(0), Tetradactyl::HintMode::Activatable);
-  QVERIFY2(!overlay->isVisible(), "Overlay invisible after hinting cancelled");
+  QVERIFY2(win->findChildren<HintLabel *>().length() == 0,
+           "Hints destroyed after hint accepted");
 
   // TODO 12/09/20 psacawa: finish this
 }
@@ -229,7 +230,6 @@ void BasicControllerTest::testHintFocusInput() {
   QList<HintLabel *> hints = overlay->visibleHints();
   QVERIFY2(hints.length() == NUM_LINEEDITS,
            "Hinting FocusInput hints QLineEdit");
-  QVERIFY(overlay->isVisible());
   for (auto hint : hints)
     QVERIFY2(hint->target->metaObject() == &QLineEdit::staticMetaObject,
              "Hinting FocusInput hints QLineEdit");
@@ -238,13 +238,11 @@ void BasicControllerTest::testHintFocusInput() {
   QWidget *target = hints.at(1)->target;
 
   QTest::keyClick(win, Qt::Key_S);
-  QVERIFY(!overlay->isVisible());
   QVERIFY2(win->focusWidget() == target,
            "Accepting focus input action set focus to selected QLineEdit");
 }
 void BasicControllerTest::testHintYank() {
   QTest::keyClick(win, Qt::Key_Y);
-  QVERIFY(overlay->isVisible());
   auto hints = overlay->hints();
   QCOMPARE(hints.length(), NUM_BUTTONS + NUM_LABELS);
   for (auto hint : hints)
@@ -260,7 +258,6 @@ void BasicControllerTest::testHintYank() {
   // label0 text copied
   QCOMPARE(clipboard->text(), buttons.at(0)->text());
 
-  QVERIFY(!overlay->isVisible());
   QCOMPARE(overlay->hints().length(), 0);
 }
 void BasicControllerTest::testHintFocus() {
@@ -275,7 +272,6 @@ void BasicControllerTest::testHintFocus() {
   QWidget *secondFocusableWidget = buttons.at(1);
   QTest::keyClick(win, Qt::Key_A);
   QTest::keyClick(win, Qt::Key_S);
-  QVERIFY(!overlay->isVisible());
   QVERIFY2(secondFocusableWidget->hasFocus(),
            "Accepted widget for HintMode::Focusable has focus set");
 }

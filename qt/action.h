@@ -34,9 +34,6 @@ public:
   virtual void act();
   BaseAction(WindowController *controller) : winController(controller) {
     currentRoot = winController->target();
-
-    // eventually default  to false
-    done = true;
   }
   virtual ~BaseAction() {}
   virtual void accept(QWidgetActionProxy *proxy);
@@ -50,8 +47,8 @@ signals:
   void stateChanged();
   void finished();
 
-private:
-  bool done;
+protected:
+  bool done = false;
   // Typically this corresponds to the the window widget of the
   // WindowController. That's the default. In the case of multi-step actions, it
   // may point to a QMenu Overlay
@@ -156,7 +153,9 @@ public:
     return false;
   }
   virtual bool isContextMenuable(ContextMenuAction *action, QWidget *widget);
-  virtual bool isMenuable(MenuBarAction *action, QWidget *widget) { return false; }
+  virtual bool isMenuable(MenuBarAction *action, QWidget *widget) {
+    return false;
+  }
 
   // how to recurse the hinting under the
   // widget?
@@ -303,8 +302,8 @@ public:
 
 class QMenuBarActionProxyStatic : public QWidgetActionProxyStatic {
 public:
-  virtual void hintMenuable(MenuBarAction *action, QWidget *widget,
-                            QList<QWidgetActionProxy *> &proxies);
+  void hintMenuable(MenuBarAction *action, QWidget *widget,
+                    QList<QWidgetActionProxy *> &proxies) override;
 };
 
 class QMenuBarActionProxy : public QWidgetActionProxy {
@@ -314,6 +313,28 @@ public:
                                   QAction *_menuAction)
       : QWidgetActionProxy(w, position), menuAction(_menuAction) {}
   virtual ~QMenuBarActionProxy() {}
+
+  bool menu(MenuBarAction *action) override;
+
+private:
+  QAction *menuAction;
+};
+
+// QMenuActionProxy
+
+class QMenuActionProxyStatic : public QWidgetActionProxyStatic {
+public:
+  void hintMenuable(MenuBarAction *action, QWidget *widget,
+                    QList<QWidgetActionProxy *> &proxies) override;
+};
+
+class QMenuActionProxy : public QWidgetActionProxy {
+  Q_OBJECT
+public:
+  Q_INVOKABLE QMenuActionProxy(QWidget *w, QPoint position,
+                               QAction *_menuAction)
+      : QWidgetActionProxy(w, position), menuAction(_menuAction) {}
+  virtual ~QMenuActionProxy() {}
 
   bool menu(MenuBarAction *action) override;
 

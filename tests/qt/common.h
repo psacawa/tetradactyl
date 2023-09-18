@@ -18,9 +18,15 @@ protected:
     qInfo() << __PRETTY_FUNCTION__;
     Controller::createController();
     controller = Controller::instance();
-    windowController = controller->windows().at(0);
+    windowController = controller->windows().value(0, nullptr);
+    if (windowController == nullptr)
+      QFAIL("No WindowController found in Controller. Did you create the demo "
+            "main widget?");
+
     overlay = windowController->mainOverlay();
 
+    modeChangedSpy =
+        new QSignalSpy(windowController, &WindowController::modeChanged);
     hintedSpy = new QSignalSpy(windowController, &WindowController::hinted);
     acceptedSpy = new QSignalSpy(windowController, &WindowController::accepted);
     cancelledSpy =
@@ -31,7 +37,7 @@ protected:
   WindowController *windowController;
   Overlay *overlay;
 
-  QSignalSpy *hintedSpy, *acceptedSpy, *cancelledSpy;
+  QSignalSpy *modeChangedSpy, *hintedSpy, *acceptedSpy, *cancelledSpy;
 };
 
 void waitForWindowActiveOrFail(QWidget *);

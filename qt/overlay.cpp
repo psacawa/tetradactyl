@@ -1,8 +1,10 @@
 // Copyright 2023 Paweł Sacawa. All rights reserved.
 #include <QDebug>
+#include <QLabel>
 #include <QLayoutItem>
 #include <QLoggingCategory>
 #include <QPainter>
+#include <QStringLiteral>
 
 #include <qobject.h>
 
@@ -10,23 +12,45 @@
 #include <iterator>
 
 #include "action.h"
+#include "common.h"
+#include "controller.h"
 #include "hint.h"
 #include "logging.h"
 #include "overlay.h"
 
 using std::copy_if;
 
+const char statusIndicatorStylesheet[] =
+    "QLabel { background-color: #444; color: white; font-family: Monospace; "
+    " padding: 1px; }";
+
 LOGGING_CATEGORY_COLOR("tetradactyl.overlay", Qt::yellow);
 
 namespace Tetradactyl {
 
-Overlay::Overlay(QWidget *target) : QWidget(target), p_selectedHint(nullptr) {
+// target need not be the target of the  WindowController
+Overlay::Overlay(WindowController *windowController, QWidget *target)
+    : QWidget(target), p_selectedHint(nullptr), controller(windowController) {
+  Q_ASSERT(controller != nullptr);
   Q_ASSERT(target != nullptr);
   // Since Overlay is not in any layout, this is needed.
   setFixedSize(2000, 2000);
-  setLayout(new OverlayLayout(this));
   setAttribute(Qt::WA_TransparentForMouseEvents);
-  hide();
+
+  p_statusIndicator = new QLabel(enumKeyToValue<WindowController::ControllerMode>(
+                                   windowController->controllerMode()),
+                               this);
+  p_statusIndicator->setStyleSheet(statusIndicatorStylesheet);
+  setLayout(new OverlayLayout(this));
+
+  // TODO 18/09/20 psacawa: finish this
+  connect(windowController, &WindowController::modeChanged, p_statusIndicator,
+          [this](WindowController::ControllerMode mode) {
+            p_statusIndicator->setText(
+                enumKeyToValue<WindowController::ControllerMode>(mode));
+          });
+
+  show();
 }
 
 QList<HintLabel *> Overlay::visibleHints() {
@@ -41,6 +65,7 @@ void Overlay::addHint(QString text, QWidgetActionProxy *widgetProxy) {
       new HintLabel(text, widgetProxy->widget, this, widgetProxy);
   overlayLayout()->addHint(newHint);
   p_hints.append(newHint);
+  newHint->show();
   update();
 }
 
@@ -145,6 +170,10 @@ QList<HintLabel *> findHintsByTargetHelper(Overlay *overlay,
   return ret;
 }
 
+OverlayLayout::OverlayLayout(Overlay *overlay) : QLayout(overlay) {
+  statusIndicatorItem = new QWidgetItem(overlay->p_statusIndicator);
+}
+
 OverlayLayout::~OverlayLayout() {
   QLayoutItem *item;
   while ((item = takeAt(0)))
@@ -159,10 +188,10 @@ void OverlayLayout::addItem(QLayoutItem *item) { items.append(item); }
 // Perform the layout. Must make sure that hints don't occlude one another or
 // escape the window geometry here.
 void OverlayLayout::setGeometry(const QRect &updateRect) {
+  QRect hostGeometry = overlay()->parentWidget()->geometry();
   for (auto item : items) {
     HintLabel *hint = qobject_cast<HintLabel *>(item->widget());
     QRect hintGeometry = QRect(hint->positionInOverlay, hint->sizeHint());
-    QRect hostGeometry = overlay()->parentWidget()->geometry();
     if (!hintGeometry.intersects(hintGeometry)) {
       logWarning << "Creating hint " << hint << "at" << hintGeometry
                  << "which doesn't intersect overlay host geometry"
@@ -170,6 +199,14 @@ void OverlayLayout::setGeometry(const QRect &updateRect) {
     }
     item->setGeometry(hintGeometry);
   }
+  QSize statusIndicatorSize = statusIndicatorItem->sizeHint();
+  QRect statusIndicatorGeometry(
+      QPoint(hostGeometry.size().width(), hostGeometry.size().height()),
+      statusIndicatorSize);
+  statusIndicatorGeometry.translate(-statusIndicatorSize.width(),
+                                    -statusIndicatorSize.height());
+  logInfo << "statusIndicatorGeometry" << statusIndicatorGeometry;
+  statusIndicatorItem->setGeometry(statusIndicatorGeometry);
 }
 
 QLayoutItem *OverlayLayout::itemAt(int index) const {
@@ -184,7 +221,10 @@ QLayoutItem *OverlayLayout::takeAt(int index) {
   return item;
 }
 
-QSize OverlayLayout::sizeHint() const { return minimumSize(); };
+QSize OverlayLayout::sizeHint() const {
+  // can't use  widget()->size() here because in Qt5 widget() isn't const
+  return minimumSize();
+};
 
 QSize OverlayLayout::minimumSize() const { return QSize(2000, 2000); };
 

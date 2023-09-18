@@ -1,5 +1,6 @@
 // Copyright 2023 Paweł Sacawa. All rights reserved.
 #pragma once
+#include <QLabel>
 #include <QLayout>
 #include <QString>
 #include <QWidget>
@@ -13,6 +14,7 @@ class HintLabel;
 class QWidgetActionProxy;
 class OverlayLayout;
 class Overlay;
+class WindowController;
 
 QList<HintLabel *> findHintsByTargetHelper(Overlay *overlay,
                                            const QMetaObject *mo);
@@ -20,13 +22,14 @@ QList<HintLabel *> findHintsByTargetHelper(Overlay *overlay,
 class Overlay : public QWidget {
   Q_OBJECT
 public:
-  Overlay(QWidget *target);
+  Overlay(WindowController *controller, QWidget *target);
   virtual ~Overlay();
 
   OverlayLayout *overlayLayout();
   void addHint(QString text, QWidgetActionProxy *widgetProxy);
   void removeHint(HintLabel *hint);
   const QList<HintLabel *> &hints();
+  const QLabel *statusIndicator();
   QList<HintLabel *> visibleHints();
   void clear();
   int updateHints(QString &);
@@ -44,14 +47,19 @@ public:
 private:
   QList<HintLabel *> p_hints;
   HintLabel *p_selectedHint;
+  QLabel *p_statusIndicator;
+  WindowController *controller;
+
+  friend class OverlayLayout;
 };
 
 inline const QList<HintLabel *> &Overlay::hints() { return p_hints; }
+inline const QLabel *Overlay::statusIndicator() { return p_statusIndicator; }
 
 class OverlayLayout : public QLayout {
   Q_OBJECT
 public:
-  OverlayLayout(Overlay *overlay) : QLayout(overlay) {}
+  OverlayLayout(Overlay *overlay);
   virtual ~OverlayLayout();
 
   int count() const override;
@@ -65,6 +73,7 @@ public:
 
 private:
   Overlay *overlay() const;
+  QLayoutItem *statusIndicatorItem;
   QList<QLayoutItem *> items;
 };
 

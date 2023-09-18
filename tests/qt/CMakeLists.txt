@@ -59,10 +59,11 @@ function(add_qt6_test_depending_on_example_demo _test_name _example_relpath)
   cmake_parse_arguments(PARSE_ARGV 2 arg "" "LIBRARIES;LABELS" "")
   set(_example_source_dir "${QT_EXAMPLES_SOURCE_PATH}/${_example_relpath}")
   file(GLOB _example_sources "${_example_source_dir}/*.cpp")
+  file(GLOB _example_qrc "${_example_source_dir}/*.qrc")
 
-  # add_executable(${_test_name} "${TETRADACTYL_SOURCES}" ${_example_sources})
-  add_executable(${_test_name} ${_test_name}.cpp common.cpp
-                               "${TETRADACTYL_SOURCES}" ${_example_sources})
+  add_executable(
+    ${_test_name} ${_test_name}.cpp common.cpp "${TETRADACTYL_SOURCES}"
+                  ${_example_sources} ${_example_qrc})
   # the trick
   target_compile_options(
     ${_test_name} PRIVATE -include "${CMAKE_CURRENT_SOURCE_DIR}/weak-main.h")
@@ -98,6 +99,13 @@ if(TETRADACTYL_QT6)
   target_sources(basiccontroller_test PRIVATE ${TETRADACTYL_SOURCES})
 
   add_qt6_test_depending_on_example_demo(
-    tabbar_test "widgets/dialogs/tabdialog" LABELS "controller;tabbar;qt6")
+    basic_test "widgets/widgets/calculator" LABELS "controller;qt6")
+
+  add_qt6_test_depending_on_example_demo(
+    tabbar_test "widgets/dialogs/tabdialog" LABELS "controller;qtabbar;qt6")
+
+  add_qt6_test_depending_on_example_demo(
+    menubaraction_test "widgets/mainwindows/mainwindow" LABELS
+    "controller;qmenubar;qt6")
 
 endif()

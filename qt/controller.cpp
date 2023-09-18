@@ -247,10 +247,10 @@ Overlay *WindowController::findOverlayForWidget(QWidget *widget) {
  * Called from the application eventFilter.
  */
 bool WindowController::earlyKeyEventFilter(QKeyEvent *kev) {
-  logInfo << __PRETTY_FUNCTION__ << kev;
+  logInfo << __FUNCTION__ << kev;
   auto type = kev->type();
   if (type == QEvent::KeyPress) {
-    if (mode == ControllerMode::Hint) {
+    if (controllerMode() == ControllerMode::Hint) {
       if (kev->key() == Qt::Key_Escape) {
         cancel();
         return true;
@@ -282,7 +282,7 @@ bool WindowController::eventFilter(QObject *obj, QEvent *ev) {
    * auto type = ev->type();
    * if (type == QEvent::KeyPress) {
    *   QKeyEvent *kev = static_cast<QKeyEvent *>(ev);
-   *   if (mode == ControllerMode::Hint) {
+   *   if (controllerMode() == ControllerMode::Hint) {
    *     if (kev->key() == Qt::Key_Escape) {
    *       cancel();
    *     } else if (kev->key() == Qt::Key_Enter) {
@@ -335,7 +335,8 @@ void WindowController::tryAttachController(QWidget *target) {
 }
 
 void WindowController::addOverlay(QWidget *target) {
-  p_overlays.append(new Overlay(target));
+  Overlay *overlay = new Overlay(this, target);
+  p_overlays.append(overlay);
   connect(this, &WindowController::destroyed, this, [this](QObject *obj) {
     Overlay *overlay = qobject_cast<Overlay *>(obj);
     this->removeOverlay(overlay, true);
@@ -354,15 +355,24 @@ void WindowController::removeOverlay(Overlay *overlay, bool fromSignal) {
 
 void WindowController::hint(HintMode hintMode) {
   qInfo() << __PRETTY_FUNCTION__;
-  if (!(mode == ControllerMode::Normal)) {
-    logWarning << __PRETTY_FUNCTION__ << "from" << mode;
+  if (!(controllerMode() == ControllerMode::Normal)) {
+    logWarning << __PRETTY_FUNCTION__ << "from" << controllerMode();
     return;
   }
-  logInfo << "Hinting in " << hintMode <<"at" << target();
+  logInfo << "Hinting in " << hintMode << "at" << target();
   hintBuffer = "";
   currentAction = BaseAction::createActionByHintMode(hintMode, this);
   currentAction->act();
-  mode = ControllerMode::Hint;
+
+  // Action may terminate immediately if there are no hints made
+  if (currentAction->isDone()) {
+    cleanupAction();
+    return;
+  }
+
+  // We say that no controller state change occured if the the action ended
+  // immediately.
+  setControllerMode(Hint);
 
   // In hint mode, just disable shortcuts. Need something cleaner?
   for (auto sc : shortcuts)
@@ -384,26 +394,29 @@ void WindowController::acceptCurrent() {
 
 // Accept *one* stage of a potentially multi-stage action.
 void WindowController::accept(QWidgetActionProxy *widgetProxy) {
-  if (!(mode == ControllerMode::Hint)) {
-    logWarning << __PRETTY_FUNCTION__ << "from" << mode;
+  if (!(controllerMode() == ControllerMode::Hint)) {
+    logWarning << __PRETTY_FUNCTION__ << "from" << controllerMode();
     return;
   }
   QWidget *w = widgetProxy->widget;
   logInfo << "Accepted " << w << "at" << widgetProxy->positionInWidget << "in"
           << currentHintMode;
-  widgetProxy->actGeneric(currentAction);
+  // widgetProxy->actGeneric(currentAction);
+  currentAction->accept(widgetProxy);
   cleanupHints();
   emit accepted(currentHintMode, widgetProxy->widget,
                 widgetProxy->positionInWidget);
   if (currentAction->isDone()) {
     cleanupAction();
-    mode = Normal;
+    setControllerMode(Normal);
+  } else {
+    currentAction->act();
   }
 }
 
 void WindowController::pushKey(char ch) {
-  if (!(mode == ControllerMode::Hint)) {
-    logWarning << __PRETTY_FUNCTION__ << "from" << mode;
+  if (!(controllerMode() == ControllerMode::Hint)) {
+    logWarning << __PRETTY_FUNCTION__ << "from" << controllerMode();
     return;
   }
   hintBuffer += ch;
@@ -416,8 +429,8 @@ void WindowController::pushKey(char ch) {
 }
 
 void WindowController::popKey() {
-  if (!(mode == ControllerMode::Hint)) {
-    logWarning << __PRETTY_FUNCTION__ << "from" << mode;
+  if (!(controllerMode() == ControllerMode::Hint)) {
+    logWarning << __PRETTY_FUNCTION__ << "from" << controllerMode();
     return;
   }
   hintBuffer.remove(hintBuffer.length() - 1, 1);
@@ -432,7 +445,7 @@ void WindowController::cleanupHints() {
   logDebug << __PRETTY_FUNCTION__;
   for (auto overlay : p_overlays) {
     overlay->clear();
-    overlay->hide();
+    // overlay->hide();
   }
   for (auto sc : shortcuts)
     sc->setEnabled(true);
@@ -444,13 +457,13 @@ void WindowController::cleanupAction() {
 }
 
 void WindowController::cancel() {
-  if (!(mode == ControllerMode::Hint)) {
-    logWarning << __PRETTY_FUNCTION__ << "from" << mode;
+  if (!(controllerMode() == ControllerMode::Hint)) {
+    logWarning << __PRETTY_FUNCTION__ << "from" << controllerMode();
     return;
   }
   cleanupHints();
   emit cancelled(currentHintMode);
-  mode = ControllerMode::Normal;
+  setControllerMode(Normal);
 }
 
 // For now the  hinting proceed only by type: QObjects whose meta-object

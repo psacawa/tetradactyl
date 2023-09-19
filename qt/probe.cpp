@@ -15,13 +15,14 @@
 
 #include <QtCore/private/qhooks_p.h>
 
-#include <cstdio>
+#include <csignal>
 
-#include "logging.h"
-#include "version.h"
+#include <common/backtrace.h>
 
 #include "controller.h"
+#include "logging.h"
 #include "probe.h"
+#include "version.h"
 
 LOGGING_CATEGORY_COLOR("tetradactyl.probe", Qt::red);
 
@@ -36,8 +37,14 @@ static RemoveQObjectCallback nextRemoveQObjectCallback;
 
 namespace Tetradactyl {
 
-void __attribute__((constructor)) initHooks() {
+void __attribute__((constructor)) init() {
 
+#ifdef DEBUG
+  install_backtrace_signal_handler(SIGSEGV);
+  install_backtrace_signal_handler(SIGIOT);
+#endif
+
+  // hooks
   nextStartupCallback =
       reinterpret_cast<StartupCallback>(qtHookData[HookIndex::Startup]);
   nextAddQObjectCallback =

@@ -1,9 +1,12 @@
 # Copyright 2023 Paweł Sacawa. All rights reserved.
-project(tmp LANGUAGES CXX)
-cmake_minimum_required(VERSION 3.20)
-
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
+
+include_directories("${CMAKE_SOURCE_DIR}")
+
+# features
+option(TETRADACTYL_QT5 "libtetradactyl-qt5" ON)
+option(TETRADACTYL_QT6 "libtetradactyl-qt6" ON)
 
 find_package(fmt)
 find_package(toml11 REQUIRED)
@@ -18,8 +21,12 @@ set(QT_COMMON_SOURCES
     modelviewproxies.cpp
     overlay.cpp
     probe.cpp
-    tetradactyl.qrc
-    )
+    tetradactyl.qrc)
+
+if(DEBUG)
+  list(APPEND QT_COMMON_SOURCES "${CMAKE_SOURCE_DIR}/common/backtrace.cpp")
+  message(STATUS "${QT_COMMON_SOURCES}")
+endif()
 
 if(TETRADACTYL_QT5)
   # tetradactyl-qt5
@@ -45,7 +52,6 @@ if(TETRADACTYL_QT6)
     REQUIRED)
 
   add_library(tetradactyl-qt6 SHARED ${QT_COMMON_SOURCES})
-
   target_link_libraries(tetradactyl-qt6 PRIVATE Qt6::Widgets)
   target_link_libraries(tetradactyl-qt6 PRIVATE Qt6::CorePrivate)
 

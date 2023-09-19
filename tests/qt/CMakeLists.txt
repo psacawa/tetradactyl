@@ -56,20 +56,27 @@ endfunction()
 # Make simple target/test which uses  all the  sources in $_example_relpath and
 # the source file $_test_source using the -include/#pragma weak main trick
 function(add_qt6_test_depending_on_example_demo _test_name _example_relpath)
+
   cmake_parse_arguments(PARSE_ARGV 2 arg "" "LIBRARIES;LABELS" "")
+
+  # get the demo dependencies
   set(_example_source_dir "${QT_EXAMPLES_SOURCE_PATH}/${_example_relpath}")
   file(GLOB _example_sources "${_example_source_dir}/*.cpp")
   file(GLOB _example_qrc "${_example_source_dir}/*.qrc")
 
   add_executable(
-    ${_test_name} ${_test_name}.cpp common.cpp "${TETRADACTYL_SOURCES}"
-                  ${_example_sources} ${_example_qrc})
-  # the trick
+    ${_test_name}
+    ${_test_name}.cpp common.cpp $<TARGET_OBJECTS:tetradactyl-qt6-test-object>
+    ${_example_sources} ${_example_qrc})
+
+  # the weak main trick
   target_compile_options(
     ${_test_name} PRIVATE -include "${CMAKE_CURRENT_SOURCE_DIR}/weak-main.h")
   target_include_directories(${_test_name} PRIVATE "${_example_source_dir}/..")
-  target_link_libraries(${_test_name} PRIVATE Qt::Widgets Qt::Test
+  target_link_libraries(${_test_name} PRIVATE tetradactyl-qt6-test-object
                                               ${arg_LIBRARIES})
+
+  # test
   add_test(NAME ${_test_name} COMMAND ${_test_name})
   set_tests_properties(${_test_name} PROPERTIES ENVIRONMENT
                                                 "QT_QPA_PLATFORM=offscreen")
@@ -89,6 +96,9 @@ if(TETRADACTYL_QT6)
       "${CMAKE_SOURCE_DIR}/qt/modelviewproxies.cpp"
       "${CMAKE_SOURCE_DIR}/qt/overlay.cpp"
       "${CMAKE_SOURCE_DIR}/qt/tetradactyl.qrc")
+
+  add_library(tetradactyl-qt6-test-object OBJECT ${TETRADACTYL_SOURCES})
+  target_link_libraries(tetradactyl-qt6-test-object PUBLIC Qt::Widgets Qt::Test)
 
   find_package(Qt6 REQUIRED COMPONENTS Widgets Test)
   import_qt6_examples(widgets)

@@ -20,40 +20,51 @@ set(QT_COMMON_SOURCES
     logging.cpp
     modelviewproxies.cpp
     overlay.cpp
-    probe.cpp
     tetradactyl.qrc)
 
-if(DEBUG)
-  list(APPEND QT_COMMON_SOURCES "${CMAKE_SOURCE_DIR}/common/backtrace.cpp")
-  message(STATUS "${QT_COMMON_SOURCES}")
-endif()
+# backward.cpp complains without this explicitly added
+add_compile_options(-fPIC)
 
-if(TETRADACTYL_QT5)
-  # tetradactyl-qt5
+set(SUPPORTED_QT_VERSIONS "5;6")
 
-  find_package(
-    Qt5
-    COMPONENTS Widgets
-    REQUIRED)
+foreach(_version ${SUPPORTED_QT_VERSIONS})
+  set(_tetradactyl_backend_enabled ${TETRADACTYL_QT${_version}})
+  set(_qt_version "Qt${_version}")
+  set(_tetradactyl_backend "tetradactyl-qt${_version}")
+  set(_tetradactyl_backend_object "tetradactyl-qt${_version}-object")
 
-  add_library(tetradactyl-qt5 SHARED "${QT_COMMON_SOURCES}")
-  target_link_libraries(tetradactyl-qt5 PRIVATE Qt5::Widgets)
-  target_link_libraries(tetradactyl-qt5 PRIVATE Qt5::CorePrivate)
+  if(${_tetradactyl_backend_enabled})
+    # tetradactyl version is enabled
+    message(STATUS "will build ${_tetradactyl_backend}")
 
-  install(TARGETS tetradactyl-qt5)
-endif()
+    find_package(
+      ${_qt_version}
+      COMPONENTS Widgets
+      REQUIRED)
 
-if(TETRADACTYL_QT6)
-  # tetradactyl-qt6
+    add_library(${_tetradactyl_backend_object} OBJECT "${QT_COMMON_SOURCES}"
+                                                      probe.cpp)
+    target_link_libraries(${_tetradactyl_backend_object}
+                          PUBLIC ${_qt_version}::Widgets)
 
-  find_package(
-    Qt6
-    COMPONENTS Widgets
-    REQUIRED)
+    add_library(${_tetradactyl_backend} SHARED
+                $<TARGET_OBJECTS:${_tetradactyl_backend_object}>)
+    target_link_libraries(${_tetradactyl_backend_object}
+                          PRIVATE ${_qt_version}::CorePrivate)
 
-  add_library(tetradactyl-qt6 SHARED ${QT_COMMON_SOURCES})
-  target_link_libraries(tetradactyl-qt6 PRIVATE Qt6::Widgets)
-  target_link_libraries(tetradactyl-qt6 PRIVATE Qt6::CorePrivate)
+    # backward.cpp support
+    if(DEBUG)
+      include(FetchContent)
+      FetchContent_Declare(
+        backward
+        GIT_REPOSITORY https://github.com/bombela/backward-cpp
+        GIT_TAG v1.6)
+      FetchContent_MakeAvailable(backward)
+      add_backward(${_tetradactyl_backend})
+      target_sources(${_tetradactyl_backend} PRIVATE)
+      target_link_libraries(${_tetradactyl_backend} PRIVATE dwarf)
+    endif()
 
-  install(TARGETS tetradactyl-qt6)
-endif()
+    install(TARGETS ${_tetradactyl_backend})
+  endif()
+endforeach()

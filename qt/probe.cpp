@@ -17,6 +17,8 @@
 
 #include <csignal>
 
+#include <backward.hpp>
+
 #include <common/backtrace.h>
 
 #include "controller.h"
@@ -35,14 +37,26 @@ static StartupCallback nextStartupCallback;
 static AddQObjectCallback nextAddQObjectCallback;
 static RemoveQObjectCallback nextRemoveQObjectCallback;
 
+#if DEBUG
+backward::SignalHandling sh({
+    // don't trace SIGABRT/SIGIOT since that corresponds to failed asserts
+    // SIGABRT,
+    SIGBUS,
+    SIGFPE,
+    SIGILL,
+    // SIGIOT,
+    SIGQUIT,
+    SIGSEGV,
+    SIGSYS,
+    SIGTRAP,
+    SIGXCPU,
+    SIGXFSZ,
+});
+#endif
+
 namespace Tetradactyl {
 
 void __attribute__((constructor)) init() {
-
-#ifdef DEBUG
-  install_backtrace_signal_handler(SIGSEGV);
-  install_backtrace_signal_handler(SIGIOT);
-#endif
 
   // hooks
   nextStartupCallback =

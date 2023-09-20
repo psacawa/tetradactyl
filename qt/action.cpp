@@ -151,6 +151,11 @@ ContextMenuAction::ContextMenuAction(WindowController *controller)
 
 // QList<QWidget *> ContextMenuAction::getHintables(QWidget *root) { return; }
 
+// Basic criterion for hintability of an action
+static bool isActionHintable(QAction *action) {
+  return action->isEnabled() && action->isVisible() && !action->isSeparator();
+}
+
 // WIDGET PROXIES
 
 #define PASTE(a, b) a##b
@@ -481,7 +486,7 @@ void QMenuBarActionProxyStatic::hintMenuable(
     QList<QWidgetActionProxy *> &proxies) {
   QOBJECT_CAST_ASSERT(QMenuBar, widget);
   for (auto menuAction : instance->actions()) {
-    if (menuAction->isEnabled()) {
+    if (isActionHintable(menuAction)) {
       QRect geometry = instance->actionGeometry(menuAction);
       QMenuBarActionProxy *proxy =
           new QMenuBarActionProxy(instance, geometry.topLeft(), menuAction);
@@ -491,14 +496,15 @@ void QMenuBarActionProxyStatic::hintMenuable(
 }
 
 // Helper that should be in Qt itself.
-template <typename T> T getMenuForMenuBarAction(QWidget *w, QAction *action) {
+// FIXME 20/09/20 psacawa: slow as shit
+QMenu *getMenuForMenuBarAction(QWidget *w, QAction *action) {
   // Menus in a QMenuBar don't actually need to be it's
   // descendants, e.g. if added with the addMenu API, so you can't use
   // necessarily use findChildren to recover them.
   // Make a faster implementation that registers the  correspondence action ->
   // menu in the windowController.
   for (auto w : qApp->allWidgets()) {
-    T menu = qobject_cast<T>(w);
+    QMenu *menu = qobject_cast<QMenu *>(w);
     if (menu && menu->menuAction() == action) {
       return menu;
     }
@@ -508,7 +514,7 @@ template <typename T> T getMenuForMenuBarAction(QWidget *w, QAction *action) {
 
 bool QMenuBarActionProxy::menu(MenuBarAction *tetradactylAction) {
   QOBJECT_CAST_ASSERT(QMenuBar, widget);
-  QMenu *menu = getMenuForMenuBarAction<QMenu *>(instance, menuAction);
+  QMenu *menu = getMenuForMenuBarAction(instance, menuAction);
   Q_ASSERT(menu != nullptr);
 
   QPoint pos = menu->mapToGlobal(QPoint(0, 0));
@@ -529,16 +535,18 @@ void QMenuActionProxyStatic::hintMenuable(
     QList<QWidgetActionProxy *> &proxies) {
   QOBJECT_CAST_ASSERT(QMenu, widget);
   for (auto menuAction : instance->actions()) {
-    QRect geometry = instance->actionGeometry(menuAction);
-    QMenuActionProxy *proxy =
-        new QMenuActionProxy(instance, geometry.topLeft(), menuAction);
-    proxies.append(proxy);
+    if (isActionHintable(menuAction)) {
+      QRect geometry = instance->actionGeometry(menuAction);
+      QMenuActionProxy *proxy =
+          new QMenuActionProxy(instance, geometry.topLeft(), menuAction);
+      proxies.append(proxy);
+    }
   }
 }
 
 bool QMenuActionProxy::menu(MenuBarAction *tetradactylAction) {
   QOBJECT_CAST_ASSERT(QMenu, widget);
-  QMenu *submenu = getMenuForMenuBarAction<QMenu *>(instance, menuAction);
+  QMenu *submenu = getMenuForMenuBarAction(instance, menuAction);
   if (submenu != nullptr && submenu->actions().length() > 0) {
     // action has submenu
     logInfo << __PRETTY_FUNCTION__ << submenu << menuAction;

@@ -1,3 +1,4 @@
+/* Copyright 2023 Paweł Sacawa. All rights reserved. */
 #define _GNU_SOURCE
 
 #include <dlfcn.h>

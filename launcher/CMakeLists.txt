@@ -1,3 +1,4 @@
+# Copyright 2023 Paweł Sacawa. All rights reserved.
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)

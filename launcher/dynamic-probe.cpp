@@ -1,3 +1,4 @@
+// Copyright 2023 Paweł Sacawa. All rights reserved.
 #include <cstdio>
 #include <cstring>
 #include <dlfcn.h>

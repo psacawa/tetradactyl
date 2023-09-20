@@ -1,3 +1,4 @@
+// Copyright 2023 Paweł Sacawa. All rights reserved.
 #include <QAbstractButton>
 #include <QFileDialog>
 #include <QItemSelectionModel>

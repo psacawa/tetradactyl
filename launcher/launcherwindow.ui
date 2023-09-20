@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright 2023 Paweł Sacawa. All rights reserved. -->
 <ui version="4.0">
  <class>LauncherWindow</class>
  <widget class="QMainWindow" name="LauncherWindow">

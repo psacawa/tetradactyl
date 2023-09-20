@@ -1,4 +1,5 @@
 #!/usr/bin/bash
+# Copyright 2023 Paweł Sacawa. All rights reserved.
 
 # Dumbass script to patch QtTest's lack of colour terminal output
 # To use:

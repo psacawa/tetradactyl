@@ -1,3 +1,4 @@
+// Copyright 2023 Paweł Sacawa. All rights reserved.
 #include <execinfo.h>
 #include <signal.h>
 #include <stdio.h>

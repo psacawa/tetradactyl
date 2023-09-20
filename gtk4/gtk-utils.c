@@ -1,3 +1,4 @@
+/* Copyright 2023 Paweł Sacawa. All rights reserved. */
 #include "gtk-utils.h"
 #include <glib.h>
 #include <gtk/gtk.h>

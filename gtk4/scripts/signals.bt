@@ -1,3 +1,4 @@
+// Copyright 2023 Paweł Sacawa. All rights reserved.
 #!/usr/bin/env bpftrace
 
 uprobe:libgobject-2.0:g_signal_new

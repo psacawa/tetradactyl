@@ -63,6 +63,11 @@ Overlay::Overlay(WindowController *windowController, QWidget *target,
   show();
 }
 
+QDebug operator<<(QDebug debug, const Overlay *overlay) {
+  debug << "overlay";
+  return debug;
+}
+
 QList<HintLabel *> Overlay::visibleHints() {
   QList<HintLabel *> ret;
   copy_if(p_hints.begin(), p_hints.end(), std::back_inserter(ret),

@@ -1,3 +1,4 @@
+# Copyright 2023 Paweł Sacawa. All rights reserved.
 print "preloading ./build/libtetradactyl-gtk.so "
 set environment LD_PRELOAD=./build/libtetradactyl-gtk.so
 add-symbol-file ./build/libtetradactyl-gtk.so

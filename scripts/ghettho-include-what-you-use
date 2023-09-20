@@ -1,4 +1,5 @@
 #!/usr/bin/zsh
+# Copyright 2023 Paweł Sacawa. All rights reserved.
 
 # dumbass script that removes #include <*> lines that aren't necessary from source and
 # header files by seding them away and testing whether the project still builds

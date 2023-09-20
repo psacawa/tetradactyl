@@ -1,3 +1,4 @@
+// Copyright 2023 Paweł Sacawa. All rights reserved.
 #include <unistd.h>
 
 #include "utils.h"

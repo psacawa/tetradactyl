@@ -1,3 +1,4 @@
+// Copyright 2023 Paweł Sacawa. All rights reserved.
 #pragma once
 
 // This header gets included from libtetradactyl-dynamic-probe.so and in the

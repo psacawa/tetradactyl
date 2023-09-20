@@ -1,3 +1,4 @@
+// Copyright 2023 Paweł Sacawa. All rights reserved.
 #include <QDir>
 #include <QLoggingCategory>
 #include <QMessageBox>
@@ -150,7 +151,6 @@ void ApplicationTableModel::addTetradactylApp(QFileInfo file,
     qCritical() << "record not added:" << newRecord;
   }
 }
-
 
 // allocating conversion to struct App
 App *ApplicationTableModel::recordToApp(const QSqlRecord &record) {

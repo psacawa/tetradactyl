@@ -32,12 +32,11 @@
       override {                                                               \
     return false;                                                              \
   }
-#define ACTIONPROXY_FALSE_SELF_MENUABLE_DEF                            \
+#define ACTIONPROXY_FALSE_SELF_MENUABLE_DEF                                    \
   virtual bool isContextMenuable(ContextMenuAction *action, QWidget *widget)   \
       override {                                                               \
     return false;                                                              \
   }
-
 
 // TRUE: I am hintable
 

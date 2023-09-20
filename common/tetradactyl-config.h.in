@@ -1,3 +1,4 @@
+// Copyright 2023 Paweł Sacawa. All rights reserved.
 
 #cmakedefine TETRADACTYL_VERSION @CMAKE_PROJECT_VERSION@
 

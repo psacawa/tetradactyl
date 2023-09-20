@@ -1,3 +1,4 @@
+/* Copyright 2023 Paweł Sacawa. All rights reserved. */
 #include <stdarg.h>
 #define G_LOG_USE_STRUCTURED
 #include "init.h"

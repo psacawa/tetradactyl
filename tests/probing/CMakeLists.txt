@@ -1,3 +1,4 @@
+# Copyright 2023 Paweł Sacawa. All rights reserved.
 add_custom_target(ProcessLoadedLib.sh ALL
                   COMMAND cp "${CMAKE_SOURCE_DIR}/tests/ProcessLoadedLib.sh" .)
 

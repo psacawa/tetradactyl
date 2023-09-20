@@ -1,3 +1,4 @@
+// Copyright 2023 Paweł Sacawa. All rights reserved.
 #ifndef TETRADACTYL_H
 #define TETRADACTYL_H value
 

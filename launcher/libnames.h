@@ -1,3 +1,4 @@
+// Copyright 2023 Paweł Sacawa. All rights reserved.
 #define GTK3_TETRADACTYL_LIB "libtetradactyl-gtk3.so"
 #define GTK4_TETRADACTYL_LIB "libtetradactyl-gtk4.so"
 #define QT5_TETRADACTYL_LIB "libtetradactyl-qt5.so"

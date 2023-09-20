@@ -1,3 +1,4 @@
+<!-- Copyright 2023 Paweł Sacawa. All rights reserved. -->
 ## Event-base programming
 
 Two keys entities for event-based programming in GTK/GObject systems: signals, events.

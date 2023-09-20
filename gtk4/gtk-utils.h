@@ -1,3 +1,4 @@
+// Copyright 2023 Paweł Sacawa. All rights reserved.
 #include <gtk/gtk.h>
 
 void print_tree(GtkWidget *widget);

@@ -1,3 +1,4 @@
+# Copyright 2023 Paweł Sacawa. All rights reserved.
 # a janky ptrace-based gojbect signal  tracing util, just to show it's possible
 # run as:
 # gdb -x scripts/signals.gdb build/gtk-demo

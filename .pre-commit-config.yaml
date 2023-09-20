@@ -1,0 +1,17 @@
+# Copyright 2023 Paweł Sacawa. All rights reserved.
+repos:
+  - repo: local
+    hooks:
+      - id: copyright-notice
+        name: copyright-notice
+        language: script
+        files: ".*"
+        entry: ./scripts/ensure-copyright-notice.sh
+        exclude: "waitingspinnerwidget"
+      - id: clang-format
+        name: clang-format2
+        language: system
+        files: '.*\.(cpp|c|h)$'
+        entry: clang-format
+        args: [-i]
+        exclude: "waitingspinnerwidget"

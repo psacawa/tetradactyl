@@ -1,3 +1,4 @@
+# Copyright 2023 Paweł Sacawa. All rights reserved.
 project('tetradactyl-gtk', 'c', version: '0.1')
 
 gnome = import('gnome')

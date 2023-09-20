@@ -1,3 +1,4 @@
+/* Copyright 2023 Paweł Sacawa. All rights reserved. */
 #define G_LOG_USE_STRUCTURED
 
 #include <ctype.h>

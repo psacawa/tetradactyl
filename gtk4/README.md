@@ -1,3 +1,4 @@
+<!-- Copyright 2023 Paweł Sacawa. All rights reserved. -->
 # Tetradactyl GTK
 
 Tetradactyl backend for gtk4.

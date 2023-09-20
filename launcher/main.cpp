@@ -1,3 +1,4 @@
+// Copyright 2023 Paweł Sacawa. All rights reserved.
 #include <QCommandLineParser>
 #include <QDir>
 #include <unistd.h>

@@ -1,4 +1,5 @@
 #!/usr/bin/bash
+# Copyright 2023 Paweł Sacawa. All rights reserved.
 
 if [[ $# < 2 ]]; then
   echo "Run command then check whether shared object was loaded"

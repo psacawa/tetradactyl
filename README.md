@@ -1,3 +1,4 @@
+<!-- Copyright 2023 Paweł Sacawa. All rights reserved. -->
 # Tetradactyl
 
 Tetradactyl does for native widget toolkits what Tridactyl does for the HTML DOM.

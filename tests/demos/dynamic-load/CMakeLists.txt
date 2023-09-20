@@ -1,3 +1,4 @@
+# Copyright 2023 Paweł Sacawa. All rights reserved.
 find_package(Qt6 REQUIRED COMPONENTS Widgets)
 
 add_library(some-dynamic-qt6-app-ui SHARED ui.cpp)

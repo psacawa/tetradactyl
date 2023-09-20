@@ -5,6 +5,7 @@
 #include <QDebug>
 #include <QEvent>
 #include <QKeyEvent>
+#include <QMainWindow>
 #include <QMetaObject>
 #include <QShortcut>
 #include <QWidget>
@@ -40,14 +41,16 @@ public:
   virtual ~PrintFilter() {}
 
 private:
+  bool on = false;
   QList<const QMetaObject *> interestedMetaObjects = {
       // &QAction::staticMetaObject, &QShortcut::staticMetaObject,
       // &QWidget::staticMetaObject
-  };
+      &QMainWindow::staticMetaObject};
   QList<const QMetaObject *> disinterestedMetaObjects = {};
   QList<QEvent::Type> interestedEventTypes = {
       // QEvent::KeyPress,
-      QEvent::Shortcut
+      // QEvent::Shortcut
+      QEvent::Resize
       // , QEvent::Show,
       // QEvent::ShowToParent
   };

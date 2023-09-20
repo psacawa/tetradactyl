@@ -2,6 +2,7 @@
 #pragma once
 
 #include <QAbstractButton>
+#include <QApplication>
 #include <QDebug>
 #include <QKeySequence>
 #include <QList>
@@ -134,10 +135,14 @@ public slots:
 signals:
   void modeChanged(ControllerMode mode);
   void hinted(HintMode hintMode);
-  // Can be more detailed about the accepted hint
+  // Fired when a single stage of hinting finished with a hint accepted by the
+  // user
   void accepted(HintMode hintMode, QWidget *widget,
                 QPoint positionInWidget = QPoint(0, 0));
+  // Fired when a hinting is finished with a cancellation with <esc> by user
   void cancelled(HintMode hintMode);
+  // Fired when a hinting finished entirely, successfully or not
+  void hintingFinished(bool accepted);
 
 private:
   void cleanupHints();
@@ -165,7 +170,12 @@ inline const QList<Overlay *> &WindowController::overlays() {
   return p_overlays;
 }
 // TODO 10/09/20 psacawa: rozwiń
-inline Overlay *WindowController::activeOverlay() { return mainOverlay(); }
+inline Overlay *WindowController::activeOverlay() {
+  QWidget *activeWidget = qApp->activePopupWidget();
+  if (!activeWidget)
+    activeWidget = qApp->focusWidget();
+  return findOverlayForWidget(activeWidget);
+}
 inline bool WindowController::isActing() { return currentAction != nullptr; }
 inline WindowController::ControllerMode WindowController::controllerMode() {
   return p_controllerMode;

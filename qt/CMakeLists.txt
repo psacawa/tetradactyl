@@ -45,12 +45,14 @@ foreach(_version ${SUPPORTED_QT_VERSIONS})
     add_library(${_tetradactyl_backend_object} OBJECT "${QT_COMMON_SOURCES}"
                                                       probe.cpp)
     target_link_libraries(${_tetradactyl_backend_object}
-                          PUBLIC ${_qt_version}::Widgets)
+                          PUBLIC ${_qt_version}::Widgets ${_qt_version}::Core)
+    target_link_libraries(${_tetradactyl_backend_object}
+                          PRIVATE ${_qt_version}::CorePrivate)
 
     add_library(${_tetradactyl_backend} SHARED
                 $<TARGET_OBJECTS:${_tetradactyl_backend_object}>)
-    target_link_libraries(${_tetradactyl_backend_object}
-                          PRIVATE ${_qt_version}::CorePrivate)
+    target_link_libraries(${_tetradactyl_backend}
+                          PRIVATE ${_tetradactyl_backend_object})
 
     # backward.cpp support
     if(DEBUG)

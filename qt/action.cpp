@@ -71,7 +71,8 @@ void BaseAction::addNextStage(QWidget *root) {
 }
 
 void BaseAction::accept(QWidgetActionProxy *proxy) {
-  // TODO 14/09/20 psacawa: remove widget from signature
+  logInfo << "Accepting" << proxy;
+
   int widgetFinishesAction = proxy->actGeneric(this);
   if (widgetFinishesAction)
     finish();
@@ -91,17 +92,17 @@ void BaseAction::act() {
     finish();
     return;
   }
+  Overlay *overlay = winController->findOverlayForWidget(currentRoot);
   HintGenerator hintStringGenerator(Controller::settings.hintChars,
                                     hintData.length());
   for (QWidgetActionProxy *actionProxy : hintData) {
     string hintStr = *hintStringGenerator;
     logDebug << "Hinting " << actionProxy->widget << " with "
              << QString::fromStdString(hintStr);
-    winController->mainOverlay()->addHint(
-        QString::fromStdString(*hintStringGenerator), actionProxy);
+    overlay->addHint(QString::fromStdString(*hintStringGenerator), actionProxy);
     hintStringGenerator++;
   }
-  winController->mainOverlay()->resetSelection();
+  overlay->resetSelection();
 }
 
 // ActivateAction
@@ -173,6 +174,7 @@ map<const QMetaObject *, WidgetHintingData> QWidgetMetadataRegistry = {
     METADATA_REGISTRY_ENTRY(QLineEdit),
     METADATA_REGISTRY_ENTRY(QListView),
     METADATA_REGISTRY_ENTRY(QMenuBar),
+    METADATA_REGISTRY_ENTRY(QMenu),
     METADATA_REGISTRY_ENTRY(QStackedWidget),
     METADATA_REGISTRY_ENTRY(QTabBar),
     METADATA_REGISTRY_ENTRY(QTableView),
@@ -483,24 +485,33 @@ void QMenuBarActionProxyStatic::hintMenuable(
 }
 
 // Helper that should be in Qt itself.
-QMenu *getMenuForMenuBarAction(QMenuBar *menuBar, QAction *action) {
-  for (auto menu : menuBar->findChildren<QMenu *>()) {
-    if (menu->menuAction() == action)
+template <typename T> T getMenuForMenuBarAction(QWidget *w, QAction *action) {
+  // Menus in a QMenuBar don't actually need to be it's
+  // descendants, e.g. if added with the addMenu API, so you can't use
+  // necessarily use findChildren to recover them.
+  // Make a faster implementation that registers the  correspondence action ->
+  // menu in the windowController.
+  for (auto w : qApp->allWidgets()) {
+    T menu = qobject_cast<T>(w);
+    if (menu && menu->menuAction() == action) {
       return menu;
+    }
   }
   return nullptr;
 }
 
 bool QMenuBarActionProxy::menu(MenuBarAction *tetradactylAction) {
   QOBJECT_CAST_ASSERT(QMenuBar, widget);
-  QMenu *menu = getMenuForMenuBarAction(instance, menuAction);
+  QMenu *menu = getMenuForMenuBarAction<QMenu *>(instance, menuAction);
   Q_ASSERT(menu != nullptr);
 
   QPoint pos = menu->mapToGlobal(QPoint(0, 0));
   logInfo << "Opening menu of menu bar" << menuAction << instance << pos;
   QPoint globalPos = instance->window()->mapToGlobal(QPoint(0, 0));
   QPoint positionInWindow = instance->actionGeometry(menuAction).bottomLeft();
+
   menu->popup(globalPos + positionInWindow);
+  tetradactylAction->menusToClose.append(menu);
   tetradactylAction->addNextStage(menu);
   return false;
 }
@@ -513,16 +524,40 @@ void QMenuActionProxyStatic::hintMenuable(
   QOBJECT_CAST_ASSERT(QMenu, widget);
   for (auto menuAction : instance->actions()) {
     QRect geometry = instance->actionGeometry(menuAction);
-    QMenuBarActionProxy *proxy =
-        new QMenuBarActionProxy(instance, geometry.topLeft(), menuAction);
+    QMenuActionProxy *proxy =
+        new QMenuActionProxy(instance, geometry.topLeft(), menuAction);
     proxies.append(proxy);
   }
 }
 
-bool QMenuActionProxy::menu(MenuBarAction *action) {
-  // TODO 17/09/20 psacawa: finish this
-  return true;
-  ;
+bool QMenuActionProxy::menu(MenuBarAction *tetradactylAction) {
+  QOBJECT_CAST_ASSERT(QMenu, widget);
+  QMenu *submenu = getMenuForMenuBarAction<QMenu *>(instance, menuAction);
+  if (submenu != nullptr && submenu->actions().length() > 0) {
+    // action has submenu
+    logInfo << __PRETTY_FUNCTION__ << submenu << menuAction;
+    QPoint pos = submenu->mapToGlobal(QPoint(0, 0));
+    logInfo << "Opening submenu of submenu" << menuAction << instance << pos;
+    QPoint globalPos = instance->window()->mapToGlobal(QPoint(0, 0));
+    QPoint positionInWindow =
+        instance->actionGeometry(menuAction).bottomRight();
+    submenu->popup(globalPos + positionInWindow);
+    tetradactylAction->menusToClose.append(submenu);
+    tetradactylAction->addNextStage(submenu);
+    return false;
+  } else {
+    // trigger final action
+    logInfo << "activating" << instance << menuAction;
+    menuAction->trigger();
+
+    // Hide all the previously opened menus
+    for (auto menu : tetradactylAction->menusToClose)
+      menu->hide();
+
+    tetradactylAction->finish();
+    return true;
+    ;
+  }
 }
 
 // QStackedWidgetActionProxy

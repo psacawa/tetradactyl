@@ -1,6 +1,7 @@
 // Copyright 2023 Paweł Sacawa. All rights reserved.
 #pragma once
 #include <QList>
+#include <QMenu>
 #include <QMetaObject>
 #include <QModelIndex>
 #include <QStackedWidget>
@@ -103,7 +104,10 @@ class MenuBarAction : public BaseAction {
 public:
   MenuBarAction(WindowController *controller);
   virtual ~MenuBarAction() {}
-  // bool isDone();
+
+  // For nested menus, keep a record of those menus that have to be hidden once
+  // the action is finished. Is there a native API for this?
+  QList<QMenu *> menusToClose;
 };
 
 // Widget Proxies

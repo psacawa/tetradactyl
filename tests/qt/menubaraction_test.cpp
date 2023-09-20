@@ -1,7 +1,10 @@
+// Copyright 2023 Paweł Sacawa. All rights reserved.
 #include <QTest>
 
 #include <QMenu>
 #include <QMenuBar>
+
+#include <qt/overlay.h>
 
 #include "common.h"
 
@@ -16,7 +19,9 @@ public:
 private slots:
   void init();
   void cleanup();
+
   void basicTwoStepMenuBarActionTest();
+  void overlaysAddedTest();
   void cancellationOnMenuBarTest();
   void cancellationOnQMenuTest();
 
@@ -47,8 +52,22 @@ void MenuBarActionTest::cleanup() {
   delete controller;
   delete win;
 }
+
+void MenuBarActionTest::overlaysAddedTest() {
+  for (auto menu : menus) {
+    Overlay *menuOverlay = windowController->findOverlayForWidget(menu);
+    QTRY_VERIFY2(menuOverlay != nullptr && menuOverlay != overlay,
+                 "QMenu has overlay which isn't the window's overlay");
+    QTRY_VERIFY2(menuOverlay->statusIndicator() == nullptr,
+                 "QMenu overlay has no status indicator label");
+  }
+}
+
 void MenuBarActionTest::basicTwoStepMenuBarActionTest() {
   QTest::keyClicks(win, "m");
+  QCOMPARE(hintedSpy->count(), 1);
+  QCOMPARE((hintedSpy->takeAt(0).at(0)), HintMode::Menuable);
+
   // file menu
   QTRY_VERIFY(!fileMenu->isVisible());
   QTest::keyClicks(win, "a");

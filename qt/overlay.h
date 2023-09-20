@@ -22,7 +22,7 @@ QList<HintLabel *> findHintsByTargetHelper(Overlay *overlay,
 class Overlay : public QWidget {
   Q_OBJECT
 public:
-  Overlay(WindowController *controller, QWidget *target);
+  Overlay(WindowController *controller, QWidget *target, bool isMain = true);
   virtual ~Overlay();
 
   OverlayLayout *overlayLayout();

@@ -29,26 +29,36 @@ LOGGING_CATEGORY_COLOR("tetradactyl.overlay", Qt::yellow);
 namespace Tetradactyl {
 
 // target need not be the target of the  WindowController
-Overlay::Overlay(WindowController *windowController, QWidget *target)
-    : QWidget(target), p_selectedHint(nullptr), controller(windowController) {
+Overlay::Overlay(WindowController *windowController, QWidget *target,
+                 bool isMain)
+    : QWidget(target), p_selectedHint(nullptr), p_statusIndicator(nullptr),
+      controller(windowController) {
   Q_ASSERT(controller != nullptr);
   Q_ASSERT(target != nullptr);
   // Since Overlay is not in any layout, this is needed.
   setFixedSize(2000, 2000);
   setAttribute(Qt::WA_TransparentForMouseEvents);
 
-  p_statusIndicator = new QLabel(enumKeyToValue<WindowController::ControllerMode>(
-                                   windowController->controllerMode()),
-                               this);
-  p_statusIndicator->setStyleSheet(statusIndicatorStylesheet);
-  setLayout(new OverlayLayout(this));
+  // don't make status indicator for overlays attached to QMenus etc.
+  if (isMain) {
+    p_statusIndicator =
+        new QLabel(enumKeyToValue<WindowController::ControllerMode>(
+                       windowController->controllerMode()),
+                   this);
+    p_statusIndicator->setStyleSheet(statusIndicatorStylesheet);
+    connect(windowController, &WindowController::modeChanged, p_statusIndicator,
+            [this](WindowController::ControllerMode mode) {
+              p_statusIndicator->setText(
+                  enumKeyToValue<WindowController::ControllerMode>(mode));
+            });
+    connect(windowController, &WindowController::hinted, p_statusIndicator,
+            [this](HintMode mode) {
+              p_statusIndicator->setText("Hint " +
+                                         enumKeyToValue<HintMode>(mode));
+            });
+  }
 
-  // TODO 18/09/20 psacawa: finish this
-  connect(windowController, &WindowController::modeChanged, p_statusIndicator,
-          [this](WindowController::ControllerMode mode) {
-            p_statusIndicator->setText(
-                enumKeyToValue<WindowController::ControllerMode>(mode));
-          });
+  setLayout(new OverlayLayout(this));
 
   show();
 }
@@ -170,8 +180,10 @@ QList<HintLabel *> findHintsByTargetHelper(Overlay *overlay,
   return ret;
 }
 
-OverlayLayout::OverlayLayout(Overlay *overlay) : QLayout(overlay) {
-  statusIndicatorItem = new QWidgetItem(overlay->p_statusIndicator);
+OverlayLayout::OverlayLayout(Overlay *overlay)
+    : QLayout(overlay), statusIndicatorItem(nullptr) {
+  if (overlay->p_statusIndicator)
+    statusIndicatorItem = new QWidgetItem(overlay->p_statusIndicator);
 }
 
 OverlayLayout::~OverlayLayout() {
@@ -199,14 +211,15 @@ void OverlayLayout::setGeometry(const QRect &updateRect) {
     }
     item->setGeometry(hintGeometry);
   }
-  QSize statusIndicatorSize = statusIndicatorItem->sizeHint();
-  QRect statusIndicatorGeometry(
-      QPoint(hostGeometry.size().width(), hostGeometry.size().height()),
-      statusIndicatorSize);
-  statusIndicatorGeometry.translate(-statusIndicatorSize.width(),
-                                    -statusIndicatorSize.height());
-  logInfo << "statusIndicatorGeometry" << statusIndicatorGeometry;
-  statusIndicatorItem->setGeometry(statusIndicatorGeometry);
+  if (statusIndicatorItem) {
+    QSize statusIndicatorSize = statusIndicatorItem->sizeHint();
+    QRect statusIndicatorGeometry(
+        QPoint(hostGeometry.size().width(), hostGeometry.size().height()),
+        statusIndicatorSize);
+    statusIndicatorGeometry.translate(-statusIndicatorSize.width(),
+                                      -statusIndicatorSize.height());
+    statusIndicatorItem->setGeometry(statusIndicatorGeometry);
+  }
 }
 
 QLayoutItem *OverlayLayout::itemAt(int index) const {

@@ -48,7 +48,7 @@ bool KeyboardEventFilter::eventFilter(QObject *obj, QEvent *ev = nullptr) {
   if (ev->type() == QEvent::KeyPress || ev->type() == QEvent::KeyRelease) {
     if (ev->type() == QEvent::KeyPress) {
 
-      QKeyEvent *kev = static_cast<QKeyEvent *>(ev);
+      QKeyEvent __attribute__((unused)) *kev = static_cast<QKeyEvent *>(ev);
       // Tetradactyl::ControllerKeymap &keymap = controller->settings.keymap;
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
       QKeyCombination kc = QKeyCombination::fromCombined(kev->key());
@@ -75,6 +75,9 @@ bool KeyboardEventFilter::eventFilter(QObject *obj, QEvent *ev = nullptr) {
 // In the special case that  there are interested and disinterested items (a
 // user error), an interested match is enough to match
 bool PrintFilter::interestedInMetaObject(QObject *obj) {
+  if (!on)
+    return false;
+
   if (interestedMetaObjects.length() != 0) {
     const QMetaObject *metaObj = obj->metaObject();
     for (auto mo : interestedMetaObjects) {

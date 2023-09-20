@@ -94,6 +94,7 @@ Controller::~Controller() {
   for (auto &WindowController : windowControllers) {
     delete WindowController;
   }
+  qApp->removeEventFilter(this);
   self = nullptr;
 }
 
@@ -112,7 +113,8 @@ void Controller::createController() {
 
 WindowController *Controller::findControllerForWidget(QWidget *widget) {
   for (auto winController : windowControllers) {
-    if (widget->window() == winController->target())
+    // if (widget->window() == winController->target())
+    if (widget->nativeParentWidget() == winController->target())
       return winController;
   }
   return nullptr;
@@ -141,7 +143,6 @@ void Controller::tryAttachToWindow(QWidget *widget) {
   }
 }
 
-// TODO 09/09/20 psacawa: test it works
 bool Controller::eventFilter(QObject *obj, QEvent *ev) {
   QEvent::Type type = ev->type();
   QWidget *widget = qobject_cast<QWidget *>(obj);
@@ -278,26 +279,18 @@ bool WindowController::earlyKeyEventFilter(QKeyEvent *kev) {
 }
 
 bool WindowController::eventFilter(QObject *obj, QEvent *ev) {
-  /*
-   * auto type = ev->type();
-   * if (type == QEvent::KeyPress) {
-   *   QKeyEvent *kev = static_cast<QKeyEvent *>(ev);
-   *   if (controllerMode() == ControllerMode::Hint) {
-   *     if (kev->key() == Qt::Key_Escape) {
-   *       cancel();
-   *     } else if (kev->key() == Qt::Key_Enter) {
-   *       acceptCurrent();
-   *     } else if (kev->key() == Qt::Key_Backspace) {
-   *       popKey();
-   *     } else if (kev->key() == Qt::Key_Tab) {
-   *       activeOverlay()->nextHint(kev->modifiers() & Qt::Modifier::SHIFT);
-   *     } else if (std::isalpha(kev->key())) {
-   *       pushKey(kev->key());
-   *     }
-   *   }
-   * }
-   * return false;
-   */
+  auto type = ev->type();
+  switch (type) {
+  case QEvent::Resize: {
+    QWidget *widget = qobject_cast<QWidget *>(obj);
+    Overlay *overlay = findOverlayForWidget(widget);
+    if (overlay)
+      overlay->layout()->update();
+    break;
+  }
+  default:
+    break;
+  }
   return false;
 }
 
@@ -314,8 +307,7 @@ void WindowController::initializeOverlays() {
 
 // The main overlay is considered to the be the one that has the others as
 // descendants.
-inline Overlay *WindowController::mainOverlay() {
-  // TODO 14/09/20 psacawa: finish this
+Overlay *WindowController::mainOverlay() {
   for (auto overlay : p_overlays) {
     if (overlay->parentWidget()->parentWidget() == nullptr) {
       return overlay;
@@ -335,7 +327,9 @@ void WindowController::tryAttachController(QWidget *target) {
 }
 
 void WindowController::addOverlay(QWidget *target) {
-  Overlay *overlay = new Overlay(this, target);
+  // exclude WindowType::Popup to get rid of QMenus
+  bool isMainWindow = target->windowType() == Qt::Window;
+  Overlay *overlay = new Overlay(this, target, isMainWindow);
   p_overlays.append(overlay);
   connect(this, &WindowController::destroyed, this, [this](QObject *obj) {
     Overlay *overlay = qobject_cast<Overlay *>(obj);
@@ -420,6 +414,7 @@ void WindowController::pushKey(char ch) {
     return;
   }
   hintBuffer += ch;
+  logInfo << activeOverlay()->parentWidget();
   int numVisibleHints = activeOverlay()->updateHints(hintBuffer);
   if (numVisibleHints == 1 && Controller::settings.autoAcceptUniqueHint) {
     acceptCurrent();
@@ -447,6 +442,7 @@ void WindowController::cleanupHints() {
     overlay->clear();
     // overlay->hide();
   }
+  hintBuffer = "";
   for (auto sc : shortcuts)
     sc->setEnabled(true);
 }

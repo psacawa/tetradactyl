@@ -51,6 +51,8 @@ private:
   WindowController *controller;
 
   friend class OverlayLayout;
+
+  friend QDebug operator<<(QDebug debug, const Overlay *overlay);
 };
 
 inline const QList<HintLabel *> &Overlay::hints() { return p_hints; }

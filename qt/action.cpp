@@ -202,9 +202,15 @@ QWidgetActionProxy::getMetadataForMetaObject(const QMetaObject *widgetMO) {
     const QMetaObject *iter = widgetMO;
     while (strncmp(iter->className(), "Q", 1) != 0)
       iter = iter->superClass();
-    logWarning << "No ActionProxy class found for QMetaObject of"
-               << widgetMO->className() << "which inherits"
-               << iter->className();
+    auto msg = QString("No ActionProxy class found for QMetaObject of %1 which "
+                       "inherits %2")
+                   .arg(widgetMO->className())
+                   .arg(iter->className());
+    // only warn if there was another base Qt widget between this one QWidget
+    if (strcmp((iter)->className(), "QWidget"))
+      logWarning << qPrintable(msg);
+    else
+      logInfo << qPrintable(msg);
   }
 
   return metadata;

@@ -189,6 +189,14 @@ void Controller::routeNewlyCreatedObject(QObject *obj) {
 
 Controller *Controller::self = nullptr;
 
+QDebug operator<<(QDebug debug, const Controller *controller) {
+  QDebugStateSaver saver(debug);
+  debug << "Controller("
+        << "#WindowController: " << controller->windowControllers.length()
+        << ")";
+  return debug;
+}
+
 void WindowController::initializeShortcuts() {
   ControllerKeymap &keymap = controller->settings.keymap;
   QShortcut *activateShortcut =
@@ -348,7 +356,6 @@ void WindowController::removeOverlay(Overlay *overlay, bool fromSignal) {
 }
 
 void WindowController::hint(HintMode hintMode) {
-  qInfo() << __PRETTY_FUNCTION__;
   if (!(controllerMode() == ControllerMode::Normal)) {
     logWarning << __PRETTY_FUNCTION__ << "from" << controllerMode();
     return;
@@ -492,6 +499,20 @@ QList<QWidget *> WindowController::getHintables(HintMode hintMode) {
   // TODO 02/08/20 psacawa: dla się bez tego kopiowania?
   // return QList<QWidget *>(hintables.begin(), hintables.end());
   return QList<QWidget *>(hintables.begin(), hintables.end());
+}
+
+QDebug operator<<(QDebug debug, const WindowController *controller) {
+  QDebugStateSaver saver(debug);
+  debug.nospace();
+  debug << "WindowController(" << controller->p_target << ", ";
+  debug << controller->p_controllerMode << ", ";
+  if (controller->p_controllerMode == WindowController::ControllerMode::Hint)
+    debug << controller->currentHintMode << ", ";
+  debug << "overlays=" << controller->p_overlays.length() << ": ";
+  for (auto overlay : controller->p_overlays)
+    debug << overlay->parentWidget() << ", ";
+  debug << ")";
+  return debug;
 }
 
 HintGenerator::HintGenerator(const char *_hintChars, size_t size)

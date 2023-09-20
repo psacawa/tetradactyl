@@ -63,11 +63,6 @@ Overlay::Overlay(WindowController *windowController, QWidget *target,
   show();
 }
 
-QDebug operator<<(QDebug debug, const Overlay *overlay) {
-  debug << "overlay";
-  return debug;
-}
-
 QList<HintLabel *> Overlay::visibleHints() {
   QList<HintLabel *> ret;
   copy_if(p_hints.begin(), p_hints.end(), std::back_inserter(ret),
@@ -173,6 +168,22 @@ int Overlay::updateHints(QString &buffer) {
   update();
 
   return numHintsVisible;
+}
+
+QDebug operator<<(QDebug debug, const Overlay *overlay) {
+  QDebugStateSaver saver(debug);
+  debug.nospace();
+  debug << "Overlay(" << overlay->parentWidget();
+  if (overlay->p_hints.length() > 0) {
+    debug << " Hints: ";
+    for (int i = 0; i != overlay->p_hints.length(); i++) {
+      debug << qPrintable(overlay->p_hints[i]->text());
+      if (i < overlay->p_hints.length() - 1)
+        debug << ",";
+    }
+  }
+  debug << ")";
+  return debug;
 }
 
 QList<HintLabel *> findHintsByTargetHelper(Overlay *overlay,

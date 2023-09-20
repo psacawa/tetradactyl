@@ -88,6 +88,8 @@ private:
   QList<WindowController *> windowControllers;
 
   static Controller *self;
+
+  friend QDebug operator<<(QDebug debug, const Controller *controller);
 };
 
 inline const Controller *Controller::instance() { return Controller::self; }
@@ -164,6 +166,8 @@ private:
   // hintBuffer gets input
   // TODO 02/08/20 psacawa: custom iterator that only touches visible widgets
   QString hintBuffer;
+
+  friend QDebug operator<<(QDebug debug, const WindowController *controller);
 };
 
 inline const QList<Overlay *> &WindowController::overlays() {

@@ -28,6 +28,7 @@ private slots:
   void twoStepMenuBarActionCancelledTest();
   void overlaysAddedTest();
   void cancellationOnMenuBarTest();
+  void tracerInMenuTest();
 
 private:
   static MainWindow::CustomSizeHintMap map;
@@ -177,6 +178,23 @@ void MenuBarActionTest::threeStepMenuBarActionAcceptedTest() {
   QCOMPARE(acceptedSpy->count(), 3);
   QCOMPARE(qvariant_cast<QObject *>(acceptedSpy->takeLast().at(1)), blackMenu);
   QCOMPARE(hintingFinishedSpy->count(), 1);
+}
+
+void MenuBarActionTest::tracerInMenuTest() {
+  QTest::keyClicks(win, "m");
+  QTest::keyClicks(win, "a");
+  QMenu *fileMenu =
+      qobject_cast<QMenu *>(windowController->activeOverlay()->parentWidget());
+  QCOMPARE(fileMenu->title(), "&File");
+  QTest::keyClicks(win, "d");
+  // File menu item accepted
+  QTest::qWait(100);
+  QList<HintLabel *> remainingHints = fileMenu->findChildren<HintLabel *>();
+  QCOMPARE(remainingHints.length(), 1);
+  HintLabel *acceptedHint = remainingHints.at(0);
+  QVERIFY(acceptedHint->isSelected());
+  QTest::qWait(500);
+  QCOMPARE(fileMenu->findChildren<HintLabel *>().length(), 0);
 }
 
 } // namespace Tetradactyl

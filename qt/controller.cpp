@@ -64,7 +64,7 @@ static ControllerSettings baseTestSettings() {
       .hintChars = "ASDFJKL",
       .autoAcceptUniqueHint = true,
       .highlightAcceptedHint = true,
-      .highlightAcceptedHintMs = 1000,
+      .highlightAcceptedHintMs = 400,
       .passthroughKeyboardInput = true,
       .keymap = {.activate = QKeySequence(Qt::Key_F),
                  .cancel = QKeySequence(Qt::Key_Escape),
@@ -412,11 +412,23 @@ void WindowController::accept(QWidgetActionProxy *widgetProxy) {
   QWidget *w = widgetProxy->widget;
   logInfo << "Accepted " << w << "at" << widgetProxy->positionInWidget << "in"
           << currentHintMode;
-  // widgetProxy->actGeneric(currentAction);
+  if (Controller::settings.highlightAcceptedHint) {
+    QPointer<HintLabel> acceptedHint = activeOverlay()->selectedHint();
+    activeOverlay()->popHint(acceptedHint);
+    acceptedHint->setParent(activeOverlay()->parentWidget());
+    // acceptedHint->move(QPoint(0, 0));
+    acceptedHint->show();
+    QTimer::singleShot(Controller::settings.highlightAcceptedHintMs,
+                       [acceptedHint]() {
+                         // make sure the hint still exist
+                         if (acceptedHint) {
+                           logInfo << "deleting" << acceptedHint->text();
+                           delete acceptedHint;
+                         }
+                       });
+  }
   currentAction->accept(widgetProxy);
   cleanupHints();
-  // emit accepted(currentHintMode, widgetProxy->widget,
-  //               widgetProxy->positionInWidget);
   if (currentAction->isDone()) {
     cleanupAction();
     emit hintingFinished(true);

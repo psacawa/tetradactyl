@@ -18,6 +18,7 @@ protected:
     qInfo() << __PRETTY_FUNCTION__;
     Controller::createController();
     controller = Controller::instance();
+    settings = &controller->settings;
     windowController = controller->windows().value(0, nullptr);
     if (windowController == nullptr)
       QFAIL("No WindowController found in Controller. Did you create the demo "
@@ -37,6 +38,7 @@ protected:
 
   const Controller *controller;
   WindowController *windowController;
+  ControllerSettings *settings;
   Overlay *overlay;
 
   QSignalSpy *modeChangedSpy, *hintedSpy, *acceptedSpy, *cancelledSpy,

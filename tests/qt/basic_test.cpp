@@ -1,6 +1,7 @@
 // Copyright 2023 Paweł Sacawa. All rights reserved.
 #include <QTest>
 
+#include <qt/hint.h>
 #include <qt/overlay.h>
 
 #include "common.h"
@@ -21,6 +22,7 @@ private slots:
   void statusIndicatorTest();
   void noHintsTest();
   void manualAcceptCurrentHintTest();
+  void acceptedHintHighlightTest();
 
 private:
   Calculator *win;
@@ -108,6 +110,21 @@ void BasicTest::manualAcceptCurrentHintTest() {
   QCOMPARE(qvariant_cast<QObject *>(acceptedSpy->takeFirst().at(1)),
            backspaceButton);
 }
+
+void BasicTest::acceptedHintHighlightTest() {
+  QTest::keyClicks(win, "f");
+  QTest::keyClicks(win, "aa");
+  QCOMPARE(acceptedSpy->count(), 1);
+  QTest::qSleep(100);
+  QVERIFY2(win->findChildren<HintLabel *>().length() == 1,
+           "Accepted hint trace still visible");
+  HintLabel *acceptedHint = win->findChild<HintLabel *>();
+  QVERIFY(acceptedHint->isSelected());
+  QTest::qWait(500);
+  QVERIFY2(win->findChildren<HintLabel *>().length() == 0,
+           "Hint trace deleted");
+}
+
 } // namespace Tetradactyl
 
 QTEST_MAIN(Tetradactyl::BasicTest);

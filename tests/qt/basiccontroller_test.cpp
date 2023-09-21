@@ -136,8 +136,6 @@ void BasicControllerTest::testHintActivate() {
            "Activating fires underlying widgets signal");
   overlayChildren = overlay->hints();
   QTRY_VERIFY2(overlayChildren.length() == 0, "Activating removes hint labels");
-  QVERIFY2(win->findChildren<HintLabel *>().length() == 0,
-           "Hints destroyed after hint accepted");
 }
 
 void BasicControllerTest::testHintCancel() {

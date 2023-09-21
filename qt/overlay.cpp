@@ -120,12 +120,12 @@ void Overlay::resetSelection(HintLabel *label) {
   }
 }
 
-void Overlay::removeHint(HintLabel *hint) {
+void Overlay::popHint(HintLabel *hint) {
   Q_ASSERT(hint->parentWidget() == this);
   int idx = p_hints.indexOf(hint);
   Q_ASSERT(idx >= 0);
   p_hints.removeAt(idx);
-  logWarning << hint << "not a hint controlled by" << this;
+  hint->setParent(parentWidget());
   update();
 }
 

@@ -27,7 +27,7 @@ public:
 
   OverlayLayout *overlayLayout();
   void addHint(QString text, QWidgetActionProxy *widgetProxy);
-  void removeHint(HintLabel *hint);
+  void popHint(HintLabel *hint);
   const QList<HintLabel *> &hints();
   const QLabel *statusIndicator();
   QList<HintLabel *> visibleHints();

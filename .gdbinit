@@ -41,6 +41,12 @@ define preload-qt6
   dont-repeat
 end
 
+define preload-dynamic
+  set environment LD_PRELOAD=./build/lib/libtetradactyl-dynamic-probe.so
+  add-symbol-file ./build/lib/libtetradactyl-dynamic-probe.so -readnow
+  dont-repeat
+end
+
 define offscreen-qt
   set environment QT_QPA_PLATFORM=offscreen
   dont-repeat

@@ -422,7 +422,6 @@ void WindowController::accept(QWidgetActionProxy *widgetProxy) {
                        [acceptedHint]() {
                          // make sure the hint still exist
                          if (acceptedHint) {
-                           logInfo << "deleting" << acceptedHint->text();
                            delete acceptedHint;
                          }
                        });
@@ -519,8 +518,6 @@ QList<QWidget *> WindowController::getHintables(HintMode hintMode) {
                  return false;
                });
 
-  // TODO 02/08/20 psacawa: dla się bez tego kopiowania?
-  // return QList<QWidget *>(hintables.begin(), hintables.end());
   return QList<QWidget *>(hintables.begin(), hintables.end());
 }
 
@@ -563,7 +560,6 @@ HintGenerator &HintGenerator::operator++() {
 }
 
 HintGenerator &HintGenerator::operator++(int _) {
-  // TODO 22/07/20 psacawa: fix pre-inc
   operator++();
   return *this;
 }

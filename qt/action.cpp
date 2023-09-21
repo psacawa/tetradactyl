@@ -209,8 +209,7 @@ QWidgetActionProxy::getMetadataForMetaObject(const QMetaObject *widgetMO) {
     const QMetaObject *iter = widgetMO;
     while (strncmp(iter->className(), "Q", 1) != 0)
       iter = iter->superClass();
-    auto msg = QString("No ActionProxy class found for QMetaObject of %1 which "
-                       "inherits %2")
+    auto msg = QString("No ActionProxy class found for %1 which inherits %2")
                    .arg(widgetMO->className())
                    .arg(iter->className());
     // only warn if there was another base Qt widget between this one QWidget
@@ -228,7 +227,8 @@ QWidgetActionProxy::createForMetaObject(const QMetaObject *widgetMO,
                                         QWidget *w) {
   WidgetHintingData metadata = getMetadataForMetaObject(widgetMO);
   QObject *obj = metadata.actionProxyMO->newInstance(Q_ARG(QWidget *, w));
-  Q_ASSERT(obj != nullptr);
+  if (obj == nullptr)
+    logWarning << "No meta-object created for" << w;
   return reinterpret_cast<QWidgetActionProxy *>(obj);
 }
 
@@ -329,6 +329,9 @@ static void hintGenericHelper(BaseAction *action, QWidget *widget,
       if (metadata.staticMethods->isHintableGeneric(action, widget)) {
         QWidgetActionProxy *proxy =
             QWidgetActionProxy::createForMetaObject(mo, widget);
+        if (proxy == nullptr)
+          continue;
+
         proxies.append(proxy);
       }
 
@@ -380,7 +383,10 @@ void QWidgetActionProxyStatic::hintMenuable(
 
 bool QWidgetActionProxy::contextMenu(ContextMenuAction *action) {
   Qt::ContextMenuPolicy policy = widget->contextMenuPolicy();
-  const QPoint globalPos = widget->mapTo(widget->window(), QPoint(0, 0));
+  const QPoint globalWindowPosition =
+      widget->window()->mapToGlobal(QPoint(0, 0));
+  const QPoint positionInWindow = widget->mapTo(widget->window(), QPoint(0, 0));
+  const QPoint globalPos = globalWindowPosition + positionInWindow;
   switch (policy) {
   case Qt::DefaultContextMenu: {
     // Pray to God this reaches the right widget.

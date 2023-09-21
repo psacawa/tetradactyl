@@ -63,6 +63,8 @@ Overlay::Overlay(WindowController *windowController, QWidget *target,
   show();
 }
 
+// n.b. This does not include the "tracer" hint is displayed  for a short period
+// after hinting has finished
 QList<HintLabel *> Overlay::visibleHints() {
   QList<HintLabel *> ret;
   copy_if(p_hints.begin(), p_hints.end(), std::back_inserter(ret),

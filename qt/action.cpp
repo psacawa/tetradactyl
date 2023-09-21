@@ -497,26 +497,9 @@ void QMenuBarActionProxyStatic::hintMenuable(
   }
 }
 
-// Helper that should be in Qt itself.
-// FIXME 20/09/20 psacawa: slow as shit
-QMenu *getMenuForMenuBarAction(QWidget *w, QAction *action) {
-  // Menus in a QMenuBar don't actually need to be it's
-  // descendants, e.g. if added with the addMenu API, so you can't use
-  // necessarily use findChildren to recover them.
-  // Make a faster implementation that registers the  correspondence action ->
-  // menu in the windowController.
-  for (auto w : qApp->allWidgets()) {
-    QMenu *menu = qobject_cast<QMenu *>(w);
-    if (menu && menu->menuAction() == action) {
-      return menu;
-    }
-  }
-  return nullptr;
-}
-
 bool QMenuBarActionProxy::menu(MenuBarAction *tetradactylAction) {
   QOBJECT_CAST_ASSERT(QMenuBar, widget);
-  QMenu *menu = getMenuForMenuBarAction(instance, menuAction);
+  QMenu *menu = menuAction->menu();
   Q_ASSERT(menu != nullptr);
 
   QPoint pos = menu->mapToGlobal(QPoint(0, 0));
@@ -549,7 +532,7 @@ void QMenuActionProxyStatic::hintMenuable(
 
 bool QMenuActionProxy::menu(MenuBarAction *tetradactylAction) {
   QOBJECT_CAST_ASSERT(QMenu, widget);
-  QMenu *submenu = getMenuForMenuBarAction(instance, menuAction);
+  QMenu *submenu = menuAction->menu();
   if (submenu != nullptr && submenu->actions().length() > 0) {
     // action has submenu
     logInfo << __PRETTY_FUNCTION__ << submenu << menuAction;

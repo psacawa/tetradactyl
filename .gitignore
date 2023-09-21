@@ -69,3 +69,4 @@ TODO.md
 examples
 tetradactyl
 .vim
+compile_commands*.json

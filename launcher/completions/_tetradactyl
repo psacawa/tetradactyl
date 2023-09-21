@@ -1,5 +1,5 @@
-# Copyright 2023 Paweł Sacawa. All rights reserved.
 #compdef tetradactyl
+# Copyright 2023 Paweł Sacawa. All rights reserved.
 
 _arguments  \
   '1: :(***/*(*))'  \

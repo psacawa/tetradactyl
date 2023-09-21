@@ -11,6 +11,7 @@
 #include <QLoggingCategory>
 #include <QMenu>
 #include <QMenuBar>
+#include <QPointer>
 #include <QShortcut>
 #include <QTextEdit>
 #include <QTimer>
@@ -83,18 +84,27 @@ QString Controller::stylesheet = "";
 
 Controller::Controller() {
   Q_ASSERT(self == nullptr);
+  // Having the application as the parent allows a tool like  gammaray to find
+  // it on startup
+  setParent(qApp);
+
   Controller::stylesheet = fetchStylesheet();
   qApp->setStyleSheet(Controller::stylesheet);
-
   qApp->installEventFilter(new Tetradactyl::PrintFilter);
   qApp->installEventFilter(this);
 }
 
 Controller::~Controller() {
+  if (self == nullptr) {
+    // controller already deleted
+    return;
+  }
   for (auto &WindowController : windowControllers) {
     delete WindowController;
   }
-  qApp->removeEventFilter(this);
+  if (qApp) {
+    qApp->removeEventFilter(this);
+  }
   self = nullptr;
 }
 
@@ -104,7 +114,7 @@ void Controller::createController() {
 
   self->attachToExistingWindows();
 
-  // Initially defocus input widgets. This assumes the tol-level widget is not
+  // Initially defocus input widgets. This assumes the top-level widget is not
   // e.g. QLineEdit
   for (auto widget : qApp->topLevelWidgets()) {
     widget->clearFocus();
@@ -113,17 +123,19 @@ void Controller::createController() {
 
 WindowController *Controller::findControllerForWidget(QWidget *widget) {
   for (auto winController : windowControllers) {
-    // if (widget->window() == winController->target())
-    if (widget->nativeParentWidget() == winController->target())
+    // Two cases here: either the widget itself (potentially itself) has the
+    // WindowController, or itself it's a popup of sorts (QMenu/QComboBox popup)
+    // whose nativeParentWidget has the WindowController
+    QWidget *target = winController->target();
+    if (widget == target || widget->nativeParentWidget() == target)
       return winController;
   }
   return nullptr;
 }
 
 void Controller::attachToExistingWindows() {
-  QList<QWidget *> topelevelWidgets = qApp->topLevelWidgets();
-  for (auto &widget : topelevelWidgets) {
-    // QTimer::singleShot(0, [widget] { self->tryAttachToWindow(widget); });
+  QList<QWidget *> toplevelWidgets = qApp->topLevelWidgets();
+  for (auto &widget : toplevelWidgets) {
     tryAttachToWindow(widget);
   }
 }
@@ -147,9 +159,7 @@ bool Controller::eventFilter(QObject *obj, QEvent *ev) {
   QEvent::Type type = ev->type();
   QWidget *widget = qobject_cast<QWidget *>(obj);
   if (widget) {
-    if (type == QEvent::Show) {
-      tryAttachToWindow(widget);
-    } else if (type == QEvent::KeyPress) {
+    if (type == QEvent::KeyPress) {
       QKeyEvent *kev = static_cast<QKeyEvent *>(ev);
       WindowController *windowController = findControllerForWidget(widget);
       if (windowController) {
@@ -229,15 +239,18 @@ WindowController::WindowController(QWidget *_target, QObject *parent = nullptr)
   initializeShortcuts();
   initializeOverlays();
   Q_ASSERT(p_overlays.length() > 0);
+  logInfo << "WindowController installs eventFilter on" << this;
   p_target->installEventFilter(this);
 }
 
 WindowController::~WindowController() {
   for (auto &overlay : p_overlays) {
-    delete overlay;
+    if (overlay)
+      delete overlay;
   }
   for (auto shortcut : shortcuts) {
-    delete shortcut;
+    if (shortcut)
+      delete shortcut;
   }
 }
 
@@ -325,6 +338,7 @@ Overlay *WindowController::mainOverlay() {
               << p_overlays;
   return p_overlays.at(0);
 }
+
 // As with tryAttachToWindow, can be called to attach to existing
 // overlayable widget, or in response to one being created.
 void WindowController::tryAttachController(QWidget *target) {
@@ -339,10 +353,6 @@ void WindowController::addOverlay(QWidget *target) {
   bool isMainWindow = target->windowType() == Qt::Window;
   Overlay *overlay = new Overlay(this, target, isMainWindow);
   p_overlays.append(overlay);
-  connect(this, &WindowController::destroyed, this, [this](QObject *obj) {
-    Overlay *overlay = qobject_cast<Overlay *>(obj);
-    this->removeOverlay(overlay, true);
-  });
 }
 
 void WindowController::removeOverlay(Overlay *overlay, bool fromSignal) {
@@ -405,10 +415,11 @@ void WindowController::accept(QWidgetActionProxy *widgetProxy) {
   // widgetProxy->actGeneric(currentAction);
   currentAction->accept(widgetProxy);
   cleanupHints();
-  emit accepted(currentHintMode, widgetProxy->widget,
-                widgetProxy->positionInWidget);
+  // emit accepted(currentHintMode, widgetProxy->widget,
+  //               widgetProxy->positionInWidget);
   if (currentAction->isDone()) {
     cleanupAction();
+    emit hintingFinished(true);
     setControllerMode(Normal);
   } else {
     currentAction->act();
@@ -445,10 +456,9 @@ QWidget *WindowController::target() {
 
 void WindowController::cleanupHints() {
   logDebug << __PRETTY_FUNCTION__;
-  for (auto overlay : p_overlays) {
+  for (auto overlay : p_overlays)
     overlay->clear();
-    // overlay->hide();
-  }
+
   hintBuffer = "";
   for (auto sc : shortcuts)
     sc->setEnabled(true);
@@ -466,6 +476,7 @@ void WindowController::cancel() {
   }
   cleanupHints();
   emit cancelled(currentHintMode);
+  emit hintingFinished(false);
   setControllerMode(Normal);
 }
 

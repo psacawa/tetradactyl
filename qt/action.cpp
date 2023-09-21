@@ -74,6 +74,8 @@ void BaseAction::accept(QWidgetActionProxy *proxy) {
   logInfo << "Accepting" << proxy;
 
   int widgetFinishesAction = proxy->actGeneric(this);
+  emit winController->accepted(winController->currentHintMode, proxy->widget,
+                               proxy->positionInWidget);
   if (widgetFinishesAction)
     finish();
 }
@@ -523,6 +525,7 @@ bool QMenuBarActionProxy::menu(MenuBarAction *tetradactylAction) {
   QPoint positionInWindow = instance->actionGeometry(menuAction).bottomLeft();
 
   menu->popup(globalPos + positionInWindow);
+
   tetradactylAction->menusToClose.append(menu);
   tetradactylAction->addNextStage(menu);
   return false;

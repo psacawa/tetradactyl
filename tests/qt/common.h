@@ -31,13 +31,16 @@ protected:
     acceptedSpy = new QSignalSpy(windowController, &WindowController::accepted);
     cancelledSpy =
         new QSignalSpy(windowController, &WindowController::cancelled);
+    hintingFinishedSpy =
+        new QSignalSpy(windowController, &WindowController::hintingFinished);
   }
 
   const Controller *controller;
   WindowController *windowController;
   Overlay *overlay;
 
-  QSignalSpy *modeChangedSpy, *hintedSpy, *acceptedSpy, *cancelledSpy;
+  QSignalSpy *modeChangedSpy, *hintedSpy, *acceptedSpy, *cancelledSpy,
+      *hintingFinishedSpy;
 };
 
 void waitForWindowActiveOrFail(QWidget *);

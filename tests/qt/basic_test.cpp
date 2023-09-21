@@ -17,8 +17,10 @@ private slots:
   void init();
   void cleanup();
   void signalEmissionTest();
+  void cancelTest();
   void statusIndicatorTest();
   void noHintsTest();
+  void manualAcceptCurrentHintTest();
 
 private:
   Calculator *win;
@@ -36,15 +38,43 @@ void BasicTest::cleanup() {
 }
 
 void BasicTest::signalEmissionTest() {
+  // beginning
   QCOMPARE(modeChangedSpy->count(), 0);
+  QCOMPARE(hintedSpy->count(), 0);
+  QCOMPARE(acceptedSpy->count(), 0);
+  // hinting
   QTest::keyClicks(win, "f");
-  QCOMPARE(modeChangedSpy->count(), 1);
+  QCOMPARE(hintedSpy->count(), 1);
+  QCOMPARE(hintedSpy->takeAt(0).at(0), HintMode::Activatable);
+  QTRY_COMPARE(modeChangedSpy->count(), 1);
   QCOMPARE(modeChangedSpy->takeAt(0).at(0),
            WindowController::ControllerMode::Hint);
+  QCOMPARE(acceptedSpy->count(), 0);
+  QCOMPARE(hintingFinishedSpy->count(), 0);
+  // accepting
   QTest::keyClicks(win, "ss");
-  QCOMPARE(modeChangedSpy->count(), 1);
+  QCOMPARE(hintedSpy->count(), 0);
+  QCOMPARE(hintingFinishedSpy->count(), 1);
+  QVERIFY2(hintingFinishedSpy->takeAt(0).at(0).toBool(),
+           "hintingFinished signal had accepted == true");
+  QTRY_COMPARE(modeChangedSpy->count(), 1);
   QCOMPARE(modeChangedSpy->takeAt(0).at(0),
            WindowController::ControllerMode::Normal);
+  QCOMPARE(acceptedSpy->count(), 1);
+  auto args = acceptedSpy->takeAt(0);
+  QCOMPARE(args.at(0), HintMode::Activatable);
+}
+
+void BasicTest::cancelTest() {
+  QTest::keyClicks(win, "f");
+  QTest::keyClicks(win, "s");
+  QCOMPARE(cancelledSpy->count(), 0);
+  QTest::keyClick(win, Qt::Key_Escape);
+  QCOMPARE(cancelledSpy->count(), 1);
+  QCOMPARE(cancelledSpy->takeAt(0).at(0), HintMode::Activatable);
+  QCOMPARE(hintingFinishedSpy->count(), 1);
+  QVERIFY2(!hintingFinishedSpy->takeAt(0).at(0).toBool(),
+           "hintingFinished signal had accepted == false");
 }
 
 void BasicTest::statusIndicatorTest() {
@@ -55,7 +85,7 @@ void BasicTest::statusIndicatorTest() {
   QVERIFY(statusIndicator->isVisible());
   QCOMPARE(statusIndicator->text(), "Normal");
   QTest::keyClick(win, Qt::Key_F);
-  QTRY_COMPARE(statusIndicator->text(), "Hint");
+  QTRY_VERIFY(statusIndicator->text().startsWith("Hint"));
   QTest::keyClicks(win, "ss");
   QTRY_COMPARE(statusIndicator->text(), "Normal");
 }
@@ -64,13 +94,20 @@ void BasicTest::noHintsTest() {
   // no menu items in the Calculator
   // TODO 18/09/20 psacawa: determine appropriate behaviour
   QTest::keyClick(win, Qt::Key_M);
-  // QTRY_COMPARE(hintedSpy->count(), 1);
-  // QCOMPARE(cancelledSpy->count(), 1);
-
-  // no mode change on empty hint
-  // QCOMPARE(modeChangedSpy->count(), 0);
+  QCOMPARE(overlay->hints().length(), 0);
+  QCOMPARE(windowController->controllerMode(),
+           WindowController::ControllerMode::Normal);
 }
 
+void BasicTest::manualAcceptCurrentHintTest() {
+  QTest::keyClicks(win, "f");
+  // first hinted widget is Backspace button with "AA"
+  QWidget *backspaceButton = overlay->selectedWidget();
+  QTest::keyClick(win, Qt::Key_Return);
+  QCOMPARE(acceptedSpy->count(), 1);
+  QCOMPARE(qvariant_cast<QObject *>(acceptedSpy->takeFirst().at(1)),
+           backspaceButton);
+}
 } // namespace Tetradactyl
 
 QTEST_MAIN(Tetradactyl::BasicTest);

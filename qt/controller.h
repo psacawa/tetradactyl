@@ -7,6 +7,7 @@
 #include <QKeySequence>
 #include <QList>
 #include <QMap>
+#include <QPointer>
 #include <QShortcut>
 #include <QWidget>
 #include <QWindow>
@@ -110,7 +111,7 @@ public:
   virtual ~WindowController();
 
   Overlay *findOverlayForWidget(QWidget *);
-  const QList<Overlay *> &overlays();
+  const QList<QPointer<Overlay>> &overlays();
   Overlay *mainOverlay();
   Overlay *activeOverlay();
 
@@ -138,9 +139,14 @@ signals:
   void modeChanged(ControllerMode mode);
   void hinted(HintMode hintMode);
   // Fired when a single stage of hinting finished with a hint accepted by the
-  // user
-  void accepted(HintMode hintMode, QWidget *widget,
+  // user. In the case where we go into menus, the target widget is the widget
+  // controlling access to the menu, i.e the QMenuBar.
+  void accepted(HintMode hintMode, QWidget *target,
                 QPoint positionInWidget = QPoint(0, 0));
+  // in the case a menu has been accepted, the target below will be the
+  // corresponding menuAction.
+  // TODO 21/09/20 psacawa: implement the hinting of this
+  void acceptedAction(HintMode hintMode, QAction *action);
   // Fired when a hinting is finished with a cancellation with <esc> by user
   void cancelled(HintMode hintMode);
   // Fired when a hinting finished entirely, successfully or not
@@ -160,8 +166,8 @@ private:
   BaseAction *currentAction;
   Controller *controller;
   QWidget *p_target;
-  QList<Overlay *> p_overlays;
-  QList<QShortcut *> shortcuts;
+  QList<QPointer<Overlay>> p_overlays;
+  QList<QPointer<QShortcut>> shortcuts;
   // Currently "active" hint. <enter> will accept it. May be invalidated when
   // hintBuffer gets input
   // TODO 02/08/20 psacawa: custom iterator that only touches visible widgets
@@ -170,7 +176,7 @@ private:
   friend QDebug operator<<(QDebug debug, const WindowController *controller);
 };
 
-inline const QList<Overlay *> &WindowController::overlays() {
+inline const QList<QPointer<Overlay>> &WindowController::overlays() {
   return p_overlays;
 }
 // TODO 10/09/20 psacawa: rozwiń

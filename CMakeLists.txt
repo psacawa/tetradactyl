@@ -16,6 +16,8 @@ if(BUILD_TESTS)
   enable_testing()
 endif()
 
+include(CMakePrintHelpers)
+
 if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
   set(DEBUG 1)
   add_compile_definitions("DEBUG")

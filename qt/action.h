@@ -13,10 +13,11 @@
 #include <qabstractbutton.h>
 #include <qobject.h>
 
-// c++ forbids  forward reference to enum HintMode
+// c++ forbids forward reference to enum HintMode
+#include "controller.h"
+
 #include "actionmacros.h"
 #include "common.h"
-#include "controller.h"
 
 using std::map;
 
@@ -30,19 +31,29 @@ namespace Tetradactyl {
 class BaseAction : public QObject {
   Q_OBJECT
 public:
-  HintMode mode;
-  WindowController *winController;
-  virtual void act();
-  BaseAction(WindowController *controller) : winController(controller) {
-    currentRoot = winController->target();
+  Q_PROPERTY(HintMode mode MEMBER mode);
+  Q_PROPERTY(WindowController *windowController MEMBER windowController);
+  Q_PROPERTY(QWidget *currentRoot MEMBER currentRoot);
+  Q_PROPERTY(bool done READ isDone WRITE setDone);
+
+  BaseAction(WindowController *controller) : windowController(controller) {
+    currentRoot = windowController->target();
   }
   virtual ~BaseAction() {}
-  virtual void accept(QWidgetActionProxy *proxy);
-  void addNextStage(QWidget *root);
   bool isDone();
-  void finish();
 
   static BaseAction *createActionByHintMode(HintMode, WindowController *);
+public slots:
+  virtual void accept(QWidgetActionProxy *proxy);
+  void addNextStage(QWidget *root);
+  void setDone(bool);
+  void finish();
+
+  virtual void act();
+
+public:
+  HintMode mode;
+  WindowController *windowController;
 
 signals:
   void stateChanged();
@@ -57,7 +68,8 @@ protected:
 };
 
 inline bool BaseAction::isDone() { return done; }
-inline void BaseAction::finish() { done = true; }
+inline void BaseAction::setDone(bool _done) { done = _done; }
+inline void BaseAction::finish() { setDone(true); }
 
 class ActivateAction : public BaseAction {
   Q_OBJECT
@@ -102,6 +114,7 @@ public:
 class MenuBarAction : public BaseAction {
   Q_OBJECT
 public:
+  Q_PROPERTY(QList<QMenu *> menusToClose MEMBER menusToClose);
   MenuBarAction(WindowController *controller);
   virtual ~MenuBarAction() {}
 
@@ -393,6 +406,21 @@ class QStackedWidgetActionProxy : public QWidgetActionProxy {
 public:
   Q_INVOKABLE QStackedWidgetActionProxy(QWidget *w) : QWidgetActionProxy(w) {}
   virtual ~QStackedWidgetActionProxy() {}
+};
+
+// QTextEditActionProxy
+
+class QTextEditActionProxyStatic : public QWidgetActionProxyStatic {
+  ACTIONPROXY_TRUE_SELF_EDITABLE_DEF
+  ACTIONPROXY_TRUE_SELF_FOCUSABLE_DEF
+};
+
+class QTextEditActionProxy : public QWidgetActionProxy {
+  Q_OBJECT
+public:
+  Q_INVOKABLE QTextEditActionProxy(QWidget *w) : QWidgetActionProxy(w) {}
+
+  ACTIONPROXY_DEFAULT_ACTION_EDITABLE_DEF
 };
 
 // MODEL VIEW ACTION PROXIES

@@ -40,20 +40,20 @@ namespace Tetradactyl {
 // To be replaced when actions need options
 BaseAction *
 BaseAction::createActionByHintMode(HintMode mode,
-                                   WindowController *winController) {
+                                   WindowController *windowController) {
   switch (mode) {
   case Activatable:
-    return new ActivateAction(winController);
+    return new ActivateAction(windowController);
   case Editable:
-    return new EditAction(winController);
+    return new EditAction(windowController);
   case Focusable:
-    return new FocusAction(winController);
+    return new FocusAction(windowController);
   case Yankable:
-    return new YankAction(winController);
+    return new YankAction(windowController);
   case Contextable:
-    return new ContextMenuAction(winController);
+    return new ContextMenuAction(windowController);
   case Menuable:
-    return new MenuBarAction(winController);
+    return new MenuBarAction(windowController);
   default:
     logCritical << "BaseAction for HintMode" << mode << "not available in"
                 << __PRETTY_FUNCTION__;
@@ -63,8 +63,8 @@ BaseAction::createActionByHintMode(HintMode mode,
 }
 
 void BaseAction::addNextStage(QWidget *root) {
-  if (winController->findOverlayForWidget(root) == nullptr) {
-    winController->addOverlay(root);
+  if (windowController->findOverlayForWidget(root) == nullptr) {
+    windowController->addOverlay(root);
   }
   currentRoot = root;
   logInfo << "New stage of" << this << "based at root:" << root;
@@ -74,8 +74,8 @@ void BaseAction::accept(QWidgetActionProxy *proxy) {
   logInfo << "Accepting" << proxy;
 
   int widgetFinishesAction = proxy->actGeneric(this);
-  emit winController->accepted(winController->currentHintMode, proxy->widget,
-                               proxy->positionInWidget);
+  emit windowController->accepted(windowController->currentHintMode,
+                                  proxy->widget, proxy->positionInWidget);
   if (widgetFinishesAction)
     finish();
 }
@@ -94,7 +94,7 @@ void BaseAction::act() {
     finish();
     return;
   }
-  Overlay *overlay = winController->findOverlayForWidget(currentRoot);
+  Overlay *overlay = windowController->findOverlayForWidget(currentRoot);
   HintGenerator hintStringGenerator(Controller::settings.hintChars,
                                     hintData.length());
   for (QWidgetActionProxy *actionProxy : hintData) {
@@ -179,6 +179,7 @@ map<const QMetaObject *, WidgetHintingData> QWidgetMetadataRegistry = {
     METADATA_REGISTRY_ENTRY(QGroupBox),
     METADATA_REGISTRY_ENTRY(QLabel),
     METADATA_REGISTRY_ENTRY(QLineEdit),
+    METADATA_REGISTRY_ENTRY(QTextEdit),
     METADATA_REGISTRY_ENTRY(QListView),
     METADATA_REGISTRY_ENTRY(QMenuBar),
     METADATA_REGISTRY_ENTRY(QMenu),
@@ -419,6 +420,7 @@ bool QWidgetActionProxy::contextMenu(ContextMenuAction *action) {
 bool QAbstractButtonActionProxy::activate(ActivateAction *action) {
   QOBJECT_CAST_ASSERT(QAbstractButton, widget);
   instance->setDown(true);
+  instance->setFocus();
   instance->click();
   return true;
 }
@@ -454,7 +456,11 @@ bool QComboBoxActionProxyStatic::isEditable(EditAction *action,
 bool QComboBoxActionProxy::activate(ActivateAction *action) {
   QOBJECT_CAST_ASSERT(QComboBox, widget);
   instance->showPopup();
-  // action->addNextStage(instance);
+  // Find the widget which represents the popup. This is a private QObject
+  // class, but it is a descendant which is a listview.
+  // QWidget *privateListView;
+  // TODO 22/09/20 psacawa: figure this out
+  action->addNextStage(instance);
   return false;
 }
 
@@ -475,6 +481,7 @@ bool QGroupBoxActionProxyStatic::isActivatable(ActivateAction *action,
 bool QGroupBoxActionProxy::activate(ActivateAction *action) {
   QOBJECT_CAST_ASSERT(QGroupBox, widget);
   instance->setChecked(!instance->isChecked());
+  instance->setFocus();
   return true;
 }
 
@@ -668,6 +675,7 @@ QList<QPoint> QTabBarActionProxyStatic::probeTabLocations(QTabBar *bar) {
 bool QTabBarActionProxy::activate(ActivateAction *action) {
   QOBJECT_CAST_ASSERT(QTabBar, widget);
   instance->setCurrentIndex(tabIndex);
+  instance->setFocus();
   return true;
 }
 

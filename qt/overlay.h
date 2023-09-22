@@ -22,22 +22,33 @@ QList<HintLabel *> findHintsByTargetHelper(Overlay *overlay,
 class Overlay : public QWidget {
   Q_OBJECT
 public:
+  Q_PROPERTY(QList<HintLabel *> hints READ hints);
+  Q_PROPERTY(QList<HintLabel *> visibleHints READ visibleHints);
+  Q_PROPERTY(const QLabel *statusIndicator READ statusIndicator);
+  Q_PROPERTY(HintLabel *selectedHint READ selectedHint);
+  Q_PROPERTY(QWidget *selectedWidget READ selectedWidget);
+  Q_PROPERTY(WindowController *windowController MEMBER controller);
+
   Overlay(WindowController *controller, QWidget *target, bool isMain = true);
   virtual ~Overlay();
 
   OverlayLayout *overlayLayout();
-  void addHint(QString text, QWidgetActionProxy *widgetProxy);
-  void popHint(HintLabel *hint);
+
   const QList<HintLabel *> &hints();
   const QLabel *statusIndicator();
   QList<HintLabel *> visibleHints();
+  HintLabel *selectedHint();
+  QWidget *selectedWidget();
+
+public slots:
+  void addHint(QString text, QWidgetActionProxy *widgetProxy);
+  void popHint(HintLabel *hint);
   void clear();
   int updateHints(QString &);
   void resetSelection(HintLabel *label = nullptr);
   void nextHint(bool forward);
-  HintLabel *selectedHint();
-  QWidget *selectedWidget();
 
+public:
   template <typename T> inline QList<HintLabel *> findHintsByTarget() {
     typedef typename std::remove_cv<typename std::remove_pointer<T>::type>::type
         ObjType;
@@ -45,10 +56,10 @@ public:
   }
 
 private:
+  WindowController *controller;
   QList<HintLabel *> p_hints;
   HintLabel *p_selectedHint;
   QLabel *p_statusIndicator;
-  WindowController *controller;
 
   friend class OverlayLayout;
 

@@ -31,8 +31,8 @@ namespace Tetradactyl {
 // target need not be the target of the  WindowController
 Overlay::Overlay(WindowController *windowController, QWidget *target,
                  bool isMain)
-    : QWidget(target), p_selectedHint(nullptr), p_statusIndicator(nullptr),
-      controller(windowController) {
+    : QWidget(target), controller(windowController), p_selectedHint(nullptr),
+      p_statusIndicator(nullptr) {
   Q_ASSERT(controller != nullptr);
   Q_ASSERT(target != nullptr);
   // Since Overlay is not in any layout, this is needed.

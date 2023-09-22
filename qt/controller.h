@@ -52,12 +52,15 @@ struct ControllerSettings {
 };
 
 enum HintMode {
+  // TODO 22/09/20 psacawa: finish this
+  // None,
   Activatable,
   Editable,
   Yankable,
   Focusable,
   Contextable,
   Menuable
+
 };
 Q_ENUM_NS(HintMode);
 
@@ -69,8 +72,17 @@ public:
   Controller();
   virtual ~Controller();
 
+  Q_PROPERTY(QList<WindowController *> windows READ windows);
+  Q_PROPERTY(QString stylesheet MEMBER stylesheet);
+  // this can be uncommented only when the classed is built up into a proper
+  // QObject Q_PROPERTY(ControllerSettings *settings MEMBER settings);
+
   static const Controller *instance();
   const QList<WindowController *> &windows() const;
+
+  const ControllerSettings *controllerSettings() {
+    return &Controller::settings;
+  }
 
   static ControllerSettings settings;
   static QString stylesheet;
@@ -78,6 +90,7 @@ public:
 public slots:
   static void createController();
   void routeNewlyCreatedObject(QObject *obj);
+  void resetModeAfterFocusChange(QWidget *old, QWidget *now);
 
 private:
   bool eventFilter(QObject *obj, QEvent *ev);
@@ -106,16 +119,27 @@ class WindowController : public QObject {
 public:
   enum ControllerMode { Normal, Hint, Input, Ignore };
   Q_ENUM(ControllerMode);
+  Q_PROPERTY(Controller *controller MEMBER controller);
+  Q_PROPERTY(QWidget *target READ target);
+  Q_PROPERTY(ControllerMode controllerMode READ controllerMode WRITE
+                 setControllerMode);
+  Q_PROPERTY(BaseAction *currentAction READ currentAction);
+  Q_PROPERTY(HintMode currentHintMode MEMBER currentHintMode);
+  // Q_PROPERTY(QList<Overlay *> &overlays READ overlays);
+  Q_PROPERTY(QList<QPointer<Overlay>> overlays READ overlays);
 
   WindowController(QWidget *target, QObject *parent);
   virtual ~WindowController();
 
   Overlay *findOverlayForWidget(QWidget *);
-  const QList<QPointer<Overlay>> &overlays();
+  const QList<QPointer<Overlay>> overlays();
   Overlay *mainOverlay();
   Overlay *activeOverlay();
 
   QList<QWidget *> getHintables(HintMode hintMode);
+
+  // A better description would be most recent HintMode until HintMode::None
+  // exists
   HintMode currentHintMode;
 
   ControllerMode controllerMode();
@@ -126,6 +150,7 @@ public:
   void addOverlay(QWidget *target);
   void removeOverlay(Overlay *overlay, bool fromSignal = false);
   bool isActing();
+  BaseAction *currentAction() { return p_currentAction; }
 
 public slots:
 
@@ -163,7 +188,7 @@ private:
   void tryAttachController(QWidget *widget);
 
   ControllerMode p_controllerMode = ControllerMode::Normal;
-  BaseAction *currentAction;
+  BaseAction *p_currentAction;
   Controller *controller;
   QWidget *p_target;
   QList<QPointer<Overlay>> p_overlays;
@@ -176,23 +201,24 @@ private:
   friend QDebug operator<<(QDebug debug, const WindowController *controller);
 };
 
-inline const QList<QPointer<Overlay>> &WindowController::overlays() {
+inline const QList<QPointer<Overlay>> WindowController::overlays() {
   return p_overlays;
 }
-// TODO 10/09/20 psacawa: rozwiń
-inline Overlay *WindowController::activeOverlay() {
-  QWidget *activeWidget = qApp->activePopupWidget();
-  if (!activeWidget)
-    activeWidget = qApp->focusWidget();
-  return findOverlayForWidget(activeWidget);
-}
-inline bool WindowController::isActing() { return currentAction != nullptr; }
+
+inline bool WindowController::isActing() { return p_currentAction != nullptr; }
 inline WindowController::ControllerMode WindowController::controllerMode() {
   return p_controllerMode;
 }
 inline void WindowController::setControllerMode(ControllerMode mode) {
   bool changed = mode != p_controllerMode;
   p_controllerMode = mode;
+  if (mode == Normal) {
+    for (auto sc : shortcuts)
+      sc->setEnabled(true);
+  } else {
+    for (auto sc : shortcuts)
+      sc->setEnabled(false);
+  }
   if (changed)
     emit modeChanged(mode);
 }

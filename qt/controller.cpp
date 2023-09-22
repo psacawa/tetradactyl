@@ -92,6 +92,9 @@ Controller::Controller() {
   qApp->setStyleSheet(Controller::stylesheet);
   qApp->installEventFilter(new Tetradactyl::PrintFilter);
   qApp->installEventFilter(this);
+
+  connect(qApp, &QApplication::focusChanged, this,
+          &Controller::resetModeAfterFocusChange);
 }
 
 Controller::~Controller() {
@@ -122,13 +125,22 @@ void Controller::createController() {
 }
 
 WindowController *Controller::findControllerForWidget(QWidget *widget) {
+  if (widget == nullptr)
+    return nullptr;
+
   for (auto winController : windowControllers) {
     // Two cases here: either the widget itself (potentially itself) has the
     // WindowController, or itself it's a popup of sorts (QMenu/QComboBox popup)
     // whose nativeParentWidget has the WindowController
     QWidget *target = winController->target();
-    if (widget == target || widget->nativeParentWidget() == target)
-      return winController;
+    while (target != nullptr &&
+           (!target->isWindow() ||
+            target->windowFlags() & Qt::WindowType::Popup)) {
+      if (widget == target) {
+        return winController;
+      }
+      widget = widget->nativeParentWidget();
+    }
   }
   return nullptr;
 }
@@ -197,6 +209,51 @@ void Controller::routeNewlyCreatedObject(QObject *obj) {
   // event as necessary
 }
 
+// Adjust controller states in response to QApplication::focusChanged. The
+// cases:
+//
+// i) clearFocus was called (now == nullptr).
+// ii) setFocus was called from unfocussed state (old == nullptr)
+// iii) regulat change between widgets in one window (tab/shitf+tab)
+// iv) change between widgets with different controllers. Eithr old or now may
+// be null
+// v) part of a multistep action: QComboBox, QMenu  activate, etc...
+//
+// Generally, we want to fix controller modes for the current focus, but permit
+// different windowControllers to  have their own state.
+void Controller::resetModeAfterFocusChange(QWidget *old, QWidget *now) {
+  logInfo << "Controller::resetModeAfterFocusChange" << old << now;
+  WindowController *oldWindowController = findControllerForWidget(old);
+  WindowController *nowWindowController = findControllerForWidget(now);
+
+  if (now == nullptr) {
+    if (oldWindowController) {
+      oldWindowController->setControllerMode(WindowController::Normal);
+      logInfo << "QApplication::focusChanged with now == nullptr";
+    } else {
+      // likely old == nullptr
+      // If this occurs, then it's because a focussed widget had no controller.
+      logWarning << "QApplication::focusChanged"
+                 << "with " << old << "and now == nullptr";
+      Q_ASSERT(old);
+    }
+    return;
+  }
+
+  if (nowWindowController->isActing()) {
+    // multistep action
+    return;
+  }
+
+  const QMetaObject *nowMo = now->metaObject();
+  auto metadata = QWidgetActionProxy::getMetadataForMetaObject(nowMo);
+
+  if (metadata.staticMethods->isEditable(nullptr, now))
+    nowWindowController->setControllerMode(WindowController::Input);
+  else
+    nowWindowController->setControllerMode(WindowController::Normal);
+}
+
 Controller *Controller::self = nullptr;
 
 QDebug operator<<(QDebug debug, const Controller *controller) {
@@ -254,8 +311,8 @@ WindowController::~WindowController() {
   }
 }
 
-// Find overlay which has the widget as *descendant*, not just as a child, which
-// would be easier
+// Find overlay which has the widget as *descendant*, not just as a child,
+// which would be easier
 Overlay *WindowController::findOverlayForWidget(QWidget *widget) {
   for (auto overlay : p_overlays) {
     if (overlay->parentWidget()->isAncestorOf(widget))
@@ -293,6 +350,16 @@ bool WindowController::earlyKeyEventFilter(QKeyEvent *kev) {
         logDebug << kev->key();
         pushKey(kev->key());
         return true;
+      }
+    } else if (controllerMode() == ControllerMode::Input) {
+      if (kev->key() == Qt::Key_Escape) {
+        QWidget *focussedWidget = qApp->focusWidget();
+        if (!focussedWidget) {
+          logWarning << "in" << ControllerMode::Input
+                     << "without a foucssed widget";
+        } else {
+          focussedWidget->clearFocus();
+        }
       }
     }
   }
@@ -348,6 +415,17 @@ void WindowController::tryAttachController(QWidget *target) {
   }
 }
 
+Overlay *WindowController::activeOverlay() {
+  QWidget *activeWidget = qApp->activePopupWidget();
+  if (!activeWidget)
+    activeWidget = qApp->focusWidget();
+
+  Overlay *ret = findOverlayForWidget(activeWidget);
+  if (ret == nullptr)
+    ret = mainOverlay();
+  return ret;
+}
+
 void WindowController::addOverlay(QWidget *target) {
   // exclude WindowType::Popup to get rid of QMenus
   bool isMainWindow = target->windowType() == Qt::Window;
@@ -372,11 +450,11 @@ void WindowController::hint(HintMode hintMode) {
   }
   logInfo << "Hinting in " << hintMode << "at" << target();
   hintBuffer = "";
-  currentAction = BaseAction::createActionByHintMode(hintMode, this);
-  currentAction->act();
+  p_currentAction = BaseAction::createActionByHintMode(hintMode, this);
+  p_currentAction->act();
 
   // Action may terminate immediately if there are no hints made
-  if (currentAction->isDone()) {
+  if (p_currentAction->isDone()) {
     cleanupAction();
     return;
   }
@@ -386,8 +464,8 @@ void WindowController::hint(HintMode hintMode) {
   setControllerMode(Hint);
 
   // In hint mode, just disable shortcuts. Need something cleaner?
-  for (auto sc : shortcuts)
-    sc->setEnabled(false);
+  // for (auto sc : shortcuts)
+  //   sc->setEnabled(false);
 
   currentHintMode = hintMode;
   emit hinted(hintMode);
@@ -426,14 +504,15 @@ void WindowController::accept(QWidgetActionProxy *widgetProxy) {
                          }
                        });
   }
-  currentAction->accept(widgetProxy);
+  p_currentAction->accept(widgetProxy);
   cleanupHints();
-  if (currentAction->isDone()) {
+  if (p_currentAction->isDone()) {
     cleanupAction();
     emit hintingFinished(true);
-    setControllerMode(Normal);
+    // The controller mode is not reset here but rather in the Controller's
+    // QApplication::focusChanged signal handler
   } else {
-    currentAction->act();
+    p_currentAction->act();
   }
 }
 
@@ -443,7 +522,7 @@ void WindowController::pushKey(char ch) {
     return;
   }
   hintBuffer += ch;
-  logInfo << activeOverlay()->parentWidget();
+  logInfo << "pushKey" << hintBuffer << activeOverlay()->parentWidget();
   int numVisibleHints = activeOverlay()->updateHints(hintBuffer);
   if (numVisibleHints == 1 && Controller::settings.autoAcceptUniqueHint) {
     acceptCurrent();
@@ -471,13 +550,13 @@ void WindowController::cleanupHints() {
     overlay->clear();
 
   hintBuffer = "";
-  for (auto sc : shortcuts)
-    sc->setEnabled(true);
+  // for (auto sc : shortcuts)
+  //   sc->setEnabled(true);
 }
 
 void WindowController::cleanupAction() {
-  delete currentAction;
-  currentAction = nullptr;
+  delete p_currentAction;
+  p_currentAction = nullptr;
 }
 
 void WindowController::cancel() {
@@ -578,7 +657,6 @@ QString fetchStylesheet() {
   QFile hintsCss(":/tetradactyl/hints.css");
   hintsCss.open(QIODevice::ReadOnly);
   QString ret = hintsCss.readAll();
-  logInfo << "CSS:" << ret;
   return ret;
 }
 

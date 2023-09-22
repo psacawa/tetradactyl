@@ -163,6 +163,7 @@ void ObjectProbe::processCreatedObjects() {
     for (auto obj : objectsBeingCreated) {
       if (interestedObject(obj)) {
         emit objectCreated(obj, QPrivateSignal());
+        // logWarning << "created" << obj;
       }
     }
     objectsBeingCreated.clear();

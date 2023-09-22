@@ -1,4 +1,5 @@
 <!-- Copyright 2023 Paweł Sacawa. All rights reserved. -->
+
 # Notes
 
 ## Intercepting Control
@@ -67,6 +68,16 @@ Three (main) modes of using context menus in Qt:
 
 Short of inspecting the vtable, there is really no simple way to detect the third (default) case. `notify` will always return `true`. Event filters act before we reach the event handler. Overview of prominent codebases seems to indicate usage is roughly evenly split between `CustomContextMenu` and `DefaultContextMenu`. It may be necessary to trigger the `ContextMenuEvent` just to probe whether any menu was created. But that's stupid...
 
+## Parent/NativeParent Widgets
+
+Given the decision to make dialogs have their own window controllers, special attention is given to routines like `Controller::findControllerForWidget`.
+
+The `nativeParentWidget` of `QMenu` is the controlling window, even in the case of a submenu. In the case of `QCombobox`. It launches a `QComboboxPrivateContainer` which is a native widget, and is the parent of the `QCombobox` list view. The `nativeParentWidget` of the `QComboboxPrivateContainer` is the controlling window.
+
+## Concurrency
+
+There is no control on when the client manipulates the application widgets. We must hope that he does so only from the UI thread, e.g. deferring signal handlers connected to across thread boundaries. If the client does e.g. use `Qt::DirectConnection` across threads, or constructs a `QWidget` subclass outside of main thread, we should try and find this out. Under the assumption that he doesn't, this means that we have control of the widget tree upon each event loop reentry that finds its way into our control flow. The operations from that point should be done transactionally: if we determine they can't be accomplished, abort with an error (instead of trying them and segfaulting). Therefore the relevant code sections must be guarded by asserts that will terminate the operation upon failure.
+
 ## ABI
 
-Qt outright refuses to interoperate with library sibling versions other than it's own. Therefore if we have e.g. vlc which uses  `libQt5Widgets` (in `qtbase`) and `libQt5Widgets` (not), then when the  application is run via Tetradactyl the libs loaded can be respectively  `/usr/local/Qt-5.15.10/lib/libQt5Widgets.so.5.15.10` and `/usr/lib/x86_64-linux-gnu/libQt5Svg.so.5.15.6`. This means we must in princip distribute the entirety of qt super module to clients to ensure interoperation.
+Qt outright refuses to interoperate with library sibling versions other than it's own. Therefore if we have e.g. vlc which uses `libQt5Widgets` (in `qtbase`) and `libQt5Widgets` (not), then when the application is run via Tetradactyl the libs loaded can be respectively `/usr/local/Qt-5.15.10/lib/libQt5Widgets.so.5.15.10` and `/usr/lib/x86_64-linux-gnu/libQt5Svg.so.5.15.6`. This means we must in princip distribute the entirety of qt super module to clients to ensure interoperation.

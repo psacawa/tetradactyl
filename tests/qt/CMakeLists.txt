@@ -81,6 +81,7 @@ function(add_qt6_test_depending_on_example_demo _test_name _example_relpath)
   set_tests_properties(${_test_name} PROPERTIES ENVIRONMENT
                                                 "QT_QPA_PLATFORM=offscreen")
   set_tests_properties(${_test_name} PROPERTIES LABELS "${arg_LABELS}")
+
 endfunction()
 
 if(TETRADACTYL_QT6)
@@ -117,5 +118,9 @@ if(TETRADACTYL_QT6)
   add_qt6_test_depending_on_example_demo(
     menubaraction_test "widgets/mainwindows/mainwindow" LABELS
     "controller;qmenubar;qt6")
+
+  add_qt6_test_depending_on_example_demo(
+    editable_test "widgets/layouts/basiclayouts" LABELS
+    "controller;qlineedit;qt6")
 
 endif()

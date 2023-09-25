@@ -41,15 +41,13 @@ Overlay::Overlay(WindowController *windowController, QWidget *target,
 
   // don't make status indicator for overlays attached to QMenus etc.
   if (isMain) {
-    p_statusIndicator =
-        new QLabel(enumKeyToValue<WindowController::ControllerMode>(
-                       windowController->controllerMode()),
-                   this);
+    p_statusIndicator = new QLabel(
+        enumKeyToValue<ControllerMode>(windowController->controllerMode()),
+        this);
     p_statusIndicator->setStyleSheet(statusIndicatorStylesheet);
     connect(windowController, &WindowController::modeChanged, p_statusIndicator,
-            [this](WindowController::ControllerMode mode) {
-              p_statusIndicator->setText(
-                  enumKeyToValue<WindowController::ControllerMode>(mode));
+            [this](ControllerMode mode) {
+              p_statusIndicator->setText(enumKeyToValue<ControllerMode>(mode));
             });
     connect(windowController, &WindowController::hinted, p_statusIndicator,
             [this](HintMode mode) {
@@ -221,7 +219,7 @@ void OverlayLayout::setGeometry(const QRect &updateRect) {
   QRect hostGeometry = overlay()->parentWidget()->geometry();
   for (auto item : items) {
     HintLabel *hint = qobject_cast<HintLabel *>(item->widget());
-    QRect hintGeometry = QRect(hint->positionInOverlay, hint->sizeHint());
+    QRect hintGeometry = QRect(hint->positionInOverlay(), hint->sizeHint());
     if (!hintGeometry.intersects(hintGeometry)) {
       logWarning << "Creating hint " << hint << "at" << hintGeometry
                  << "which doesn't intersect overlay host geometry"

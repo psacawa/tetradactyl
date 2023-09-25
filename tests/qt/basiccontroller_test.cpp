@@ -90,6 +90,8 @@ void BasicControllerTest::init() {
   windowController = controller->windows().at(0);
   overlay = windowController->overlays().at(0);
   Tetradactyl::waitForWindowActiveOrFail(win);
+
+  QTest::keyClick(win, Qt::Key_Escape);
 }
 
 void BasicControllerTest::cleanup() {
@@ -200,6 +202,7 @@ void BasicControllerTest::testHintVisibilityAfterPushPopKey() {
 void BasicControllerTest::testHintNextHint() {
   QTest::keyClick(win, Qt::Key_F);
   QTest::keyClick(win, Qt::Key_S);
+  QTest::qWait(1000);
   // 3 of 10 hints visible
   auto visibleHints = overlay->visibleHints();
   QCOMPARE(visibleHints.length(), 3);
@@ -215,8 +218,8 @@ void BasicControllerTest::testHintNextHint() {
            "tab wraps froward to the first visible hint");
   QTest::keyClick(win, Qt::Key_Backtab);
   int selectedHintIdx = visibleHints.indexOf(overlay->selectedHint());
-  QVERIFY2(selectedHintIdx == 2,
-           "shift+tab wraps backward to the last visible hint");
+  // shift+tab wraps backward to the last visible hint
+  QCOMPARE(selectedHintIdx, 2);
   QTest::keyClick(win, Qt::Key_Backtab);
   QVERIFY2(overlay->selectedHint() == visibleHints.at(1),
            "shift+tab wraps backward to the last visible hint");

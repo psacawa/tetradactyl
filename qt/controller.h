@@ -64,6 +64,9 @@ enum HintMode {
 };
 Q_ENUM_NS(HintMode);
 
+enum ControllerMode { Normal, Hint, Input, Ignore };
+Q_ENUM_NS(ControllerMode);
+
 // Manages global Tetradactyl state of application.
 class Controller : public QObject {
   Q_OBJECT
@@ -117,15 +120,13 @@ inline const QList<WindowController *> &Controller::windows() const {
 class WindowController : public QObject {
   Q_OBJECT
 public:
-  enum ControllerMode { Normal, Hint, Input, Ignore };
-  Q_ENUM(ControllerMode);
   Q_PROPERTY(Controller *controller MEMBER controller);
   Q_PROPERTY(QWidget *target READ target);
   Q_PROPERTY(ControllerMode controllerMode READ controllerMode WRITE
                  setControllerMode);
   Q_PROPERTY(BaseAction *currentAction READ currentAction);
-  Q_PROPERTY(HintMode currentHintMode MEMBER currentHintMode);
-  // Q_PROPERTY(QList<Overlay *> &overlays READ overlays);
+  Q_PROPERTY(
+      HintMode currentHintMode READ currentHintMode WRITE setCurrentHintMode);
   Q_PROPERTY(QList<QPointer<Overlay>> overlays READ overlays);
 
   WindowController(QWidget *target, QObject *parent);
@@ -138,10 +139,8 @@ public:
 
   QList<QWidget *> getHintables(HintMode hintMode);
 
-  // A better description would be most recent HintMode until HintMode::None
-  // exists
-  HintMode currentHintMode;
-
+  HintMode currentHintMode();
+  void setCurrentHintMode(HintMode mode);
   ControllerMode controllerMode();
   void setControllerMode(ControllerMode mode);
 
@@ -157,11 +156,14 @@ public slots:
   void hint(HintMode mode = Activatable);
   void acceptCurrent();
   void cancel();
+  void escapeInput();
   void pushKey(char ch);
   void popKey();
 
 signals:
   void modeChanged(ControllerMode mode);
+  void hintModeChanged(HintMode mode);
+
   void hinted(HintMode hintMode);
   // Fired when a single stage of hinting finished with a hint accepted by the
   // user. In the case where we go into menus, the target widget is the widget
@@ -187,6 +189,7 @@ private:
   void initializeOverlays();
   void tryAttachController(QWidget *widget);
 
+  HintMode p_currentHintMode;
   ControllerMode p_controllerMode = ControllerMode::Normal;
   BaseAction *p_currentAction;
   Controller *controller;
@@ -206,7 +209,18 @@ inline const QList<QPointer<Overlay>> WindowController::overlays() {
 }
 
 inline bool WindowController::isActing() { return p_currentAction != nullptr; }
-inline WindowController::ControllerMode WindowController::controllerMode() {
+
+inline HintMode WindowController::currentHintMode() {
+  return p_currentHintMode;
+}
+inline void WindowController::setCurrentHintMode(HintMode mode) {
+  bool changed = mode != p_currentHintMode;
+  p_currentHintMode = mode;
+  if (changed) {
+    emit hintModeChanged(mode);
+  }
+}
+inline ControllerMode WindowController::controllerMode() {
   return p_controllerMode;
 }
 inline void WindowController::setControllerMode(ControllerMode mode) {
@@ -242,5 +256,7 @@ private:
 };
 
 QString fetchStylesheet();
+
+bool inputModeWhenWidgetFocussed(QWidget *w);
 
 } // namespace Tetradactyl

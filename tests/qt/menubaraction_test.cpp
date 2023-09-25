@@ -48,7 +48,9 @@ void MenuBarActionTest::init() {
   fileMenu = allMenus.at(0);
   toolbarMenu = allMenus.at(2);
   QtBaseTest::init();
+
   waitForWindowActiveOrFail(win);
+  QTest::keyClick(win, Qt::Key_Escape);
 }
 
 MainWindow::CustomSizeHintMap MenuBarActionTest::map;
@@ -86,8 +88,7 @@ void MenuBarActionTest::basicTwoStepMenuBarActionAcceptedTest() {
   QTRY_COMPARE(hintedSpy->count(), 1);
   QCOMPARE((hintedSpy->takeAt(0).at(0)), HintMode::Menuable);
   QCOMPARE(modeChangedSpy->count(), 1);
-  QCOMPARE(modeChangedSpy->takeFirst().takeAt(0),
-           WindowController::ControllerMode::Hint);
+  QCOMPARE(modeChangedSpy->takeFirst().takeAt(0), ControllerMode::Hint);
 
   // file menu
   QTRY_VERIFY(!fileMenu->isVisible());

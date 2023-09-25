@@ -32,7 +32,7 @@ void EditableTest::init() {
 
 void EditableTest::cleanup() { delete win; }
 
-void EditableTest::basicInputModeTest() { QTest::qWait(100000); }
+void EditableTest::basicInputModeTest() {}
 
 } // namespace Tetradactyl
 

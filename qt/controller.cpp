@@ -220,38 +220,22 @@ void Controller::routeNewlyCreatedObject(QObject *obj) {
 // v) part of a multistep action: QComboBox, QMenu  activate, etc...
 //
 // Generally, we want to fix controller modes for the current focus, but permit
-// different windowControllers to  have their own state.
+// different windowControllers to  have their own state. It's in general
+// half-baked idea to use this slot to control much of anything.
 void Controller::resetModeAfterFocusChange(QWidget *old, QWidget *now) {
   logInfo << "Controller::resetModeAfterFocusChange" << old << now;
   WindowController *oldWindowController = findControllerForWidget(old);
   WindowController *nowWindowController = findControllerForWidget(now);
-
-  if (now == nullptr) {
-    if (oldWindowController) {
-      oldWindowController->setControllerMode(WindowController::Normal);
-      logInfo << "QApplication::focusChanged with now == nullptr";
-    } else {
-      // likely old == nullptr
-      // If this occurs, then it's because a focussed widget had no controller.
-      logWarning << "QApplication::focusChanged"
-                 << "with " << old << "and now == nullptr";
-      Q_ASSERT(old);
-    }
+  if (nowWindowController == nullptr && oldWindowController) {
+    oldWindowController->setControllerMode(Normal);
     return;
   }
 
-  if (nowWindowController->isActing()) {
-    // multistep action
-    return;
+  if (inputModeWhenWidgetFocussed(now)) {
+    findControllerForWidget(now)->setControllerMode(Input);
+  } else {
+    findControllerForWidget(now)->setControllerMode(Normal);
   }
-
-  const QMetaObject *nowMo = now->metaObject();
-  auto metadata = QWidgetActionProxy::getMetadataForMetaObject(nowMo);
-
-  if (metadata.staticMethods->isEditable(nullptr, now))
-    nowWindowController->setControllerMode(WindowController::Input);
-  else
-    nowWindowController->setControllerMode(WindowController::Normal);
 }
 
 Controller *Controller::self = nullptr;
@@ -321,6 +305,14 @@ Overlay *WindowController::findOverlayForWidget(QWidget *widget) {
   return nullptr;
 }
 
+static QList<const QMetaObject *> inputModeWidgetTypes = {
+    &QLineEdit::staticMetaObject, &QTextEdit::staticMetaObject};
+
+bool inputModeWhenWidgetFocussed(QWidget *w) {
+  const QMetaObject *const mo = w->metaObject();
+  return inputModeWidgetTypes.contains(mo);
+}
+
 /*
  * Filter QKeyEvents before the receiver widgets get a change to act on them.
  * Called from the application eventFilter.
@@ -329,39 +321,56 @@ bool WindowController::earlyKeyEventFilter(QKeyEvent *kev) {
   logInfo << __FUNCTION__ << kev;
   auto type = kev->type();
   if (type == QEvent::KeyPress) {
-    if (controllerMode() == ControllerMode::Hint) {
-      if (kev->key() == Qt::Key_Escape) {
+    switch (p_controllerMode) {
+
+    case ControllerMode::Normal: {
+      // Need to handle main shortcut logic here
+      switch (kev->key()) {
+      case Qt::Key_Tab:
+      case Qt::Key_Backtab:
+        // focus next/prev widget
+      default:
+        break;
+      }
+      break;
+    }
+
+    case ControllerMode::Hint: {
+      switch (kev->key()) {
+      case Qt::Key_Escape:
         cancel();
         return true;
-      } else if (kev->key() == Qt::Key_Return) {
+      case Qt::Key_Return:
         acceptCurrent();
         return true;
-      } else if (kev->key() == Qt::Key_Backspace) {
+      case Qt::Key_Backspace:
         popKey();
         return true;
-      } else if (kev->key() == Qt::Key_Tab) {
-        activeOverlay()->nextHint(true);
+      case Qt::Key_Tab:
+      case Qt::Key_Backtab:
+        activeOverlay()->nextHint(!(kev->modifiers() & Qt::ShiftModifier));
         return true;
-      } else if (kev->key() == Qt::Key_Backtab) {
-        activeOverlay()->nextHint(false);
-        return true;
-      } else if ((kev->key() >= 'A') && (kev->key() <= 'Z')) {
+      }
+      if ((kev->key() >= 'A') && (kev->key() <= 'Z')) {
         // std::isalpha doesn't work here
         logDebug << kev->key();
         pushKey(kev->key());
         return true;
       }
-    } else if (controllerMode() == ControllerMode::Input) {
-      if (kev->key() == Qt::Key_Escape) {
-        QWidget *focussedWidget = qApp->focusWidget();
-        if (!focussedWidget) {
-          logWarning << "in" << ControllerMode::Input
-                     << "without a foucssed widget";
-        } else {
-          focussedWidget->clearFocus();
-        }
-      }
+      break;
     }
+
+    case ControllerMode::Input:
+      if (kev->key() == Qt::Key_Escape) {
+        escapeInput();
+        return true;
+      }
+
+    case ControllerMode::Ignore:
+      break;
+    }
+  } else if (type == QEvent::KeyRelease) {
+    // anything to do here?
   }
   return false;
 }
@@ -454,6 +463,7 @@ void WindowController::hint(HintMode hintMode) {
   p_currentAction->act();
 
   // Action may terminate immediately if there are no hints made
+  // TODO 22/09/20 psacawa: consolidate with the cleanup code in accept()
   if (p_currentAction->isDone()) {
     cleanupAction();
     return;
@@ -467,7 +477,7 @@ void WindowController::hint(HintMode hintMode) {
   // for (auto sc : shortcuts)
   //   sc->setEnabled(false);
 
-  currentHintMode = hintMode;
+  setCurrentHintMode(hintMode);
   emit hinted(hintMode);
 }
 
@@ -489,12 +499,11 @@ void WindowController::accept(QWidgetActionProxy *widgetProxy) {
   }
   QWidget *w = widgetProxy->widget;
   logInfo << "Accepted " << w << "at" << widgetProxy->positionInWidget << "in"
-          << currentHintMode;
+          << p_currentHintMode;
   if (Controller::settings.highlightAcceptedHint) {
     QPointer<HintLabel> acceptedHint = activeOverlay()->selectedHint();
     activeOverlay()->popHint(acceptedHint);
     acceptedHint->setParent(activeOverlay()->parentWidget());
-    // acceptedHint->move(QPoint(0, 0));
     acceptedHint->show();
     QTimer::singleShot(Controller::settings.highlightAcceptedHintMs,
                        [acceptedHint]() {
@@ -507,6 +516,7 @@ void WindowController::accept(QWidgetActionProxy *widgetProxy) {
   p_currentAction->accept(widgetProxy);
   cleanupHints();
   if (p_currentAction->isDone()) {
+    setControllerMode(p_currentAction->controllerModeAfterSuccess());
     cleanupAction();
     emit hintingFinished(true);
     // The controller mode is not reset here but rather in the Controller's
@@ -514,6 +524,15 @@ void WindowController::accept(QWidgetActionProxy *widgetProxy) {
   } else {
     p_currentAction->act();
   }
+}
+
+void WindowController::escapeInput() {
+  Q_ASSERT(controllerMode() == Input);
+  QWidget *focussedWidget = qApp->focusWidget();
+  if (!focussedWidget)
+    logWarning << "in" << ControllerMode::Input << "without a focussed widget";
+  focussedWidget->clearFocus();
+  setControllerMode(Normal);
 }
 
 void WindowController::pushKey(char ch) {
@@ -565,7 +584,7 @@ void WindowController::cancel() {
     return;
   }
   cleanupHints();
-  emit cancelled(currentHintMode);
+  emit cancelled(p_currentHintMode);
   emit hintingFinished(false);
   setControllerMode(Normal);
 }
@@ -605,8 +624,8 @@ QDebug operator<<(QDebug debug, const WindowController *controller) {
   debug.nospace();
   debug << "WindowController(" << controller->p_target << ", ";
   debug << controller->p_controllerMode << ", ";
-  if (controller->p_controllerMode == WindowController::ControllerMode::Hint)
-    debug << controller->currentHintMode << ", ";
+  if (controller->p_controllerMode == ControllerMode::Hint)
+    debug << controller->p_currentHintMode << ", ";
   debug << "overlays=" << controller->p_overlays.length() << ": ";
   for (auto overlay : controller->p_overlays)
     debug << overlay->parentWidget() << ", ";

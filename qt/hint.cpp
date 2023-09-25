@@ -13,10 +13,11 @@ namespace Tetradactyl {
 HintLabel::HintLabel(QString text, QWidget *w, Overlay *overlay,
                      QWidgetActionProxy *_proxy)
     : QLabel(text, overlay), proxy(_proxy), selected(false) {
-  positionInTarget = proxy->positionInWidget;
+  p_positionInTarget = proxy->positionInWidget;
   setStyleSheet(Tetradactyl::Controller::stylesheet);
   target = w;
-  positionInOverlay = target->mapTo(overlay->parentWidget(), positionInTarget);
+  p_positionInOverlay =
+      target->mapTo(overlay->parentWidget(), p_positionInTarget);
 }
 HintLabel::~HintLabel() {}
 

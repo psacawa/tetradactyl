@@ -35,12 +35,15 @@ public:
   Q_PROPERTY(WindowController *windowController MEMBER windowController);
   Q_PROPERTY(QWidget *currentRoot MEMBER currentRoot);
   Q_PROPERTY(bool done READ isDone WRITE setDone);
+  Q_PROPERTY(ControllerMode controllerModeAfterSuccess READ
+                 controllerModeAfterSuccess);
 
   BaseAction(WindowController *controller) : windowController(controller) {
     currentRoot = windowController->target();
   }
   virtual ~BaseAction() {}
   bool isDone();
+  ControllerMode controllerModeAfterSuccess();
 
   static BaseAction *createActionByHintMode(HintMode, WindowController *);
 public slots:
@@ -61,6 +64,7 @@ signals:
 
 protected:
   bool done = false;
+  ControllerMode p_controllerModeAfterSuccess = Normal;
   // Typically this corresponds to the the window widget of the
   // WindowController. That's the default. In the case of multi-step actions, it
   // may point to a QMenu Overlay
@@ -70,6 +74,9 @@ protected:
 inline bool BaseAction::isDone() { return done; }
 inline void BaseAction::setDone(bool _done) { done = _done; }
 inline void BaseAction::finish() { setDone(true); }
+inline ControllerMode BaseAction::controllerModeAfterSuccess() {
+  return p_controllerModeAfterSuccess;
+}
 
 class ActivateAction : public BaseAction {
   Q_OBJECT
@@ -303,7 +310,7 @@ public:
 // QLineEditActionProxy
 
 class QLineEditActionProxyStatic : public QWidgetActionProxyStatic {
-  ACTIONPROXY_TRUE_SELF_EDITABLE_DEF
+  bool isEditable(EditAction *action, QWidget *widget) override;
   ACTIONPROXY_TRUE_SELF_FOCUSABLE_DEF
 };
 
@@ -411,8 +418,8 @@ public:
 // QTextEditActionProxy
 
 class QTextEditActionProxyStatic : public QWidgetActionProxyStatic {
-  ACTIONPROXY_TRUE_SELF_EDITABLE_DEF
   ACTIONPROXY_TRUE_SELF_FOCUSABLE_DEF
+  bool isEditable(EditAction *action, QWidget *widget) override;
 };
 
 class QTextEditActionProxy : public QWidgetActionProxy {

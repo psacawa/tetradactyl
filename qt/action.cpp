@@ -28,6 +28,7 @@
 #include "controller.h"
 #include "hint.h"
 #include "logging.h"
+#include "overlay.h"
 
 using std::map;
 
@@ -73,8 +74,8 @@ void BaseAction::addNextStage(QWidget *root) {
 void BaseAction::accept(QWidgetActionProxy *proxy) {
   logInfo << "Accepting" << proxy;
 
-  int widgetFinishesAction = proxy->actGeneric(this);
-  emit windowController->accepted(windowController->currentHintMode,
+  bool widgetFinishesAction = proxy->actGeneric(this);
+  emit windowController->accepted(windowController->currentHintMode(),
                                   proxy->widget, proxy->positionInWidget);
   if (widgetFinishesAction)
     finish();
@@ -112,6 +113,7 @@ void BaseAction::act() {
 ActivateAction::ActivateAction(WindowController *controller)
     : BaseAction(controller) {
   mode = HintMode::Activatable;
+  p_controllerModeAfterSuccess = Normal;
   // Activation is by default immediately true, but there are exceptions for
   // e.g. QComboBox
 }
@@ -120,6 +122,7 @@ ActivateAction::ActivateAction(WindowController *controller)
 
 EditAction::EditAction(WindowController *controller) : BaseAction(controller) {
   mode = HintMode::Editable;
+  p_controllerModeAfterSuccess = Input;
 }
 
 // FocusAction
@@ -420,7 +423,7 @@ bool QWidgetActionProxy::contextMenu(ContextMenuAction *action) {
 bool QAbstractButtonActionProxy::activate(ActivateAction *action) {
   QOBJECT_CAST_ASSERT(QAbstractButton, widget);
   instance->setDown(true);
-  instance->setFocus();
+  instance->clearFocus();
   instance->click();
   return true;
 }
@@ -481,7 +484,7 @@ bool QGroupBoxActionProxyStatic::isActivatable(ActivateAction *action,
 bool QGroupBoxActionProxy::activate(ActivateAction *action) {
   QOBJECT_CAST_ASSERT(QGroupBox, widget);
   instance->setChecked(!instance->isChecked());
-  instance->setFocus();
+  instance->clearFocus();
   return true;
 }
 
@@ -492,6 +495,14 @@ bool QLabelActionProxy::yank(YankAction *action) {
   QClipboard *clipboard = QGuiApplication::clipboard();
   clipboard->setText(instance->text());
   return true;
+}
+
+// QLineEditActionProxy
+
+bool QLineEditActionProxyStatic::isEditable(EditAction *action,
+                                            QWidget *widget) {
+  QOBJECT_CAST_ASSERT(QLineEdit, widget);
+  return !instance->isReadOnly();
 }
 
 // QMenuBarActionProxy
@@ -675,7 +686,7 @@ QList<QPoint> QTabBarActionProxyStatic::probeTabLocations(QTabBar *bar) {
 bool QTabBarActionProxy::activate(ActivateAction *action) {
   QOBJECT_CAST_ASSERT(QTabBar, widget);
   instance->setCurrentIndex(tabIndex);
-  instance->setFocus();
+  instance->clearFocus();
   return true;
 }
 
@@ -684,6 +695,14 @@ bool QTabBarActionProxy::yank(YankAction *action) {
   QClipboard *clipboard = QGuiApplication::clipboard();
   clipboard->setText(instance->tabText(tabIndex));
   return true;
+}
+
+// QTextEditActionProxy
+
+bool QTextEditActionProxyStatic::isEditable(EditAction *action,
+                                            QWidget *widget) {
+  QOBJECT_CAST_ASSERT(QTextEdit, widget);
+  return !instance->isReadOnly();
 }
 
 } // namespace Tetradactyl

@@ -1,14 +1,37 @@
 // Copyright 2023 Paweł Sacawa. All rights reserved.
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <dlfcn.h>
 #include <iostream>
 #include <link.h>
 #include <string>
+#include <unistd.h>
 
 #include <fmt/format.h>
 
 #include "libnames.h"
+
+void system_die(const char *msg) {
+  perror(msg);
+  exit(EXIT_FAILURE);
+}
+
+#define DIE_IF_NEG(cmd)                                                        \
+  ({                                                                           \
+    typeof(cmd) ret = cmd;                                                     \
+    if (ret < 0)                                                               \
+      system_die(#cmd);                                                        \
+    ret;                                                                       \
+  })
+
+#define DIE_IF_NULL(cmd)                                                       \
+  ({                                                                           \
+    typeof(cmd) ret = cmd;                                                     \
+    if (ret == NULL)                                                           \
+      system_die(#cmd);                                                        \
+    ret;                                                                       \
+  })
 
 #define MAX_ORIGIN_LEN 256
 #define UNIMPLEMENTED(msg) fprintf(stderr, "Unimplemented %s\n", msg)
@@ -50,6 +73,10 @@ extern "C" int dlIteratePhdrCallback(struct dl_phdr_info *info, size_t size,
       backendDetected = true;
       ssize_t *backendIdxPtr = (ssize_t *)data;
       *backendIdxPtr = c;
+
+      // We've found the library, no need to propagate LD_PRELOAD to eventual
+      // subprocesses
+      setenv("LD_PRELOAD", "", 1);
       return c;
     }
   }
@@ -155,9 +182,23 @@ void *dlopen(const char *dlopenPathCstr, int flags) {
   return ret;
 }
 
+char *procComm() {
+  pid_t me = DIE_IF_NEG(getpid());
+  char buf[50];
+  sprintf(buf, "/proc/%d/comm", me);
+  FILE *file = DIE_IF_NULL(fopen(buf, "r"));
+  char *line = NULL;
+  size_t len;
+  int nread = getline(&line, &len, file);
+  line[nread - 1] = '\0'; /* kill newline */
+  DIE_IF_NEG(fclose(file));
+  return line;
+}
+
 void __attribute__((constructor)) initDynamicProbe() {
-  fprintf(stderr, "Initializing Tetradactyl dynamic probe %p\n",
-          (void *)pthread_self());
+  char *commStr = procComm();
+  fprintf(stderr, "Initializing Tetradactyl dynamic probe in %s\n", commStr);
+  free(commStr);
   originalDlopen = (DlopenFunc)((dlsym(RTLD_NEXT, "dlopen")));
   bool backendStaticallyDetected = checkLoadedDynLibs();
   if (backendStaticallyDetected) {

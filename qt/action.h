@@ -33,17 +33,18 @@ class BaseAction : public QObject {
 public:
   Q_PROPERTY(HintMode mode MEMBER mode);
   Q_PROPERTY(WindowController *windowController MEMBER windowController);
-  Q_PROPERTY(QWidget *currentRoot MEMBER currentRoot);
+  Q_PROPERTY(QWidget *currentRoot READ currentRoot);
   Q_PROPERTY(bool done READ isDone WRITE setDone);
   Q_PROPERTY(ControllerMode controllerModeAfterSuccess READ
                  controllerModeAfterSuccess);
 
   BaseAction(WindowController *controller) : windowController(controller) {
-    currentRoot = windowController->target();
+    p_currentRoot = windowController->target();
   }
   virtual ~BaseAction() {}
   bool isDone();
   ControllerMode controllerModeAfterSuccess();
+  QWidget *currentRoot();
 
   static BaseAction *createActionByHintMode(HintMode, WindowController *);
 public slots:
@@ -68,12 +69,13 @@ protected:
   // Typically this corresponds to the the window widget of the
   // WindowController. That's the default. In the case of multi-step actions, it
   // may point to a QMenu Overlay
-  QWidget *currentRoot;
+  QWidget *p_currentRoot;
 };
 
 inline bool BaseAction::isDone() { return done; }
 inline void BaseAction::setDone(bool _done) { done = _done; }
 inline void BaseAction::finish() { setDone(true); }
+inline QWidget *BaseAction::currentRoot() { return p_currentRoot; }
 inline ControllerMode BaseAction::controllerModeAfterSuccess() {
   return p_controllerModeAfterSuccess;
 }
@@ -206,6 +208,8 @@ struct WidgetHintingData {
 
 extern map<const QMetaObject *, WidgetHintingData> QWidgetMetadataRegistry;
 
+const WidgetHintingData getMetadataForMetaObject(const QMetaObject *mo);
+
 class QWidgetActionProxy : public QObject {
   Q_OBJECT
 public:
@@ -227,8 +231,6 @@ public:
   virtual bool menu(MenuBarAction *action) { return false; }
   virtual bool contextMenu(ContextMenuAction *action);
 
-  static const WidgetHintingData
-  getMetadataForMetaObject(const QMetaObject *mo);
   static QWidgetActionProxy *createForMetaObject(const QMetaObject *mo,
                                                  QWidget *w);
 

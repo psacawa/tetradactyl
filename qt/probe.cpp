@@ -48,7 +48,7 @@ backward::SignalHandling sh({
     SIGQUIT,
     SIGSEGV,
     SIGSYS,
-    SIGTRAP,
+    // SIGTRAP,
     SIGXCPU,
     SIGXFSZ,
 });
@@ -69,6 +69,9 @@ void __attribute__((constructor)) init() {
       reinterpret_cast<unsigned long long>(ObjectProbe::addQObjectCallback);
   qtHookData[HookIndex::RemoveQObject] =
       reinterpret_cast<unsigned long long>(ObjectProbe::removeQObjectCallback);
+
+  // Don't pass LD_PRELOAD to eventual subprocesses.
+  // setenv("LD_PRELOAD", "", 1);
 }
 
 ObjectProbe::ObjectProbe() {

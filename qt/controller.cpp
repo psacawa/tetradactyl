@@ -40,6 +40,7 @@
 LOGGING_CATEGORY_COLOR("tetradactyl.controller", Qt::blue);
 
 using Qt::WindowType;
+using std::copy_if;
 using std::size_t;
 
 namespace Tetradactyl {
@@ -50,6 +51,26 @@ static bool isDescendantOf(QObject *descendant, QObject *ancestor) {
       return true;
   }
   return false;
+}
+
+// widget can have Tetradactyl::WindowController attached to it: be a window and
+// not a popup
+static bool isTetradactylWindow(QWidget *w) {
+  QList<Qt::WindowType> windowTypes = {Qt::WindowType::Window,
+                                       Qt::WindowType::Dialog};
+  return w->isWindow() && windowTypes.contains(w->windowType());
+}
+
+// @pre: win != nullptr
+// @post return != nullptr (?)
+QWidget *getToplevelWidgetForWindow(QWindow *win) {
+  Q_ASSERT(win != nullptr);
+  for (auto w : qApp->topLevelWidgets()) {
+    if (w->windowHandle() == win) {
+      return w;
+    }
+  }
+  Q_UNREACHABLE();
 }
 
 const std::map<HintMode, vector<const QMetaObject *>> hintableMetaObjects = {
@@ -95,6 +116,8 @@ Controller::Controller() {
 
   connect(qApp, &QApplication::focusChanged, this,
           &Controller::resetModeAfterFocusChange);
+  connect(qApp, &QApplication::focusWindowChanged, this,
+          &Controller::resetModeAfterFocusWindowChanged);
 }
 
 Controller::~Controller() {
@@ -133,9 +156,7 @@ WindowController *Controller::findControllerForWidget(QWidget *widget) {
     // WindowController, or itself it's a popup of sorts (QMenu/QComboBox popup)
     // whose nativeParentWidget has the WindowController
     QWidget *target = winController->target();
-    while (target != nullptr &&
-           (!target->isWindow() ||
-            target->windowFlags() & Qt::WindowType::Popup)) {
+    while (widget != nullptr) {
       if (widget == target) {
         return winController;
       }
@@ -146,24 +167,24 @@ WindowController *Controller::findControllerForWidget(QWidget *widget) {
 }
 
 void Controller::attachToExistingWindows() {
-  QList<QWidget *> toplevelWidgets = qApp->topLevelWidgets();
-  for (auto &widget : toplevelWidgets) {
-    tryAttachToWindow(widget);
+  QList<QWidget *> topLevelWidgets = qApp->allWidgets();
+  QList<QWidget *> tetradactylWindows;
+  copy_if(topLevelWidgets.begin(), topLevelWidgets.end(),
+          std::back_inserter(tetradactylWindows), isTetradactylWindow);
+  for (auto &widget : tetradactylWindows) {
+    attachControllerToWindow(widget);
   }
 }
 
-// Check if the widget is a window,not a popup, and doesn't alredy have an
+// Check if the widget doesn't already have an
 // attached WindowController. If so, create a WindowController. NB it's
 // necessary for invisible window to have active controller in the test suite.
-void Controller::tryAttachToWindow(QWidget *widget) {
-  // Make sure no to attach WindowController to things with the popup bit
-  // set, such as  QMenu (in menu bar and context menu)
-  if (widget->isWindow() &&
-      !(widget->windowFlags() & WindowType::Popup & ~WindowType::Window) &&
-      findControllerForWidget(widget) == nullptr) {
+// @pre: isTetradactylWindow(widget)
+void Controller::attachControllerToWindow(QWidget *widget) {
+  Q_ASSERT(isTetradactylWindow(widget));
+  if (findControllerForWidget(widget) == nullptr) {
     logInfo << "Attaching Tetradactyl to" << widget;
     self->windowControllers.append(new WindowController(widget, this));
-    // }
   }
 }
 
@@ -223,19 +244,58 @@ void Controller::routeNewlyCreatedObject(QObject *obj) {
 // different windowControllers to  have their own state. It's in general
 // half-baked idea to use this slot to control much of anything.
 void Controller::resetModeAfterFocusChange(QWidget *old, QWidget *now) {
-  logInfo << "Controller::resetModeAfterFocusChange" << old << now;
+  logInfo << __FUNCTION__ << old << now;
   WindowController *oldWindowController = findControllerForWidget(old);
   WindowController *nowWindowController = findControllerForWidget(now);
-  if (nowWindowController == nullptr && oldWindowController) {
-    oldWindowController->setControllerMode(Normal);
+
+  // Must handle old before now in case they have the same controller
+  if (old != nullptr) {
+    if (oldWindowController) {
+      oldWindowController->setControllerMode(Normal);
+    }
+  }
+  if (now != nullptr) {
+    ControllerMode nowMode = inputModeWhenWidgetFocussed(now) ? Input : Normal;
+    if (nowWindowController) {
+      nowWindowController->setControllerMode(nowMode);
+    }
+  }
+}
+
+// The active QWindow has changed. This can happen as part of a multi-step hint
+// process, or upon cancellation of such process via a mouse click, or
+// client-driven refocus. We must identify these cases and update case
+// accordingly.
+void Controller::resetModeAfterFocusWindowChanged(QWindow *focusWindow) {
+  logInfo << __FUNCTION__ << focusWindow;
+
+  if (focusWindow == nullptr)
+    return;
+
+  QWidget *focusWidget = qApp->focusWidget();
+  // untrue that focusWidget != nullptr here
+  // untrue even that qApp->focusWidget() ==
+  // getToplevelWidgetForWindow(focusWindow) !
+  QWidget *topLevelWidget = getToplevelWidgetForWindow(focusWindow);
+
+  // handle Controller state changes for focusWidget
+  WindowController *controller = findControllerForWidget(topLevelWidget);
+  if (controller == nullptr)
+    return;
+
+  qInfo() << controller->activeOverlay()->parentWidget() << topLevelWidget;
+  BaseAction *action = controller->currentAction();
+  if (action && action->currentRoot() == topLevelWidget) {
+    // this convinces us that we are in a multi-step hint process
+    logInfo << "focusWindowChanged in presumptive hinting mode:"
+            << topLevelWidget;
     return;
   }
 
-  if (inputModeWhenWidgetFocussed(now)) {
-    findControllerForWidget(now)->setControllerMode(Input);
-  } else {
-    findControllerForWidget(now)->setControllerMode(Normal);
-  }
+  ControllerMode nowMode =
+      (focusWidget && inputModeWhenWidgetFocussed(focusWidget)) ? Input
+                                                                : Normal;
+  controller->setControllerMode(nowMode);
 }
 
 Controller *Controller::self = nullptr;
@@ -308,9 +368,12 @@ Overlay *WindowController::findOverlayForWidget(QWidget *widget) {
 static QList<const QMetaObject *> inputModeWidgetTypes = {
     &QLineEdit::staticMetaObject, &QTextEdit::staticMetaObject};
 
+// @pre: w != nullptr
 bool inputModeWhenWidgetFocussed(QWidget *w) {
+  Q_ASSERT(w != nullptr);
   const QMetaObject *const mo = w->metaObject();
-  return inputModeWidgetTypes.contains(mo);
+  auto metadata = getMetadataForMetaObject(mo);
+  return metadata.staticMethods->isEditable(nullptr, w);
 }
 
 /*
@@ -415,7 +478,7 @@ Overlay *WindowController::mainOverlay() {
   return p_overlays.at(0);
 }
 
-// As with tryAttachToWindow, can be called to attach to existing
+// As with attachControllerToWindow, can be called to attach to existing
 // overlayable widget, or in response to one being created.
 void WindowController::tryAttachController(QWidget *target) {
   // TODO 09/09/20 psacawa: add checks for both cases
@@ -437,7 +500,7 @@ Overlay *WindowController::activeOverlay() {
 
 void WindowController::addOverlay(QWidget *target) {
   // exclude WindowType::Popup to get rid of QMenus
-  bool isMainWindow = target->windowType() == Qt::Window;
+  bool isMainWindow = isTetradactylWindow(target);
   Overlay *overlay = new Overlay(this, target, isMainWindow);
   p_overlays.append(overlay);
 }

@@ -67,6 +67,8 @@ Q_ENUM_NS(HintMode);
 enum ControllerMode { Normal, Hint, Input, Ignore };
 Q_ENUM_NS(ControllerMode);
 
+QWidget *getToplevelWidgetForWindow(QWindow *win);
+
 // Manages global Tetradactyl state of application.
 class Controller : public QObject {
   Q_OBJECT
@@ -94,10 +96,11 @@ public slots:
   static void createController();
   void routeNewlyCreatedObject(QObject *obj);
   void resetModeAfterFocusChange(QWidget *old, QWidget *now);
+  void resetModeAfterFocusWindowChanged(QWindow *focusWindow);
 
 private:
   bool eventFilter(QObject *obj, QEvent *ev);
-  void tryAttachToWindow(QWidget *widget);
+  void attachControllerToWindow(QWidget *widget);
   void attachToExistingWindows();
   WindowController *findControllerForWidget(QWidget *);
   static const std::map<HintMode, vector<const QMetaObject *>>
@@ -226,15 +229,17 @@ inline ControllerMode WindowController::controllerMode() {
 inline void WindowController::setControllerMode(ControllerMode mode) {
   bool changed = mode != p_controllerMode;
   p_controllerMode = mode;
-  if (mode == Normal) {
-    for (auto sc : shortcuts)
-      sc->setEnabled(true);
-  } else {
-    for (auto sc : shortcuts)
-      sc->setEnabled(false);
+  for (auto sc : shortcuts)
+    sc->setEnabled(mode == Normal);
+
+  if (!changed)
+    return;
+
+  if (mode != Hint) {
+    cleanupHints();
   }
-  if (changed)
-    emit modeChanged(mode);
+
+  emit modeChanged(mode);
 }
 
 class HintGenerator {

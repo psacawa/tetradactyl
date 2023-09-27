@@ -67,7 +67,7 @@ void BaseAction::addNextStage(QWidget *root) {
   if (windowController->findOverlayForWidget(root) == nullptr) {
     windowController->addOverlay(root);
   }
-  currentRoot = root;
+  p_currentRoot = root;
   logInfo << "New stage of" << this << "based at root:" << root;
 }
 
@@ -84,18 +84,18 @@ void BaseAction::accept(QWidgetActionProxy *proxy) {
 void BaseAction::act() {
   QList<QWidgetActionProxy *> hintData;
   // get the hints
-  const QMetaObject *targetMO = currentRoot->metaObject();
-  auto metadata = QWidgetActionProxy::getMetadataForMetaObject(targetMO);
-  metadata.staticMethods->hintGeneric(this, currentRoot, hintData);
+  const QMetaObject *targetMO = p_currentRoot->metaObject();
+  auto metadata = getMetadataForMetaObject(targetMO);
+  metadata.staticMethods->hintGeneric(this, p_currentRoot, hintData);
 
   // Nothing hintable. End the action
   if (hintData.length() == 0) {
     logWarning << "Action hinting returned no hintable objects:" << this
-               << currentRoot;
+               << p_currentRoot;
     finish();
     return;
   }
-  Overlay *overlay = windowController->findOverlayForWidget(currentRoot);
+  Overlay *overlay = windowController->findOverlayForWidget(p_currentRoot);
   HintGenerator hintStringGenerator(Controller::settings.hintChars,
                                     hintData.length());
   for (QWidgetActionProxy *actionProxy : hintData) {
@@ -192,8 +192,7 @@ map<const QMetaObject *, WidgetHintingData> QWidgetMetadataRegistry = {
     METADATA_REGISTRY_ENTRY(QWidget),
 };
 
-const WidgetHintingData
-QWidgetActionProxy::getMetadataForMetaObject(const QMetaObject *widgetMO) {
+const WidgetHintingData getMetadataForMetaObject(const QMetaObject *widgetMO) {
 
   WidgetHintingData metadata =
       QWidgetMetadataRegistry.at(&QWidget::staticMetaObject);
@@ -329,7 +328,7 @@ static void hintGenericHelper(BaseAction *action, QWidget *widget,
       if (isTetradactylMetaObject(mo))
         continue;
 
-      auto metadata = QWidgetActionProxy::getMetadataForMetaObject(mo);
+      auto metadata = getMetadataForMetaObject(mo);
       if (metadata.staticMethods->isHintableGeneric(action, widget)) {
         QWidgetActionProxy *proxy =
             QWidgetActionProxy::createForMetaObject(mo, widget);
@@ -594,7 +593,7 @@ void stackedWidgetHintHelper(BaseAction *action, QWidget *widget,
     const QMetaObject *mo = childWidget->metaObject();
     // QStackedWidget chid should never be Tetradactyl widget
     Q_ASSERT(!isTetradactylMetaObject(mo));
-    auto metadata = QWidgetActionProxy::getMetadataForMetaObject(mo);
+    auto metadata = getMetadataForMetaObject(mo);
     if (metadata.staticMethods->isHintableGeneric(action, widget)) {
       QWidgetActionProxy *proxy =
           QWidgetActionProxy::createForMetaObject(mo, widget);

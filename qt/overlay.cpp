@@ -44,6 +44,7 @@ Overlay::Overlay(WindowController *windowController, QWidget *target,
     p_statusIndicator = new QLabel(
         enumKeyToValue<ControllerMode>(windowController->controllerMode()),
         this);
+    p_statusIndicator->setObjectName("overlay_status_indicator");
     p_statusIndicator->setStyleSheet(statusIndicatorStylesheet);
     connect(windowController, &WindowController::modeChanged, p_statusIndicator,
             [this](ControllerMode mode) {

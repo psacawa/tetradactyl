@@ -4,10 +4,18 @@
 # Import external demos
 #
 
+include(CodeCoverage)
+
+append_coverage_compiler_flags()
+
 set(QT_EXAMPLES_SOURCE_PATH
     "${CMAKE_SOURCE_DIR}/examples/qt6-sources"
     CACHE PATH
           "Path to base Qt example source directory i.e. git://qtbase/examples")
+
+set(COVERAGE_EXCLUDES
+    "${CMAKE_CURRENT_SOURCE_DIR}/*" "${CMAKE_BINARY_DIR}/*" "/usr/include/**/*"
+    "${QT_EXAMPLES_SOURCE_PATH}/*" "/usr/local/*")
 
 add_compile_definitions(TETRADACTYL_QT_TEST)
 
@@ -38,9 +46,9 @@ set(CMAKE_AUTORCC ON)
 function(add_qt6_test _test_name)
   cmake_parse_arguments(PARSE_ARGV 0 arg "" LABELS "")
   add_executable(${_test_name} ${_test_name}.cpp common.cpp)
+  target_link_libraries(${_test_name} PRIVATE Qt::Test Qt::Widgets)
 
   set(_test_env "QT_QPA_PLATFORM=offscreen")
-
   # LD_PRELOAD=libtetradactyl-qt6.so if inject is a label
   list(FIND arg_LABELS inject _test_needs_preload)
   if(${_test_needs_preload} GREATER_EQUAL 0)
@@ -48,9 +56,9 @@ function(add_qt6_test _test_name)
   endif()
 
   add_test(NAME ${_test_name} COMMAND ${_test_name})
-  target_link_libraries(${_test_name} PRIVATE Qt6::Test Qt6::Widgets)
   set_tests_properties(${_test_name} PROPERTIES ENVIRONMENT "${_test_env}")
   set_tests_properties(${_test_name} PROPERTIES LABELS "${ADD_QT6_TEST_LABELS}")
+
 endfunction()
 
 # Make simple target/test which uses  all the  sources in $_example_relpath and
@@ -122,5 +130,15 @@ if(TETRADACTYL_QT6)
   add_qt6_test_depending_on_example_demo(
     editable_test "widgets/layouts/basiclayouts" LABELS
     "controller;qlineedit;qt6")
+
+  setup_target_for_coverage_lcov(
+    NAME
+    qt6-coverage
+    EXECUTABLE
+    ctest
+    --test-dir
+    ${CMAKE_BINARY_DIR}
+    -L
+    qt6)
 
 endif()

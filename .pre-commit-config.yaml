@@ -9,7 +9,7 @@ repos:
         entry: ./scripts/ensure-copyright-notice.sh
         exclude: "waitingspinnerwidget"
       - id: clang-format
-        name: clang-format2
+        name: clang-format
         language: system
         files: '.*\.(cpp|c|h)$'
         entry: clang-format

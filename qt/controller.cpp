@@ -632,8 +632,6 @@ void WindowController::cleanupHints() {
     overlay->clear();
 
   hintBuffer = "";
-  // for (auto sc : shortcuts)
-  //   sc->setEnabled(true);
 }
 
 void WindowController::cleanupAction() {

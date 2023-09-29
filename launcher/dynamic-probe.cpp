@@ -38,7 +38,6 @@ void system_die(const char *msg) {
 
 using fmt::format;
 using std::cerr;
-using std::cout;
 
 // This is C++ but NO QT ALLOWED!!
 
@@ -65,8 +64,8 @@ void dlDie(const char *msg) {
 }
 
 // is extern "C" really necessary here?
-extern "C" int dlIteratePhdrCallback(struct dl_phdr_info *info, size_t size,
-                                     void *data) {
+extern "C" int dlIteratePhdrCallback(struct dl_phdr_info *info,
+                                     [[gnu::unused]] size_t size, void *data) {
   for (int c = 0; c != ARRAY_LEN(backendMap); c++) {
     const char *backendName = backendMap[c][0];
     if ((strstr(info->dlpi_name, backendName)) != NULL) {

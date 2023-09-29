@@ -285,7 +285,7 @@ void Controller::resetModeAfterFocusWindowChanged(QWindow *focusWindow) {
 
   qInfo() << controller->activeOverlay()->parentWidget() << topLevelWidget;
   BaseAction *action = controller->currentAction();
-  if (action && action->currentRoot() == topLevelWidget) {
+  if (action != nullptr && action->currentRoot() == topLevelWidget) {
     // this convinces us that we are in a multi-step hint process
     logInfo << "focusWindowChanged in presumptive hinting mode:"
             << topLevelWidget;
@@ -309,7 +309,7 @@ QDebug operator<<(QDebug debug, const Controller *controller) {
 }
 
 void WindowController::initializeShortcuts() {
-  ControllerKeymap &keymap = controller->settings.keymap;
+  ControllerKeymap &keymap = Controller::instance()->settings.keymap;
   QShortcut *activateShortcut =
       new QShortcut(keymap.activate, p_target, [this] { hint(); });
   QShortcut *editShortcut = new QShortcut(keymap.edit, p_target,
@@ -335,7 +335,7 @@ void WindowController::initializeShortcuts() {
 }
 
 WindowController::WindowController(QWidget *_target, QObject *parent = nullptr)
-    : QObject(parent), p_target(_target) {
+    : QObject(parent), p_currentAction(nullptr), p_target(_target) {
   Q_ASSERT(parent);
   initializeShortcuts();
   initializeOverlays();
@@ -508,6 +508,7 @@ void WindowController::addOverlay(QWidget *target) {
 void WindowController::removeOverlay(Overlay *overlay, bool fromSignal) {
   if (!fromSignal) {
     delete overlay;
+    return;
   }
   int idx = p_overlays.indexOf(overlay);
   if (idx >= 0) {

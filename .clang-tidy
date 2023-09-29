@@ -1,0 +1,7 @@
+# Copyright 2023 Paweł Sacawa. All rights reserved.
+---
+# Checks: "clang-diagnostic-*,clang-analyzer-*,cppcoreguidelines-*"
+Checks: "cppcoreguidelines-pro-type-member-init"
+WarningsAsErrors: ""
+---
+# vim: set ft=yaml :

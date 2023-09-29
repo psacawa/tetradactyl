@@ -7,6 +7,8 @@
 #include <QPoint>
 #include <QWidget>
 
+#define UNUSED [[maybe_unused]]
+
 namespace Tetradactyl {
 
 bool isTetradactylMetaObject(const QMetaObject *mo);

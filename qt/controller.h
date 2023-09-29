@@ -53,7 +53,7 @@ struct ControllerSettings {
 
 enum HintMode {
   // TODO 22/09/20 psacawa: finish this
-  // None,
+  None,
   Activatable,
   Editable,
   Yankable,
@@ -123,7 +123,6 @@ inline const QList<WindowController *> &Controller::windows() const {
 class WindowController : public QObject {
   Q_OBJECT
 public:
-  Q_PROPERTY(Controller *controller MEMBER controller);
   Q_PROPERTY(QWidget *target READ target);
   Q_PROPERTY(ControllerMode controllerMode READ controllerMode WRITE
                  setControllerMode);
@@ -192,7 +191,7 @@ private:
   void initializeOverlays();
   void tryAttachController(QWidget *widget);
 
-  HintMode p_currentHintMode;
+  HintMode p_currentHintMode = HintMode::None;
   ControllerMode p_controllerMode = ControllerMode::Normal;
   BaseAction *p_currentAction;
   Controller *controller;

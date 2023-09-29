@@ -5,6 +5,8 @@ cmake_policy(VERSION 3.20)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+set(CMAKE_CXX_COMPILER clang++)
+
 project(
   tetradactyl
   LANGUAGES CXX
@@ -14,7 +16,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 option(BUILD_TESTS "Build Tetradactyl tests" ON)
 
-option(WARNINGS_AS_ERRORS "Adds -Werror globally" OFF)
+option(WARNINGS_AS_ERRORS "Adds -Werror globally" ON)
 
 if(BUILD_TESTS)
   enable_testing()
@@ -33,10 +35,15 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 
 set(COMMON_COMPILER_OPTIONS
     -Wall
-    # -Wextra
-    -Werror=return-type -Werror=missing-include-dirs -Werror=unknown-pragmas)
+    -Wuninitialized
+    -Wmost
+    -Wextra
+    -Wno-unused-parameter
+    -Werror=return-type
+    -Werror=missing-include-dirs
+)
 if(WARNINGS_AS_ERRORS)
-  add_compile_definitions(-Werror)
+  list(APPEND COMMON_COMPILER_OPTIONS -Werror)
 endif()
 
 add_compile_definitions("TETRADACTYL_VERSION=${CMAKE_PROJECT_VERSION}")

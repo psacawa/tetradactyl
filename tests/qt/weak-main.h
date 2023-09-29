@@ -4,4 +4,6 @@
 // own: declare it weak via this pragma, and then redefine it. First definition
 // in the compilation line wins.  This header file is included via the  compiler
 // argument -include
-#pragma weak main
+// The  alternative "#pragma weak main" effects a toolchain dependency on GCC,
+// so we prefer this.
+int __attribute__((weak)) main(int argc, char *argv[]);

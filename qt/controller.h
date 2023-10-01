@@ -48,6 +48,7 @@ struct ControllerSettings {
   bool highlightAcceptedHint;
   int highlightAcceptedHintMs;
   bool passthroughKeyboardInput;
+  bool resetModeAfterFocusChange;
   ControllerKeymap keymap;
 };
 
@@ -74,21 +75,26 @@ class Controller : public QObject {
   Q_OBJECT
 
 public:
-  Controller();
-  virtual ~Controller();
-
   Q_PROPERTY(QList<WindowController *> windows READ windows);
   Q_PROPERTY(QString stylesheet MEMBER stylesheet);
+  Q_PROPERTY(bool initialized READ isInitialized);
   // this can be uncommented only when the classed is built up into a proper
   // QObject Q_PROPERTY(ControllerSettings *settings MEMBER settings);
 
-  static const Controller *instance();
+  Controller();
+  virtual ~Controller();
+
+  static Controller *instance();
   const QList<WindowController *> &windows() const;
+
+  void reset();
+  void init();
+  void cleanup();
 
   const ControllerSettings *controllerSettings() {
     return &Controller::settings;
   }
-
+  bool isInitialized();
   static ControllerSettings settings;
   static QString stylesheet;
 
@@ -101,7 +107,7 @@ public slots:
 private:
   bool eventFilter(QObject *obj, QEvent *ev);
   void attachControllerToWindow(QWidget *widget);
-  void attachToExistingWindows();
+  void initWindows();
   WindowController *findControllerForWidget(QWidget *);
   static const std::map<HintMode, vector<const QMetaObject *>>
       hintableMetaObjects;
@@ -112,7 +118,8 @@ private:
   friend QDebug operator<<(QDebug debug, const Controller *controller);
 };
 
-inline const Controller *Controller::instance() { return Controller::self; }
+inline bool Controller::isInitialized() { return Controller::self != nullptr; }
+inline Controller *Controller::instance() { return Controller::self; }
 inline const QList<WindowController *> &Controller::windows() const {
   return windowControllers;
 }
@@ -194,7 +201,6 @@ private:
   HintMode p_currentHintMode = HintMode::None;
   ControllerMode p_controllerMode = ControllerMode::Normal;
   BaseAction *p_currentAction;
-  Controller *controller;
   QWidget *p_target;
   QList<QPointer<Overlay>> p_overlays;
   QList<QPointer<QShortcut>> shortcuts;

@@ -14,11 +14,11 @@ project(
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
-option(BUILD_TESTS "Build Tetradactyl tests" ON)
+option(TETRADACTYL_BUILD_TESTS "Build Tetradactyl tests" ON)
 
-option(WARNINGS_AS_ERRORS "Adds -Werror globally" ON)
+option(TETRADACTYL_WERROR "Adds -Werror globally" ON)
 
-if(BUILD_TESTS)
+if(TETRADACTYL_BUILD_TESTS)
   enable_testing()
 endif()
 
@@ -40,9 +40,8 @@ set(COMMON_COMPILER_OPTIONS
     -Wextra
     -Wno-unused-parameter
     -Werror=return-type
-    -Werror=missing-include-dirs
-)
-if(WARNINGS_AS_ERRORS)
+    -Werror=missing-include-dirs)
+if(TETRADACTYL_WERROR)
   list(APPEND COMMON_COMPILER_OPTIONS -Werror)
 endif()
 
@@ -58,6 +57,6 @@ add_subdirectory(qt)
 
 # preferred build system for gtk is meson add_subdirectory(gtk4)
 
-if(BUILD_TESTS)
+if(TETRADACTYL_BUILD_TESTS)
   add_subdirectory(tests)
 endif()

@@ -1,8 +1,6 @@
 # Copyright 2023 Paweł Sacawa. All rights reserved.
-# dashboard threads -output /dev/null
-# dashboard assembly -output /dev/null
-# dashboard registers -output /dev/null
 # dashboard stack -style limit 15
+db -layout breakpoints expressions history  memory  source stack variables
 
 # GTK
 

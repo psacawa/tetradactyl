@@ -13,6 +13,7 @@
 #include <QMenuBar>
 #include <QTabWidget>
 #include <QTextEdit>
+#include <QTreeView>
 #include <QWidget>
 #include <cstring>
 #include <qlist.h>
@@ -189,6 +190,7 @@ map<const QMetaObject *, WidgetHintingData> QWidgetMetadataRegistry = {
     METADATA_REGISTRY_ENTRY(QStackedWidget),
     METADATA_REGISTRY_ENTRY(QTabBar),
     METADATA_REGISTRY_ENTRY(QTableView),
+    METADATA_REGISTRY_ENTRY(QTreeView),
     METADATA_REGISTRY_ENTRY(QWidget),
 };
 
@@ -199,9 +201,10 @@ const WidgetHintingData getMetadataForMetaObject(const QMetaObject *widgetMO) {
   const QMetaObject *iter = widgetMO;
   while (iter != &QWidget::staticMetaObject) {
     auto search = QWidgetMetadataRegistry.find(iter);
-    if (search != QWidgetMetadataRegistry.end())
+    if (search != QWidgetMetadataRegistry.end()) {
       metadata = search->second;
-
+      break;
+    }
     iter = iter->superClass();
   }
   // Send a warning if a base Qt widget had no ActionProxy. This is detected by

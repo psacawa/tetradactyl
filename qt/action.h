@@ -342,7 +342,7 @@ public:
 
   bool menu(MenuBarAction *action) override;
 
-private:
+protected:
   QAction *menuAction;
 };
 
@@ -364,7 +364,7 @@ public:
 
   bool menu(MenuBarAction *action) override;
 
-private:
+protected:
   QAction *menuAction;
 };
 
@@ -391,7 +391,7 @@ public:
   bool activate(ActivateAction *action) override;
   bool yank(YankAction *action) override;
 
-private:
+protected:
   int tabIndex;
 };
 
@@ -452,7 +452,7 @@ public:
   virtual bool edit(EditAction *action) override;
   virtual bool focus(FocusAction *action) override;
 
-private:
+protected:
   QModelIndex modelIndex;
   QPoint positionInWidget;
 };
@@ -488,6 +488,24 @@ class QTableViewActionProxy : public QAbstractItemViewActionProxy {
 public:
   using QAbstractItemViewActionProxy::QAbstractItemViewActionProxy;
   virtual ~QTableViewActionProxy() {}
+};
+
+class QTreeViewActionProxyStatic : public QAbstractItemViewActionProxyStatic {
+public:
+  virtual void hintActivatable(ActivateAction *action, QWidget *widget,
+                               QList<QWidgetActionProxy *> &proxies) override;
+  virtual void hintEditable(EditAction *action, QWidget *widget,
+                            QList<QWidgetActionProxy *> &proxies) override;
+  virtual void hintFocusable(FocusAction *action, QWidget *widget,
+                             QList<QWidgetActionProxy *> &proxies) override;
+};
+class QTreeViewActionProxy : public QAbstractItemViewActionProxy {
+  Q_OBJECT
+public:
+  using QAbstractItemViewActionProxy::QAbstractItemViewActionProxy;
+  virtual ~QTreeViewActionProxy() {}
+
+  virtual bool activate(ActivateAction *action) override;
 };
 
 } // namespace Tetradactyl

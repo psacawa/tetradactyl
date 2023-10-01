@@ -87,6 +87,7 @@ static ControllerSettings baseTestSettings() {
       .highlightAcceptedHint = true,
       .highlightAcceptedHintMs = 400,
       .passthroughKeyboardInput = true,
+      .resetModeAfterFocusChange = false,
       .keymap = {.activate = QKeySequence(Qt::Key_F),
                  .cancel = QKeySequence(Qt::Key_Escape),
                  .edit = QKeySequence(Qt::Key_G, Qt::Key_I),
@@ -114,13 +115,24 @@ Controller::Controller() {
   qApp->installEventFilter(new Tetradactyl::PrintFilter);
   qApp->installEventFilter(this);
 
-  connect(qApp, &QApplication::focusChanged, this,
-          &Controller::resetModeAfterFocusChange);
-  connect(qApp, &QApplication::focusWindowChanged, this,
-          &Controller::resetModeAfterFocusWindowChanged);
+  if (settings.resetModeAfterFocusChange) {
+    connect(qApp, &QApplication::focusChanged, this,
+            &Controller::resetModeAfterFocusChange);
+    connect(qApp, &QApplication::focusWindowChanged, this,
+            &Controller::resetModeAfterFocusWindowChanged);
+  }
 }
 
-Controller::~Controller() {
+Controller::~Controller() { cleanup(); }
+
+void Controller::reset() {
+  if (Controller::instance() != nullptr) {
+    Controller::instance()->cleanup();
+  }
+  initWindows();
+}
+
+void Controller::cleanup() {
   if (self == nullptr) {
     // controller already deleted
     return;
@@ -138,7 +150,7 @@ void Controller::createController() {
   logInfo << "Creating Tetradactyl controller";
   self = new Controller();
 
-  self->attachToExistingWindows();
+  self->initWindows();
 
   // Initially defocus input widgets. This assumes the top-level widget is not
   // e.g. QLineEdit
@@ -166,7 +178,7 @@ WindowController *Controller::findControllerForWidget(QWidget *widget) {
   return nullptr;
 }
 
-void Controller::attachToExistingWindows() {
+void Controller::initWindows() {
   QList<QWidget *> topLevelWidgets = qApp->allWidgets();
   QList<QWidget *> tetradactylWindows;
   copy_if(topLevelWidgets.begin(), topLevelWidgets.end(),
@@ -336,6 +348,7 @@ void WindowController::initializeShortcuts() {
 
 WindowController::WindowController(QWidget *_target, QObject *parent = nullptr)
     : QObject(parent), p_currentAction(nullptr), p_target(_target) {
+
   Q_ASSERT(parent);
   initializeShortcuts();
   initializeOverlays();
@@ -642,7 +655,6 @@ void WindowController::cleanupAction() {
 
 void WindowController::cancel() {
   if (!(controllerMode() == ControllerMode::Hint)) {
-    logWarning << __PRETTY_FUNCTION__ << "from" << controllerMode();
     return;
   }
   cleanupHints();

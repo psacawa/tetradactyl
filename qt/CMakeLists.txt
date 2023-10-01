@@ -46,6 +46,8 @@ foreach(_version ${SUPPORTED_QT_VERSIONS})
                                                       probe.cpp)
     target_compile_options(${_tetradactyl_backend_object}
                            PUBLIC ${COMMON_COMPILER_OPTIONS})
+    target_compile_definitions(${_tetradactyl_backend_object}
+                               PUBLIC "MODULE=TETRADACTYL_QT${_version}")
     target_link_libraries(${_tetradactyl_backend_object}
                           PUBLIC ${_qt_version}::Widgets ${_qt_version}::Core)
     target_link_libraries(${_tetradactyl_backend_object}

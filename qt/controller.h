@@ -40,6 +40,7 @@ struct ControllerKeymap {
   QKeySequence activateContext;
   QKeySequence upScroll;
   QKeySequence downScroll;
+  QKeySequence focusPrompt;
 };
 
 struct ControllerSettings {
@@ -48,6 +49,7 @@ struct ControllerSettings {
   bool highlightAcceptedHint;
   int highlightAcceptedHintMs;
   bool passthroughKeyboardInput;
+  // resetModeAfterFocusChange: broken by design?
   bool resetModeAfterFocusChange;
   ControllerKeymap keymap;
 };
@@ -70,6 +72,8 @@ Q_ENUM_NS(ControllerMode);
 
 QWidget *getToplevelWidgetForWindow(QWindow *win);
 
+#define tetradactyl Controller::instance()
+
 // Manages global Tetradactyl state of application.
 class Controller : public QObject {
   Q_OBJECT
@@ -87,9 +91,8 @@ public:
   static Controller *instance();
   const QList<WindowController *> &windows() const;
 
-  void reset();
   void init();
-  void cleanup();
+  void cleanupWindows();
 
   const ControllerSettings *controllerSettings() {
     return &Controller::settings;
@@ -103,6 +106,8 @@ public slots:
   void routeNewlyCreatedObject(QObject *obj);
   void resetModeAfterFocusChange(QWidget *old, QWidget *now);
   void resetModeAfterFocusWindowChanged(QWindow *focusWindow);
+  bool executeCommand(QString cmdline);
+  void resetWindows();
 
 private:
   bool eventFilter(QObject *obj, QEvent *ev);
@@ -168,6 +173,7 @@ public slots:
   void escapeInput();
   void pushKey(char ch);
   void popKey();
+  void focusPrompt();
 
 signals:
   void modeChanged(ControllerMode mode);

@@ -20,4 +20,8 @@ template <typename Enum> QString enumKeyToValue(Enum value) {
   return QString::fromLocal8Bit(me.valueToKey(value));
 }
 
+const char promptStylesheet[] =
+    "* { background-color: #444; color: white; font-family: Monospace; "
+    " padding: 1px; }";
+
 } // namespace Tetradactyl

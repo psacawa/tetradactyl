@@ -10,6 +10,7 @@
 
 namespace Tetradactyl {
 
+class CommandLine;
 class HintLabel;
 class QWidgetActionProxy;
 class OverlayLayout;
@@ -24,9 +25,10 @@ class Overlay : public QWidget {
 public:
   Q_PROPERTY(QList<HintLabel *> hints READ hints);
   Q_PROPERTY(QList<HintLabel *> visibleHints READ visibleHints);
-  Q_PROPERTY(const QLabel *statusIndicator READ statusIndicator);
+  Q_PROPERTY(const QLabel *statusIndicator READ statusIndicator CONSTANT);
   Q_PROPERTY(HintLabel *selectedHint READ selectedHint);
   Q_PROPERTY(QWidget *selectedWidget READ selectedWidget);
+  Q_PROPERTY(CommandLine *commandLine READ commandLine CONSTANT);
   Q_PROPERTY(WindowController *windowController MEMBER controller);
 
   Overlay(WindowController *controller, QWidget *target, bool isMain = true);
@@ -36,6 +38,7 @@ public:
 
   const QList<HintLabel *> &hints();
   const QLabel *statusIndicator();
+  CommandLine *commandLine();
   QList<HintLabel *> visibleHints();
   HintLabel *selectedHint();
   QWidget *selectedWidget();
@@ -50,8 +53,7 @@ public slots:
 
 public:
   template <typename T> inline QList<HintLabel *> findHintsByTarget() {
-    typedef typename std::remove_cv<typename std::remove_pointer<T>::type>::type
-        ObjType;
+    using ObjType = std::remove_cv_t<std::remove_pointer_t<T>>;
     return findHintsByTargetHelper(this, &ObjType::staticMetaObject);
   }
 
@@ -60,6 +62,7 @@ private:
   QList<HintLabel *> p_hints;
   HintLabel *p_selectedHint;
   QLabel *p_statusIndicator;
+  CommandLine *p_commandLine;
 
   friend class OverlayLayout;
 
@@ -68,6 +71,7 @@ private:
 
 inline const QList<HintLabel *> &Overlay::hints() { return p_hints; }
 inline const QLabel *Overlay::statusIndicator() { return p_statusIndicator; }
+inline CommandLine *Overlay::commandLine() { return p_commandLine; }
 
 class OverlayLayout : public QLayout {
   Q_OBJECT
@@ -87,6 +91,7 @@ public:
 private:
   Overlay *overlay() const;
   QLayoutItem *statusIndicatorItem;
+  QLayoutItem *commandLineItem;
   QList<QLayoutItem *> items;
 };
 

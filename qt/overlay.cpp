@@ -12,6 +12,7 @@
 #include <iterator>
 
 #include "action.h"
+#include "commandline.h"
 #include "common.h"
 #include "controller.h"
 #include "hint.h"
@@ -19,10 +20,6 @@
 #include "overlay.h"
 
 using std::copy_if;
-
-const char statusIndicatorStylesheet[] =
-    "QLabel { background-color: #444; color: white; font-family: Monospace; "
-    " padding: 1px; }";
 
 LOGGING_CATEGORY_COLOR("tetradactyl.overlay", Qt::yellow);
 
@@ -32,20 +29,20 @@ namespace Tetradactyl {
 Overlay::Overlay(WindowController *windowController, QWidget *target,
                  bool isMain)
     : QWidget(target), controller(windowController), p_selectedHint(nullptr),
-      p_statusIndicator(nullptr) {
+      p_statusIndicator(nullptr), p_commandLine(nullptr) {
   Q_ASSERT(controller != nullptr);
   Q_ASSERT(target != nullptr);
   // Since Overlay is not in any layout, this is needed.
   setFixedSize(2000, 2000);
   setAttribute(Qt::WA_TransparentForMouseEvents);
 
-  // don't make status indicator for overlays attached to QMenus etc.
+  // only make status indicator and command line for main overlays
   if (isMain) {
     p_statusIndicator = new QLabel(
         enumKeyToValue<ControllerMode>(windowController->controllerMode()),
         this);
     p_statusIndicator->setObjectName("overlay_status_indicator");
-    p_statusIndicator->setStyleSheet(statusIndicatorStylesheet);
+    p_statusIndicator->setStyleSheet(promptStylesheet);
     connect(windowController, &WindowController::modeChanged, p_statusIndicator,
             [this](ControllerMode mode) {
               p_statusIndicator->setText(enumKeyToValue<ControllerMode>(mode));
@@ -55,6 +52,8 @@ Overlay::Overlay(WindowController *windowController, QWidget *target,
               p_statusIndicator->setText("Hint " +
                                          enumKeyToValue<HintMode>(mode));
             });
+
+    p_commandLine = new CommandLine(this);
   }
 
   setLayout(new OverlayLayout(this));
@@ -201,6 +200,8 @@ OverlayLayout::OverlayLayout(Overlay *overlay)
     : QLayout(overlay), statusIndicatorItem(nullptr) {
   if (overlay->p_statusIndicator)
     statusIndicatorItem = new QWidgetItem(overlay->p_statusIndicator);
+  if (overlay->p_commandLine)
+    commandLineItem = new QWidgetItem(overlay->p_commandLine);
 }
 
 OverlayLayout::~OverlayLayout() {
@@ -236,6 +237,14 @@ void OverlayLayout::setGeometry(const QRect &updateRect) {
     statusIndicatorGeometry.translate(-statusIndicatorSize.width(),
                                       -statusIndicatorSize.height());
     statusIndicatorItem->setGeometry(statusIndicatorGeometry);
+  }
+
+  if (commandLineItem) {
+    QSize commandLineSize = commandLineItem->sizeHint();
+    QRect commandLineGeometry(QPoint(0, hostGeometry.size().height()),
+                              commandLineSize);
+    commandLineGeometry.translate(0, -commandLineSize.height());
+    commandLineItem->setGeometry(commandLineGeometry);
   }
 }
 

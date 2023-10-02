@@ -102,6 +102,7 @@ if(TETRADACTYL_QT6)
       "${CMAKE_SOURCE_DIR}/qt/logging.cpp"
       "${CMAKE_SOURCE_DIR}/qt/modelviewproxies.cpp"
       "${CMAKE_SOURCE_DIR}/qt/overlay.cpp"
+      "${CMAKE_SOURCE_DIR}/qt/commandline.cpp"
       "${CMAKE_SOURCE_DIR}/qt/tetradactyl.qrc")
 
   add_library(tetradactyl-qt6-test-object OBJECT ${TETRADACTYL_SOURCES})

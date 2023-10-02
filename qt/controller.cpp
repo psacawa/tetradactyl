@@ -11,13 +11,12 @@
 #include <QLoggingCategory>
 #include <QMenu>
 #include <QMenuBar>
+#include <QMessageBox>
 #include <QPointer>
 #include <QShortcut>
 #include <QTextEdit>
 #include <QTimer>
 #include <QWindow>
-
-#include <fmt/core.h>
 
 #include <algorithm>
 #include <iterator>
@@ -31,6 +30,7 @@
 #include <vector>
 
 #include "action.h"
+#include "commandline.h"
 #include "controller.h"
 #include "filter.h"
 #include "hint.h"
@@ -87,7 +87,7 @@ static ControllerSettings baseTestSettings() {
       .highlightAcceptedHint = true,
       .highlightAcceptedHintMs = 400,
       .passthroughKeyboardInput = true,
-      .resetModeAfterFocusChange = false,
+      .resetModeAfterFocusChange = true,
       .keymap = {.activate = QKeySequence(Qt::Key_F),
                  .cancel = QKeySequence(Qt::Key_Escape),
                  .edit = QKeySequence(Qt::Key_G, Qt::Key_I),
@@ -96,7 +96,8 @@ static ControllerSettings baseTestSettings() {
                  .activateMenu = QKeySequence(Qt::Key_M),
                  .activateContext = QKeySequence(Qt::Key_C),
                  .upScroll = QKeySequence(Qt::Key_K),
-                 .downScroll = QKeySequence(Qt::Key_J)},
+                 .downScroll = QKeySequence(Qt::Key_J),
+                 .focusPrompt = QKeySequence(Qt::Key_Colon)},
   };
 }
 
@@ -123,27 +124,44 @@ Controller::Controller() {
   }
 }
 
-Controller::~Controller() { cleanup(); }
+Controller::~Controller() {
+  cleanupWindows();
+  if (qApp)
+    qApp->removeEventFilter(this);
+  self = nullptr;
+}
 
-void Controller::reset() {
-  if (Controller::instance() != nullptr) {
-    Controller::instance()->cleanup();
+bool Controller::executeCommand(QString cmdline) {
+  QList<QString> argv = cmdline.split(' ');
+
+  // parse
+  qInfo() << "executing: " << argv[0];
+  int found = QMetaObject::invokeMethod(tetradactyl, qPrintable(argv[0]),
+                                        Qt::ConnectionType::QueuedConnection);
+  if (!found) {
+    QString errorMsg = QString("Command \"%1\" not found").arg(argv[0]);
+    QMessageBox box(QMessageBox::Warning, "Command not found", errorMsg);
+    box.exec();
   }
+  return found;
+}
+
+void Controller::resetWindows() {
+  Q_ASSERT(tetradactyl);
+  cleanupWindows();
   initWindows();
 }
 
-void Controller::cleanup() {
+void Controller::cleanupWindows() {
   if (self == nullptr) {
     // controller already deleted
     return;
   }
-  for (auto &WindowController : windowControllers) {
-    delete WindowController;
+  while (!windowControllers.isEmpty()) {
+    WindowController *winc = windowControllers.last();
+    delete winc;
+    windowControllers.pop_back();
   }
-  if (qApp) {
-    qApp->removeEventFilter(this);
-  }
-  self = nullptr;
 }
 
 void Controller::createController() {
@@ -320,6 +338,10 @@ QDebug operator<<(QDebug debug, const Controller *controller) {
   return debug;
 }
 
+// while key handling in ControllerMode::Normal is being settlied, we use Qt
+// native shortcuts. This let's us use e.g. multi step key sequences, but it's
+// an issue and the clients own shortcuts, but it's a problem if there is an
+// shortcut collision.
 void WindowController::initializeShortcuts() {
   ControllerKeymap &keymap = Controller::instance()->settings.keymap;
   QShortcut *activateShortcut =
@@ -337,6 +359,8 @@ void WindowController::initializeShortcuts() {
                                           [this] { hint(HintMode::Menuable); });
   QShortcut *cancelShortcut =
       new QShortcut(keymap.cancel, p_target, [this] { cancel(); });
+  QShortcut *focusPromptShortcut = new QShortcut(
+      keymap.focusPrompt, p_target, [this] { this->focusPrompt(); });
   shortcuts.append(activateShortcut);
   shortcuts.append(editShortcut);
   shortcuts.append(yankShortcut);
@@ -344,6 +368,7 @@ void WindowController::initializeShortcuts() {
   shortcuts.append(contextMenuShortcut);
   shortcuts.append(menuShortcut);
   shortcuts.append(cancelShortcut);
+  shortcuts.append(focusPromptShortcut);
 }
 
 WindowController::WindowController(QWidget *_target, QObject *parent = nullptr)
@@ -394,7 +419,7 @@ bool inputModeWhenWidgetFocussed(QWidget *w) {
  * Called from the application eventFilter.
  */
 bool WindowController::earlyKeyEventFilter(QKeyEvent *kev) {
-  logInfo << __FUNCTION__ << kev;
+  logDebug << __FUNCTION__ << kev;
   auto type = kev->type();
   if (type == QEvent::KeyPress) {
     switch (p_controllerMode) {
@@ -540,7 +565,7 @@ void WindowController::hint(HintMode hintMode) {
   p_currentAction->act();
 
   // Action may terminate immediately if there are no hints made
-  // TODO 22/09/20 psacawa: consolidate with the cleanup code in accept()
+  // TODO 22/09/20 psacawa: consolidate with the cleanupWindows code in accept()
   if (p_currentAction->isDone()) {
     cleanupAction();
     return;
@@ -635,6 +660,8 @@ void WindowController::popKey() {
   hintBuffer.remove(hintBuffer.length() - 1, 1);
   activeOverlay()->updateHints(hintBuffer);
 }
+
+void WindowController::focusPrompt() { mainOverlay()->commandLine()->open(); }
 
 QWidget *WindowController::target() {
   return dynamic_cast<QWidget *>(this->p_target);

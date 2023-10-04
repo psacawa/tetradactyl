@@ -31,6 +31,7 @@
 
 #include "action.h"
 #include "commandline.h"
+#include "commands.h"
 #include "controller.h"
 #include "filter.h"
 #include "hint.h"
@@ -122,6 +123,8 @@ Controller::Controller() {
     connect(qApp, &QApplication::focusWindowChanged, this,
             &Controller::resetModeAfterFocusWindowChanged);
   }
+
+  emit started();
 }
 
 Controller::~Controller() {
@@ -131,25 +134,19 @@ Controller::~Controller() {
   self = nullptr;
 }
 
-bool Controller::executeCommand(QString cmdline) {
+void Controller::executeCommand(QString cmdline) {
   QList<QString> argv = cmdline.split(' ');
 
   // parse
   qInfo() << "executing: " << argv[0];
-  int found = QMetaObject::invokeMethod(tetradactyl, qPrintable(argv[0]),
-                                        Qt::ConnectionType::QueuedConnection);
-  if (!found) {
-    QString errorMsg = QString("Command \"%1\" not found").arg(argv[0]);
-    QMessageBox box(QMessageBox::Warning, "Command not found", errorMsg);
-    box.exec();
-  }
-  return found;
+  runCommand(argv);
 }
 
 void Controller::resetWindows() {
   Q_ASSERT(tetradactyl);
   cleanupWindows();
   initWindows();
+  emit reset();
 }
 
 void Controller::cleanupWindows() {
@@ -288,6 +285,13 @@ void Controller::resetModeAfterFocusChange(QWidget *old, QWidget *now) {
     ControllerMode nowMode = inputModeWhenWidgetFocussed(now) ? Input : Normal;
     if (nowWindowController) {
       nowWindowController->setControllerMode(nowMode);
+    } else {
+      // Find out if this was a newly created tetradactylWindow, if so create
+      // the controller.
+      if (isTetradactylWindow(now)) {
+        logInfo << "Adding new WindowController to" << now;
+        tetradactyl->resetWindows();
+      }
     }
   }
 }
@@ -449,7 +453,9 @@ bool WindowController::earlyKeyEventFilter(QKeyEvent *kev) {
         return true;
       case Qt::Key_Tab:
       case Qt::Key_Backtab:
-        activeOverlay()->nextHint(!(kev->modifiers() & Qt::ShiftModifier));
+        // activeOverlay()->nextHint(!(kev->modifiers() & Qt::ShiftModifier));
+        activeOverlay()->nextHint((kev->key() == Qt::Key_Tab));
+        // activeOverlay()->nextHint((true));
         return true;
       }
       if ((kev->key() >= 'A') && (kev->key() <= 'Z')) {
@@ -723,13 +729,19 @@ QList<QWidget *> WindowController::getHintables(HintMode hintMode) {
 QDebug operator<<(QDebug debug, const WindowController *controller) {
   QDebugStateSaver saver(debug);
   debug.nospace();
-  debug << "WindowController(" << controller->p_target << ", ";
+
+  debug << WindowController::staticMetaObject.className() << "("
+        << (void *)controller << " " << controller->p_target << ", ";
   debug << controller->p_controllerMode << ", ";
   if (controller->p_controllerMode == ControllerMode::Hint)
     debug << controller->p_currentHintMode << ", ";
   debug << "overlays=" << controller->p_overlays.length() << ": ";
-  for (auto overlay : controller->p_overlays)
-    debug << overlay->parentWidget() << ", ";
+  for (int i = 0; i != controller->p_overlays.length(); i++) {
+    auto overlay = controller->p_overlays.at(i);
+    if (i != 0)
+      debug << ", ";
+    debug << overlay->parentWidget();
+  }
   debug << ")";
   return debug;
 }

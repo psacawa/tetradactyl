@@ -90,8 +90,6 @@ void BasicControllerTest::init() {
   windowController = controller->windows().at(0);
   overlay = windowController->overlays().at(0);
   Tetradactyl::waitForWindowActiveOrFail(win);
-
-  QTest::keyClick(win, Qt::Key_Escape);
 }
 
 void BasicControllerTest::cleanup() {
@@ -200,10 +198,8 @@ void BasicControllerTest::testHintVisibilityAfterPushPopKey() {
 }
 
 void BasicControllerTest::testHintNextHint() {
-  QEXPECT_FAIL("", "shift+tab behaves like tab", Continue);
   QTest::keyClick(win, Qt::Key_F);
   QTest::keyClick(win, Qt::Key_S);
-  QTest::qWait(1000);
   // 3 of 10 hints visible
   auto visibleHints = overlay->visibleHints();
   QCOMPARE(visibleHints.length(), 3);

@@ -145,7 +145,10 @@ bool ObjectProbe::earlyFilterObject(QObject *obj) {
   return false;
 }
 
-// Is Tetradactyl interested in this object?
+// Is Tetradactyl interested in this object? For the most part, at this point,
+// we can't definitively tell if the object is intendend to be a window. If so,
+// then it may be that parent == nullptr, and that it will be a
+// tetradactylWindow will only be apparent upon calling show(),
 bool ObjectProbe::interestedObject(QObject *obj) {
   static QList<const QMetaObject *> interestedMetaObjects = {
       &QMenuBar::staticMetaObject};

@@ -50,7 +50,6 @@ void MenuBarActionTest::init() {
   QtBaseTest::init();
 
   waitForWindowActiveOrFail(win);
-  QTest::keyClick(win, Qt::Key_Escape);
 }
 
 MainWindow::CustomSizeHintMap MenuBarActionTest::map;

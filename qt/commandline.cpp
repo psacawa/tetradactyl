@@ -8,37 +8,50 @@
 
 namespace Tetradactyl {
 
-CommandLine::CommandLine(QWidget *parent) : QLineEdit(parent) {
+CommandLine::CommandLine(QWidget *parent) : QLineEdit(parent), p_isOpen(false) {
   setStyleSheet(promptStylesheet);
 
   connect(this, &CommandLine::returnPressed, this, [this] {
-    QString cmd = text();
+    QString cmdline = text();
     setText("");
-    bool executed = tetradactyl->executeCommand(cmd);
-    if (!executed) {
-    }
+    tetradactyl->executeCommand(cmdline);
+    emit accepted(cmdline);
+
     hide();
+    emit closed();
   });
 
   hide();
 }
 
-void CommandLine::open() {
-  show();
-  setFocus();
+void CommandLine::open() { setOpened(true); }
+
+void CommandLine::setOpened(bool nowOpened) {
+  bool changed = (nowOpened != p_isOpen);
+  p_isOpen = nowOpened;
+  if (nowOpened) {
+    show();
+    setFocus();
+  } else {
+    hide();
+  }
+  if (changed) {
+    emit nowOpened ? opened() : closed();
+  }
 }
 
 void CommandLine::focusOutEvent(QFocusEvent *ev) {
-  hide();
+  setOpened(false);
   QLineEdit::focusOutEvent(ev);
 }
+
 void CommandLine::focusInEvent(QFocusEvent *ev) {
-  show();
+  setOpened(true);
   QLineEdit::focusInEvent(ev);
 }
 
 void CommandLine::reportError() {
-  // TODO 02/10/20 psacawa: report error in prompt
+  // TODO 02/10/20 psacawa: report error in prompt?
 }
 
 } // namespace Tetradactyl

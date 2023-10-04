@@ -9,8 +9,12 @@ class Overlay;
 class CommandLine : public QLineEdit {
   Q_OBJECT
 public:
+  Q_PROPERTY(bool opened READ isOpen WRITE setOpened)
   CommandLine(QWidget *parent = nullptr);
   virtual ~CommandLine() {}
+
+  bool isOpen();
+  void setOpened(bool);
 
   void focusOutEvent(QFocusEvent *) override;
   void focusInEvent(QFocusEvent *) override;
@@ -19,11 +23,19 @@ public:
   QSize minimumSizeHint() const override;
 
 signals:
-  void accepted(QString cmd);
+  // This doesn't guarantee that this was a valid command line
+  void accepted(QString cmdline);
+  void opened();
+  void closed();
 
 public slots:
   void open();
+
+private:
+  bool p_isOpen;
 };
+
+inline bool CommandLine::isOpen() { return p_isOpen; }
 
 inline QSize CommandLine::minimumSizeHint() const {
   QSize ret = QLineEdit::minimumSizeHint();

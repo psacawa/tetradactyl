@@ -32,8 +32,6 @@ void BasicTest::init() {
   win = new Calculator();
   QtBaseTest::init();
   waitForWindowActiveOrFail(win);
-
-  QTest::keyClick(win, Qt::Key_Escape);
 }
 
 void BasicTest::cleanup() {
@@ -42,7 +40,6 @@ void BasicTest::cleanup() {
 }
 
 void BasicTest::signalEmissionTest() {
-  QSKIP("skipped until focus situation figured out");
   // beginning
   QCOMPARE(modeChangedSpy->count(), 0);
   QCOMPARE(hintedSpy->count(), 0);

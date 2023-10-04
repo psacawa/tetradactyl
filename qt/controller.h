@@ -100,20 +100,24 @@ public:
   bool isInitialized();
   static ControllerSettings settings;
   static QString stylesheet;
+  WindowController *findControllerForWidget(QWidget *);
+
+signals:
+  void started();
+  void reset();
 
 public slots:
   static void createController();
   void routeNewlyCreatedObject(QObject *obj);
   void resetModeAfterFocusChange(QWidget *old, QWidget *now);
   void resetModeAfterFocusWindowChanged(QWindow *focusWindow);
-  bool executeCommand(QString cmdline);
+  void executeCommand(QString cmdline);
   void resetWindows();
 
 private:
   bool eventFilter(QObject *obj, QEvent *ev);
   void attachControllerToWindow(QWidget *widget);
   void initWindows();
-  WindowController *findControllerForWidget(QWidget *);
   static const std::map<HintMode, vector<const QMetaObject *>>
       hintableMetaObjects;
   QList<WindowController *> windowControllers;

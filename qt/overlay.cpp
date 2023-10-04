@@ -82,7 +82,7 @@ void Overlay::addHint(QString text, QWidgetActionProxy *widgetProxy) {
 Overlay::~Overlay() {}
 
 void Overlay::nextHint(bool forward) {
-  logInfo << __PRETTY_FUNCTION__;
+  logInfo << __FUNCTION__ << forward;
   Q_ASSERT(p_hints.length() > 0);
   int idx = p_hints.indexOf(selectedHint());
   if (idx < 0) {
@@ -197,7 +197,7 @@ QList<HintLabel *> findHintsByTargetHelper(Overlay *overlay,
 }
 
 OverlayLayout::OverlayLayout(Overlay *overlay)
-    : QLayout(overlay), statusIndicatorItem(nullptr) {
+    : QLayout(overlay), statusIndicatorItem(nullptr), commandLineItem(nullptr) {
   if (overlay->p_statusIndicator)
     statusIndicatorItem = new QWidgetItem(overlay->p_statusIndicator);
   if (overlay->p_commandLine)

@@ -100,6 +100,7 @@ if(TETRADACTYL_QT6)
       "${CMAKE_SOURCE_DIR}/qt/filter.cpp"
       "${CMAKE_SOURCE_DIR}/qt/hint.cpp"
       "${CMAKE_SOURCE_DIR}/qt/logging.cpp"
+      "${CMAKE_SOURCE_DIR}/qt/commands.cpp"
       "${CMAKE_SOURCE_DIR}/qt/modelviewproxies.cpp"
       "${CMAKE_SOURCE_DIR}/qt/overlay.cpp"
       "${CMAKE_SOURCE_DIR}/qt/commandline.cpp"
@@ -129,6 +130,9 @@ if(TETRADACTYL_QT6)
   add_qt6_test_depending_on_example_demo(
     editable_test "widgets/layouts/basiclayouts" LABELS
     "controller;qlineedit;qt6")
+
+  add_qt6_test_depending_on_example_demo(
+    prompt_test "widgets/widgets/calculator" LABELS "controller;prompt:qt6")
 
   if(TETRADCTYL_CODE_COVERAGE)
     setup_target_for_coverage_lcov(

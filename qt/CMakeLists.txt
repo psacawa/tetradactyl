@@ -21,6 +21,7 @@ set(QT_COMMON_SOURCES
     modelviewproxies.cpp
     overlay.cpp
     commandline.cpp
+    commands.cpp
     tetradactyl.qrc)
 
 # backward.cpp complains without this explicitly added

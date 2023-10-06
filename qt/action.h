@@ -43,6 +43,7 @@ public:
   }
   virtual ~BaseAction() {}
   bool isDone();
+  // dependent on accepted widget?
   ControllerMode controllerModeAfterSuccess();
   QWidget *currentRoot();
 
@@ -461,6 +462,8 @@ protected:
 
 class QListViewActionProxyStatic : public QAbstractItemViewActionProxyStatic {
 public:
+  virtual void hintActivatable(ActivateAction *action, QWidget *widget,
+                               QList<QWidgetActionProxy *> &proxies) override;
   virtual void hintEditable(EditAction *action, QWidget *widget,
                             QList<QWidgetActionProxy *> &proxies) override;
   virtual void hintFocusable(FocusAction *action, QWidget *widget,
@@ -471,6 +474,8 @@ class QListViewActionProxy : public QAbstractItemViewActionProxy {
   Q_OBJECT
 public:
   using QAbstractItemViewActionProxy::QAbstractItemViewActionProxy;
+  virtual bool activate(ActivateAction *action) override;
+
   virtual ~QListViewActionProxy() {}
 };
 

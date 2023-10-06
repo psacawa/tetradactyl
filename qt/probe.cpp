@@ -168,8 +168,10 @@ void ObjectProbe::processCreatedObjects() {
     TETRA_MUTEX_LOCKER locker(&mutex);
     for (auto obj : objectsBeingCreated) {
       if (interestedObject(obj)) {
+        // can't use QDebug with QObjects here
+        fprintf(stderr, "Client created object %s(%p)\n",
+                obj->metaObject()->className(), (void *)obj);
         emit objectCreated(obj, QPrivateSignal());
-        // logWarning << "created" << obj;
       }
     }
     objectsBeingCreated.clear();

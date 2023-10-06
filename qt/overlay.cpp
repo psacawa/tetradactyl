@@ -82,7 +82,6 @@ void Overlay::addHint(QString text, QWidgetActionProxy *widgetProxy) {
 Overlay::~Overlay() {}
 
 void Overlay::nextHint(bool forward) {
-  logInfo << __FUNCTION__ << forward;
   Q_ASSERT(p_hints.length() > 0);
   int idx = p_hints.indexOf(selectedHint());
   if (idx < 0) {

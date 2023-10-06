@@ -1,10 +1,14 @@
 // Copyright 2023 Paweł Sacawa. All rights reserved.
 #pragma once
 
+#include <QApplication>
 #include <QSignalSpy>
 #include <QWidget>
 
 #include <qt/controller.h>
+
+#define pressKey(...) QTest::keyClick(qApp->focusWidget(), __VA_ARGS__)
+#define pressKeys(...) QTest::keyClicks(qApp->focusWidget(), __VA_ARGS__)
 
 namespace Tetradactyl {
 

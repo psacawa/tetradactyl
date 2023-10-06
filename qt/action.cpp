@@ -97,6 +97,7 @@ void BaseAction::act() {
     return;
   }
   Overlay *overlay = windowController->findOverlayForWidget(p_currentRoot);
+
   HintGenerator hintStringGenerator(Controller::settings.hintChars,
                                     hintData.length());
   for (QWidgetActionProxy *actionProxy : hintData) {
@@ -446,6 +447,13 @@ bool QAbstractButtonActionProxy::yank(YankAction *action) {
 
 // QComboBoxActionProxy
 
+QWidget *findComboBoxDropdownContainer(QComboBox *comboBox) {
+  for (auto child : comboBox->findChildren<QWidget *>())
+    if (isTetradactylOverlayable(child))
+      return child;
+  return nullptr;
+}
+
 bool QComboBoxActionProxyStatic::isActivatable(ActivateAction *action,
                                                QWidget *widget) {
   QOBJECT_CAST_ASSERT(QComboBox, widget);
@@ -463,10 +471,15 @@ bool QComboBoxActionProxy::activate(ActivateAction *action) {
   instance->showPopup();
   // Find the widget which represents the popup. This is a private QObject
   // class, but it is a descendant which is a listview.
-  // QWidget *privateListView;
-  // TODO 22/09/20 psacawa: figure this out
-  action->addNextStage(instance);
-  return false;
+  QWidget *container = findComboBoxDropdownContainer(instance);
+  logWarning << container;
+  if (container) {
+    action->addNextStage(container);
+    return false;
+  } else {
+    action->finish();
+    return true;
+  }
 }
 
 bool QComboBoxActionProxy::yank(YankAction *action) {

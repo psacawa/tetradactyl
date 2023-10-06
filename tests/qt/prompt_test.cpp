@@ -43,7 +43,7 @@ void PromptTest::init() {
 
 void PromptTest::cleanup() {
   delete win;
-  delete controller;
+  delete tetradactyl;
 }
 
 void PromptTest::openCloseTest() {
@@ -99,9 +99,11 @@ void PromptTest::controllerResetTest() {
   QTest::keyClicks(win, ":");
   QTest::keyClicks(prompt, "reset");
   QTest::keyClick(prompt, Qt::Key_Return);
+  QTest::qWait(10);
   QCOMPARE(acceptedSpy->count(), 1);
 
-  QEXPECT_FAIL("", "reset broken", Abort);
+  QEXPECT_FAIL("", "issue with the reset being performed in a timer callback",
+               Abort);
   QCOMPARE(resetSpy->count(), 1);
   QVERIFY2(controllerPtr, "tetradactyl wasn't recycled");
   QVERIFY2(!windowControllerPtr, "Original WindowController was killed");

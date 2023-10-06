@@ -7,11 +7,29 @@
 #include <QPoint>
 #include <QWidget>
 
+#include <type_traits>
+
 #define UNUSED [[maybe_unused]]
 
 namespace Tetradactyl {
 
 bool isTetradactylMetaObject(const QMetaObject *mo);
+
+bool isDescendantOf(QObject *descendant, QObject *ancestor);
+bool isTetradactylWindow(QWidget *w);
+bool isTetradactylOverlayable(QWidget *w);
+QWidget *getToplevelWidgetForWindow(QWindow *win);
+
+// Is there an instance  of  C in ancentors of  obj
+template <typename C> C findAncestor(QObject *obj) {
+  using Obj = std::remove_pointer_t<C>;
+  while (obj != nullptr) {
+    if (obj->metaObject() == &Obj::staticMetaObject)
+      return reinterpret_cast<C>(obj);
+    obj = obj->parent();
+  }
+  return nullptr;
+}
 
 // Polymorphically convert value  of enum registered with meta-object system to
 // QString.
@@ -20,8 +38,6 @@ template <typename Enum> QString enumKeyToValue(Enum value) {
   return QString::fromLocal8Bit(me.valueToKey(value));
 }
 
-const char promptStylesheet[] =
-    "* { background-color: #444; color: white; font-family: Monospace; "
-    " padding: 1px; }";
+extern const char promptStylesheet[];
 
 } // namespace Tetradactyl

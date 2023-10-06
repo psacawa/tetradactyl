@@ -19,6 +19,7 @@
 #include <QWindow>
 
 #include <algorithm>
+#include <csignal>
 #include <iterator>
 #include <qdebug.h>
 #include <qglobal.h>
@@ -45,34 +46,6 @@ using std::copy_if;
 using std::size_t;
 
 namespace Tetradactyl {
-
-static bool isDescendantOf(QObject *descendant, QObject *ancestor) {
-  for (; descendant != nullptr; descendant = descendant->parent()) {
-    if (descendant == ancestor)
-      return true;
-  }
-  return false;
-}
-
-// widget can have Tetradactyl::WindowController attached to it: be a window and
-// not a popup
-static bool isTetradactylWindow(QWidget *w) {
-  QList<Qt::WindowType> windowTypes = {Qt::WindowType::Window,
-                                       Qt::WindowType::Dialog};
-  return w->isWindow() && windowTypes.contains(w->windowType());
-}
-
-// @pre: win != nullptr
-// @post return != nullptr (?)
-QWidget *getToplevelWidgetForWindow(QWindow *win) {
-  Q_ASSERT(win != nullptr);
-  for (auto w : qApp->topLevelWidgets()) {
-    if (w->windowHandle() == win) {
-      return w;
-    }
-  }
-  Q_UNREACHABLE();
-}
 
 const std::map<HintMode, vector<const QMetaObject *>> hintableMetaObjects = {
     {Activatable, {&QAbstractButton::staticMetaObject}},
@@ -275,16 +248,23 @@ void Controller::resetModeAfterFocusChange(QWidget *old, QWidget *now) {
   WindowController *oldWindowController = findControllerForWidget(old);
   WindowController *nowWindowController = findControllerForWidget(now);
 
-  // Must handle old before now in case they have the same controller
+  // Case where old, now both have the same controller. This is the case in
+  // multistep hinting
+  if (oldWindowController && oldWindowController == nowWindowController) {
+    if (inputModeWhenWidgetFocussed(now)) {
+      nowWindowController->setControllerMode(Input);
+    }
+    return;
+  }
+
   if (old != nullptr) {
     if (oldWindowController) {
       oldWindowController->setControllerMode(Normal);
     }
   }
   if (now != nullptr) {
-    ControllerMode nowMode = inputModeWhenWidgetFocussed(now) ? Input : Normal;
-    if (nowWindowController) {
-      nowWindowController->setControllerMode(nowMode);
+    if (nowWindowController && inputModeWhenWidgetFocussed(now)) {
+      nowWindowController->setControllerMode(Input);
     } else {
       // Find out if this was a newly created tetradactylWindow, if so create
       // the controller.
@@ -317,11 +297,10 @@ void Controller::resetModeAfterFocusWindowChanged(QWindow *focusWindow) {
   if (controller == nullptr)
     return;
 
-  qInfo() << controller->activeOverlay()->parentWidget() << topLevelWidget;
   BaseAction *action = controller->currentAction();
   if (action != nullptr && action->currentRoot() == topLevelWidget) {
     // this convinces us that we are in a multi-step hint process
-    logInfo << "focusWindowChanged in presumptive hinting mode:"
+    logInfo << "No mode change in " << __FUNCTION__ << " - In hint mode at"
             << topLevelWidget;
     return;
   }
@@ -726,23 +705,44 @@ QList<QWidget *> WindowController::getHintables(HintMode hintMode) {
   return QList<QWidget *>(hintables.begin(), hintables.end());
 }
 
+void WindowController::setControllerMode(ControllerMode mode) {
+  logInfo << __FUNCTION__ << "from" << p_controllerMode << "to" << mode;
+  bool changed = mode != p_controllerMode;
+  p_controllerMode = mode;
+  for (auto sc : shortcuts)
+    sc->setEnabled(mode == Normal);
+
+  if (!changed)
+    return;
+
+  if (mode != Hint) {
+    cleanupHints();
+  }
+
+  emit modeChanged(mode);
+}
+
 QDebug operator<<(QDebug debug, const WindowController *controller) {
   QDebugStateSaver saver(debug);
   debug.nospace();
 
-  debug << WindowController::staticMetaObject.className() << "("
-        << (void *)controller << " " << controller->p_target << ", ";
-  debug << controller->p_controllerMode << ", ";
-  if (controller->p_controllerMode == ControllerMode::Hint)
-    debug << controller->p_currentHintMode << ", ";
-  debug << "overlays=" << controller->p_overlays.length() << ": ";
-  for (int i = 0; i != controller->p_overlays.length(); i++) {
-    auto overlay = controller->p_overlays.at(i);
-    if (i != 0)
-      debug << ", ";
-    debug << overlay->parentWidget();
+  debug << WindowController::staticMetaObject.className();
+  if (!controller) {
+    debug << "(0x0)";
+  } else {
+    debug << "(" << (void *)controller << " " << controller->p_target << ", "
+          << controller->p_controllerMode << ", ";
+    if (controller->p_controllerMode == ControllerMode::Hint)
+      debug << controller->p_currentHintMode << ", ";
+    debug << "overlays=" << controller->p_overlays.length() << ": ";
+    for (int i = 0; i != controller->p_overlays.length(); i++) {
+      auto overlay = controller->p_overlays.at(i);
+      if (i != 0)
+        debug << ", ";
+      debug << overlay->parentWidget();
+    }
+    debug << ")";
   }
-  debug << ")";
   return debug;
 }
 

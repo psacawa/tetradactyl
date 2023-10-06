@@ -30,6 +30,9 @@ class QWidgetActionProxy;
 
 class WindowController;
 
+bool isTetradactylWindow(QWidget *w);
+bool isTetradactylOverlayable(QWidget *w);
+
 struct ControllerKeymap {
   QKeySequence activate;
   QKeySequence cancel;
@@ -240,21 +243,6 @@ inline void WindowController::setCurrentHintMode(HintMode mode) {
 }
 inline ControllerMode WindowController::controllerMode() {
   return p_controllerMode;
-}
-inline void WindowController::setControllerMode(ControllerMode mode) {
-  bool changed = mode != p_controllerMode;
-  p_controllerMode = mode;
-  for (auto sc : shortcuts)
-    sc->setEnabled(mode == Normal);
-
-  if (!changed)
-    return;
-
-  if (mode != Hint) {
-    cleanupHints();
-  }
-
-  emit modeChanged(mode);
 }
 
 class HintGenerator {

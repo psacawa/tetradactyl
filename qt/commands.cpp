@@ -35,7 +35,7 @@ void runCommand(QList<QString> argv) {
   Q_ASSERT(argv.length() > 0);
   auto command = commandRegistry.find(argv.at(0));
   if (command != commandRegistry.end()) {
-    QTimer::singleShot(0, [command, argv]() { command.value().func(argv); });
+    QTimer::singleShot(10, [command, argv]() { command.value().func(argv); });
   } else {
     QString errorMsg = QString("Command \"%1\" not found").arg(argv[0]);
     QMessageBox *box =

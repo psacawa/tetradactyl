@@ -1,5 +1,6 @@
 // Copyright 2023 Paweł Sacawa. All rights reserved.
 #include <QAbstractItemView>
+#include <QComboBox>
 #include <QHeaderView>
 #include <QListView>
 #include <QRect>
@@ -51,12 +52,33 @@ static void listViewHintHelper(BaseAction *action, QWidget *widget,
       break;
     // We are in the viewport
     auto flags = model->flags(idx);
-    if ((flags & itemFlag) == flags) {
+    if ((flags & itemFlag) == itemFlag) {
       logDebug << "Hinting" << instance << "at" << idx << cellRect.topLeft();
-      QTableViewActionProxy *proxy =
-          new QTableViewActionProxy(idx, cellRect.topLeft(), instance);
+      QListViewActionProxy *proxy =
+          new QListViewActionProxy(idx, cellRect.topLeft(), instance);
       proxies.append(proxy);
     }
+  }
+}
+
+[[maybe_unused]] static bool isContainedinQComboBox(QWidget *w) {
+  w = w->parentWidget();
+  while (w != nullptr) {
+    if (w->metaObject() == &QComboBox::staticMetaObject)
+      return true;
+    w = w->parentWidget();
+  }
+  return false;
+}
+
+void QListViewActionProxyStatic::hintActivatable(
+    ActivateAction *action, QWidget *widget,
+    QList<QWidgetActionProxy *> &proxies) {
+  QOBJECT_CAST_ASSERT(QListView, widget);
+  // only interested in hint activating list view when it's a subwidget of
+  // QComboBox
+  if (isContainedinQComboBox(instance)) {
+    listViewHintHelper(action, instance, proxies, Qt::ItemIsEnabled);
   }
 }
 
@@ -70,6 +92,17 @@ void QListViewActionProxyStatic::hintFocusable(
     FocusAction *action, QWidget *widget,
     QList<QWidgetActionProxy *> &proxies) {
   listViewHintHelper(action, widget, proxies, Qt::ItemIsEnabled);
+}
+
+// Only helpful for the list descendant of QComboBox and the like
+bool QListViewActionProxy::activate(ActivateAction *action) {
+  QListView *instance = qobject_cast<QListView *>(widget);
+  QComboBox *ancestorComboBox = findAncestor<QComboBox *>(instance);
+  Q_ASSERT(ancestorComboBox);
+  logInfo << positionInWidget << modelIndex;
+  ancestorComboBox->setCurrentIndex(modelIndex.row());
+  ancestorComboBox->hidePopup();
+  return true;
 }
 
 // QTableViewActionProxy
@@ -204,6 +237,7 @@ void QTreeViewActionProxyStatic::hintFocusable(
 bool QTreeViewActionProxy::activate(ActivateAction *action) {
   QTreeView *instance = qobject_cast<QTreeView *>(widget);
   bool isExpanded = instance->isExpanded(this->modelIndex);
+  // FIXME 05/10/20 psacawa: despite appearances this can lead to segfault
   instance->setExpanded(this->modelIndex, !isExpanded);
   return true;
 }

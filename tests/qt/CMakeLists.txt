@@ -134,6 +134,10 @@ if(TETRADACTYL_QT6)
   add_qt6_test_depending_on_example_demo(
     prompt_test "widgets/widgets/calculator" LABELS "controller;prompt:qt6")
 
+  add_qt6_test_depending_on_example_demo(
+    combobox_test "widgets/painting/painterpaths/" LABELS
+    "controller;qcombobox:qt6")
+
   if(TETRADCTYL_CODE_COVERAGE)
     setup_target_for_coverage_lcov(
       NAME

@@ -30,7 +30,6 @@ private:
   QTextEdit *upperEditor;
 };
 
-;
 void EditableTest::init() {
   win = new Dialog;
   QtBaseTest::init();

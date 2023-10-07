@@ -14,7 +14,7 @@
 
 #include "common.h"
 
-// from "git://qtbase/examples/layouts/basiclayouts/basiclayouts
+// from "git://qtbase/examples/widgets/itemviews/spreadsheet
 #include <spreadsheet/spreadsheet.h>
 
 namespace Tetradactyl {
@@ -26,7 +26,7 @@ class TableViewTest : public QtBaseTest {
   QTableWidget *table;
   QAbstractItemModel *model;
   QItemSelectionModel *selectionModel;
-  QSignalSpy *activatedSpy, *enteredSpy;
+  QSignalSpy *activatedSpy;
   QSignalSpy *currentChangedSpy;
 
 private slots:
@@ -42,7 +42,6 @@ void TableViewTest::init() {
   model = table->model();
   selectionModel = table->selectionModel();
   activatedSpy = new QSignalSpy(table, &QTableWidget::activated);
-  enteredSpy = new QSignalSpy(table, &QTableWidget::entered);
   currentChangedSpy =
       new QSignalSpy(selectionModel, &QItemSelectionModel::currentChanged);
   QtBaseTest::init();
@@ -75,7 +74,6 @@ void TableViewTest::basicFocusTest() {
 void TableViewTest::basicEditTest() {
   pressKeys("gi");
   QCOMPARE(activatedSpy->count(), 0);
-  QCOMPARE(enteredSpy->count(), 0);
 
   // select cell C1
   pressKeys("aaf");

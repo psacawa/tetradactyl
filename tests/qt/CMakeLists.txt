@@ -142,6 +142,10 @@ if(TETRADACTYL_QT6)
     tableview_test "widgets/itemviews/spreadsheet" LABELS
     "controller;qtableview:qt6")
 
+  add_qt6_test_depending_on_example_demo(
+    treeview_test "widgets/itemviews/editabletreemodel" LABELS
+    "controller;qtreeview:qt6")
+
   if(TETRADCTYL_CODE_COVERAGE)
     setup_target_for_coverage_lcov(
       NAME

@@ -9,7 +9,7 @@ set(QT_EXAMPLES_SOURCE_PATH
     CACHE PATH
           "Path to base Qt example source directory i.e. git://qtbase/examples")
 
-if(TETRADCTYL_CODE_COVERAGE)
+if(TETRADACTYL_CODE_COVERAGE)
   set(COVERAGE_EXCLUDES
       "${CMAKE_CURRENT_SOURCE_DIR}/*" "${CMAKE_BINARY_DIR}/*"
       "/usr/include/**/*" "${QT_EXAMPLES_SOURCE_PATH}/*" "/usr/local/*")
@@ -146,7 +146,7 @@ if(TETRADACTYL_QT6)
     treeview_test "widgets/itemviews/editabletreemodel" LABELS
     "controller;qtreeview:qt6")
 
-  if(TETRADCTYL_CODE_COVERAGE)
+  if(TETRADACTYL_CODE_COVERAGE)
     setup_target_for_coverage_lcov(
       NAME
       qt6-coverage

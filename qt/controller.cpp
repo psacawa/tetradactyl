@@ -156,11 +156,12 @@ WindowController *Controller::findControllerForWidget(QWidget *widget) {
     // WindowController, or itself it's a popup of sorts (QMenu/QComboBox popup)
     // whose nativeParentWidget has the WindowController
     QWidget *target = winController->target();
-    while (widget != nullptr) {
-      if (widget == target) {
+    QWidget *iter = widget;
+    while (iter != nullptr) {
+      if (iter == target) {
         return winController;
       }
-      widget = widget->nativeParentWidget();
+      iter = iter->nativeParentWidget();
     }
   }
   return nullptr;

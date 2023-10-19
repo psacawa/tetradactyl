@@ -10,6 +10,14 @@ find_package(
 find_package(toml11 REQUIRED)
 find_package(fmt REQUIRED)
 
+find_package(PkgConfig REQUIRED)
+macro(pkg_config_add_to_target _target _prefix)
+  target_link_libraries(${_target} PRIVATE ${${_prefix}_LINK_LIBRARIES})
+  target_link_directories(${_target} PRIVATE ${${_prefix}_LIBRARY_DIRS})
+  target_include_directories(${_target} PRIVATE ${${_prefix}_INCLUDE_DIRS})
+endmacro()
+pkg_check_modules(GIOMM giomm-2.68)
+
 # file(GENERATE_FILE tetradactyl-backend-dirs )
 
 # Any header with Q_ENUM/Q_NAMESPACE etc. needs to by explicitly stated for MOC
@@ -25,8 +33,12 @@ add_executable(
   applicationtablemodel.cpp
   waitingspinnerwidget.cpp
   launcherwindow.ui
-  common.cpp)
+  common.cpp
+  abi.cpp
+  app.cpp)
+
 target_link_libraries(tetradactyl PRIVATE Qt6::Widgets Qt6::Sql)
+pkg_config_add_to_target(tetradactyl GIOMM)
 
 add_library(tetradactyl-dynamic-probe SHARED dynamic-probe.cpp)
 target_link_libraries(tetradactyl-dynamic-probe PRIVATE fmt)

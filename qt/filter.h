@@ -45,7 +45,8 @@ private:
   QList<const QMetaObject *> interestedMetaObjects = {
       // &QAction::staticMetaObject, &QShortcut::staticMetaObject,
       // &QWidget::staticMetaObject
-      &QMainWindow::staticMetaObject};
+      // &QMainWindow::staticMetaObject
+  };
   QList<const QMetaObject *> disinterestedMetaObjects = {};
   QList<QEvent::Type> interestedEventTypes = {
       // QEvent::KeyPress,

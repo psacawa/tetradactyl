@@ -3,13 +3,15 @@
 unset(CMAKE_LIBRARY_OUTPUT_DIRECTORY)
 unset(CMAKE_RUNTIME_OUTPUT_DIRECTORY)
 
-option(TETRADCTYL_CODE_COVERAGE "Build for code coverage" OFF)
-if(TETRADCTYL_CODE_COVERAGE)
+option(TETRADACTYL_CODE_COVERAGE "Build for code coverage" OFF)
+if(TETRADACTYL_CODE_COVERAGE)
   include(CodeCoverage)
   append_coverage_compiler_flags()
 endif()
 
-add_subdirectory(launcher)
+if(TETRADACTYL_LAUNCHER)
+  add_subdirectory(launcher)
+endif()
 
 add_subdirectory(probing)
 

@@ -7,6 +7,10 @@
 
 extern QMap<const char *, Qt::GlobalColor> lcColorMap;
 
+#if DEBUG && QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+extern "C" const char *qObject2Cstr(void *qobj);
+#endif
+
 #if (QT_VERSION >= QT_VERSION_CHECK(6, 0, 0))
 
 #define LOGGING_CATEGORY_COLOR(cat, color)                                     \

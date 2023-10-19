@@ -14,6 +14,8 @@ project(
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
+option(TETRADACTYL_LAUNCHER "Build Tetradactyl launcher" ON)
+
 option(TETRADACTYL_BUILD_TESTS "Build Tetradactyl tests" ON)
 
 option(TETRADACTYL_WERROR "Adds -Werror globally" ON)
@@ -50,8 +52,10 @@ add_compile_definitions("TETRADACTYL_VERSION=${CMAKE_PROJECT_VERSION}")
 # TODO 16/08/20 psacawa: finish this add_subdirectory(common)
 # include_directories(common)
 
-# libtetradactyl + libtetradactyl-dynamic
-add_subdirectory(launcher)
+if(TETRADACTYL_LAUNCHER)
+  # libtetradactyl + libtetradactyl-dynamic
+  add_subdirectory(launcher)
+endif()
 
 add_subdirectory(qt)
 

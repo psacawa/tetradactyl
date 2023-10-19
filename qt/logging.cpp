@@ -27,7 +27,7 @@ void colorMessageHandler(QtMsgType severity, const QMessageLogContext &ctx,
                          const QString &msg) {
 
   QByteArray prefix, suffix, categoryStr = ctx.category, severityStr;
-#ifndef TETRADACTYL_QT_TEST
+#if not defined(TETRADACTYL_QT_TEST)
   Qt::GlobalColor color =
       lcColorMap.value(ctx.category, Qt::GlobalColor::color0);
   if (color != Qt::GlobalColor::color0) {

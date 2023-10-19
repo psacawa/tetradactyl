@@ -1,12 +1,20 @@
 // Copyright 2023 Paweł Sacawa. All rights reserved.
+#include <QDebug>
 #include <QDir>
+#include <QException>
 #include <QProcess>
+#include <QRegularExpression>
 #include <cstdlib>
+#include <exception>
 
+#include "abi.h"
+#include "common.h"
 #include "launcher.h"
 #include "probe.h"
 
 using std::getenv;
+using std::invalid_argument;
+using std::runtime_error;
 
 // Probing an  executable to determine whether it uses a supported backend can
 // proceed in multiple ways:
@@ -25,6 +33,38 @@ using std::getenv;
 // are even more difficult because of their dynamic nature.
 
 namespace Tetradactyl {
+
+WidgetBackend probeBackendFromElfFile(QString path) {
+  QProcess lddProc;
+  lddProc.startCommand(QString("/bin/ldd %1").arg(path));
+  int finished = lddProc.waitForFinished(1000);
+  if (!finished || lddProc.exitStatus() != QProcess::NormalExit)
+    throw runtime_error("ldd didn't finish normally");
+  if (lddProc.exitCode() != 0) {
+    qWarning() << path << "isn't dynamic executable according to ldd";
+    return WidgetBackend::Unknown;
+  }
+  QByteArray lddOut = lddProc.readAllStandardOutput();
+  QList<QByteArray> lines = lddOut.split('\n');
+  for (auto backendData : backends) {
+    QRegularExpression libPattern(backendData.lib);
+    for (auto line : lines) {
+      auto match = libPattern.match(line);
+      if (match.hasMatch())
+        return backendData.type;
+    }
+  }
+  return WidgetBackend::Unknown;
+}
+
+WidgetBackend probeBackendFromFile(QString path) {
+  QFileInfo file(path);
+  if (!file.exists())
+    throw std::invalid_argument("file doesn't exist");
+
+  // TODO 18/10/20 psacawa: switch on types - for now assume ELF
+  return probeBackendFromElfFile(path);
+}
 
 ProbeThread::ProbeThread() : QThread() {
   QString pathEnvVar = getenv("PATH");

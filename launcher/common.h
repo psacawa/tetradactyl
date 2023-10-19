@@ -4,13 +4,14 @@
 // This header gets included from libtetradactyl-dynamic-probe.so and in the
 // launcher, the QtCore dependency is not clear. The preprocessor variable
 // DYNAMIC_PROBE determines whether to avoid QtCore definitiens.
-#ifndef DYNAMIC_PROBE
+#if not defined(DYNAMIC_PROBE)
 #include <QFileInfo>
 #include <QObject>
 #endif
 
 #include <QFileInfo>
 #include <QObject>
+#include <QString>
 
 #include <string>
 #include <vector>
@@ -21,7 +22,7 @@ using std::string;
 using std::vector;
 
 namespace Tetradactyl {
-#ifndef DYNAMIC_PROBE
+#if not defined(DYNAMIC_PROBE)
 Q_NAMESPACE
 #endif
 
@@ -32,14 +33,14 @@ enum WidgetBackend {
   Qt6,
   Unknown,
 };
-#ifndef DYNAMIC_PROBE
+#if not defined(DYNAMIC_PROBE)
 Q_ENUM_NS(WidgetBackend);
 #endif
 
 struct BackendData {
   WidgetBackend type;
-  string lib;
-  string tetradactylLib;
+  QString lib;
+  QString tetradactylLib;
 };
 
 struct App {

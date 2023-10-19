@@ -18,12 +18,14 @@
 #include <string>
 #include <vector>
 
-#include "applicationtablemodel.h"
 #include "common.h"
-#include "ui_launcherwindow.h"
 
 using std::string;
 using std::vector;
+
+namespace Ui {
+class LauncherWindow;
+} // namespace Ui
 
 namespace Tetradactyl {
 

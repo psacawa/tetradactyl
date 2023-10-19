@@ -193,7 +193,7 @@ WidgetBackend ApplicationTableModel::staticProbeExecutable(QFileInfo file) {
   QString procOutput = lddProc.readAllStandardOutput();
 
   for (auto backendData : backends) {
-    QRegularExpression pattern(QString::fromStdString(backendData.lib));
+    QRegularExpression pattern(backendData.lib);
     pattern.setPatternOptions(QRegularExpression::MultilineOption);
     if (pattern.match(procOutput).hasMatch()) {
       return backendData.type;

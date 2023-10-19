@@ -85,6 +85,16 @@ Controller::Controller() {
   // it on startup
   setParent(qApp);
 
+  QTimer *timer = new QTimer;
+  timer->setInterval(2000);
+
+  connect(timer, &QTimer::timeout, [] {
+    for (auto &win : tetradactyl->windows()) {
+      logInfo << win << win->activeOverlay();
+    }
+  });
+  timer->start();
+
   Controller::stylesheet = fetchStylesheet();
   qApp->setStyleSheet(Controller::stylesheet);
   qApp->installEventFilter(new Tetradactyl::PrintFilter);
@@ -196,6 +206,7 @@ bool Controller::eventFilter(QObject *obj, QEvent *ev) {
     if (type == QEvent::KeyPress) {
       QKeyEvent *kev = static_cast<QKeyEvent *>(ev);
       WindowController *windowController = findControllerForWidget(widget);
+      logInfo << "sending event to" << windowController;
       if (windowController) {
         bool accepted = windowController->earlyKeyEventFilter(kev);
         return accepted;

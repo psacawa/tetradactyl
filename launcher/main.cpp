@@ -1,4 +1,5 @@
 // Copyright 2023 Paweł Sacawa. All rights reserved.
+#include <QApplication>
 #include <QCommandLineParser>
 #include <QDir>
 #include <unistd.h>
@@ -87,7 +88,7 @@ int main(int argc, char *argv[]) {
       }
       backend = static_cast<WidgetBackend>(backendInt);
       if (backend != WidgetBackend::Unknown) {
-        preloadedLib = QString::fromStdString(backends[backend].tetradactylLib);
+        preloadedLib = backends[backend].tetradactylLib;
       }
     }
     if (preloadedLib == "") {

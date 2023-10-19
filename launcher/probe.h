@@ -5,9 +5,12 @@
 #include <QThread>
 #include <Qt>
 
-#include "launcher.h"
+#include "common.h"
 
 namespace Tetradactyl {
+
+WidgetBackend probeBackendFromElfFile(QString path);
+WidgetBackend probeBackendFromFile(QString path);
 
 class ProbeThread : public QThread {
   Q_OBJECT

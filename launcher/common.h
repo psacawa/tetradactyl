@@ -42,16 +42,6 @@ struct BackendData {
   QString lib;
   QString tetradactylLib;
 };
-
-struct App {
-  // Perhaps comes from XDG Desktop file;  fallback to filename
-  QString name;
-  QString file;
-  WidgetBackend backend;
-
-  QJsonObject toJson() const;
-  static App fromJson(const QJsonObject &json);
-};
 } // namespace Tetradactyl
 
 extern vector<Tetradactyl::BackendData> backends;

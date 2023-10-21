@@ -25,6 +25,7 @@ if(TETRADACTYL_BUILD_TESTS)
 endif()
 
 include(CMakePrintHelpers)
+include(setup)
 
 if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
   set(DEBUG 1)

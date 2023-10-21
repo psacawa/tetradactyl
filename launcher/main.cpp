@@ -72,8 +72,6 @@ int main(int argc, char *argv[]) {
     QString preloadedLib;
     WidgetBackend backend;
     if (parser.isSet(dynamicProbeOption) && parser.isSet(backendOption)) {
-      qInfo() << "asdf";
-
       qCritical()
           << "--dynamic-probe and --backend are mutually exclusive options";
       return 1;
@@ -98,10 +96,7 @@ int main(int argc, char *argv[]) {
       QDir launcherOrigin = QFileInfo(getLocationOfThisProgram()).dir();
       QString preloadVar =
           QString("%1/../lib/%2").arg(launcherOrigin.path()).arg(preloadedLib);
-      if (setenv("LD_PRELOAD", preloadVar.toLocal8Bit().data(), 1) < 0) {
-        perror("setenv");
-        exit(1);
-      }
+      DIE_IF_NEG(setenv("LD_PRELOAD", preloadVar.toLocal8Bit().data(), 1) < 0);
     }
 
     QString clientProgram = posArgs.first();

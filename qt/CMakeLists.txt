@@ -5,8 +5,8 @@ set(CMAKE_AUTORCC ON)
 include_directories("${CMAKE_SOURCE_DIR}")
 
 # features
-option(TETRADACTYL_QT5 "libtetradactyl-qt5" ON)
-option(TETRADACTYL_QT6 "libtetradactyl-qt6" ON)
+option(TETRADACTYL_QT5 "Build libtetradactyl-qt5" ON)
+option(TETRADACTYL_QT6 "Build libtetradactyl-qt6" ON)
 
 find_package(fmt)
 find_package(toml11 REQUIRED)
@@ -60,14 +60,7 @@ foreach(_version ${SUPPORTED_QT_VERSIONS})
     target_link_libraries(${_tetradactyl_backend}
                           PRIVATE ${_tetradactyl_backend_object})
 
-    # backward.cpp support
     if(DEBUG)
-      include(FetchContent)
-      FetchContent_Declare(
-        backward
-        GIT_REPOSITORY https://github.com/bombela/backward-cpp
-        GIT_TAG v1.6)
-      FetchContent_MakeAvailable(backward)
       add_backward(${_tetradactyl_backend})
       target_sources(${_tetradactyl_backend} PRIVATE)
       target_link_libraries(${_tetradactyl_backend} PRIVATE dwarf)

@@ -7,6 +7,11 @@ using std::string;
 
 #define MIN(a, b) ((a) < (b)) ? (a) : (b)
 
+void system_die(const char *msg) {
+  perror(msg);
+  exit(EXIT_FAILURE);
+}
+
 QList<QString> keysFromEnum(QMetaEnum &e_num) {
   QList<QString> ret;
   for (int i = 0; i != e_num.keyCount(); ++i) {

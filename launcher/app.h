@@ -1,52 +1,68 @@
 // Copyright 2023 Paweł Sacawa. All rights reserved.
 #pragma once
+#include <QIcon>
+#include <QJsonObject>
 #include <QObject>
 
 #include "common.h"
 
 namespace Tetradactyl {
 
-class BaseApp : public QObject {
+class AbstractApp : public QObject {
   Q_OBJECT
 public:
   // for short display, e.g. "Anki"
   Q_PROPERTY(QString name READ name);
+  // for equality comparison mainly (.desktop for XdgDesktopApp)
   Q_PROPERTY(QString absolutePath READ absolutePath);
   Q_PROPERTY(WidgetBackend backend READ backend);
+  // Q_PROPERTY(QIcon icon READ getIcon);
 
-  BaseApp(WidgetBackend backend = WidgetBackend::Unknown)
+  AbstractApp(WidgetBackend backend = WidgetBackend::Unknown)
       : p_backend(backend) {}
-  virtual ~BaseApp() {}
+  virtual ~AbstractApp() {}
 
-  virtual QString name() = 0;
-  virtual QString absolutePath() = 0;
+  virtual QString name() const = 0;
+  virtual QString absolutePath() const = 0;
+  virtual QIcon getIcon() const = 0;
+  virtual void launch() const = 0;
   void probe();
-  WidgetBackend backend();
+  WidgetBackend backend() const;
+
+  virtual QJsonObject toJson() const = 0;
+  static AbstractApp *fromJson(QJsonObject obj);
+
+  bool operator==(const AbstractApp &other) {
+    return QFileInfo(absolutePath()).canonicalFilePath() ==
+           QFileInfo(other.absolutePath()).canonicalFilePath();
+  }
 
 private:
   WidgetBackend p_backend;
 };
 
-inline WidgetBackend BaseApp::backend() { return p_backend; }
+inline WidgetBackend AbstractApp::backend() const { return p_backend; }
 
-class ExecutableFileApp : public BaseApp {
+class ExecutableFileApp : public AbstractApp {
   Q_OBJECT
 public:
   ExecutableFileApp(QString path);
   virtual ~ExecutableFileApp() {}
 
-  virtual QString name();
-  virtual QString absolutePath();
-
-  static ExecutableFileApp fromFile(QString path);
+  virtual QString name() const override;
+  virtual QString absolutePath() const override;
+  virtual QIcon getIcon() const override;
+  virtual void launch() const override;
+  virtual QJsonObject toJson() const override;
+  static ExecutableFileApp *fromJson(QJsonObject obj);
 
 private:
   QString p_path;
 };
 
-inline QString ExecutableFileApp::absolutePath() { return p_path; }
+inline QString ExecutableFileApp::absolutePath() const { return p_path; }
 
-class XdgDesktopApp : public BaseApp {
+class XdgDesktopApp : public AbstractApp {
   Q_OBJECT
 public:
   Q_PROPERTY(QString commandLine READ commandLine);
@@ -55,14 +71,19 @@ public:
 
   virtual ~XdgDesktopApp() {}
 
-  virtual QString name();
-  virtual QString absolutePath();
-  virtual QString commandLine();
-  QString desktopPath();
-  QString desktopId();
+  virtual QString name() const override;
+  virtual QString absolutePath() const override;
+  virtual QIcon getIcon() const override;
+  virtual void launch() const override;
 
-  static XdgDesktopApp fromAppId(QString appId);
+  virtual QString commandLine() const;
+  QString desktopPath() const;
+  QString desktopId() const;
+
+  // static XdgDesktopApp fromAppId(QString appId);
   static XdgDesktopApp *fromDesktopFile(QString desktopFilePath);
+  virtual QJsonObject toJson() const override;
+  static XdgDesktopApp *fromJson(QJsonObject obj);
 
 private:
   XdgDesktopApp() {}
@@ -75,11 +96,12 @@ private:
   QString p_name;
   QString p_commandLine;
   QString p_description;
+  QIcon p_icon;
 };
 
-inline QString XdgDesktopApp::name() { return p_name; }
-inline QString XdgDesktopApp::commandLine() { return p_commandLine; }
-inline QString XdgDesktopApp::desktopPath() { return p_desktopFilePath; }
-inline QString XdgDesktopApp::desktopId() { return p_id; }
+inline QString XdgDesktopApp::name() const { return p_name; }
+inline QString XdgDesktopApp::commandLine() const { return p_commandLine; }
+inline QString XdgDesktopApp::desktopPath() const { return p_desktopFilePath; }
+inline QString XdgDesktopApp::desktopId() const { return p_id; }
 
 } // namespace Tetradactyl

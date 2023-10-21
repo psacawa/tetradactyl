@@ -8,17 +8,6 @@ set(AUTOUIC_SEARCH_PATHS "${CMAKE_SOURCE_DIR}/launcher")
 # pozwala na e.g. #include <launcher/common.h>
 include_directories("${CMAKE_SOURCE_DIR}")
 
-function(add_launcher_basic_test _name)
-  set(test_name "${_name}_test")
-  add_executable(
-    ${test_name} ${_name}.cpp "${CMAKE_SOURCE_DIR}/launcher/${_name}.cpp"
-                 "${CMAKE_SOURCE_DIR}/launcher/common.cpp")
-
-  add_test(NAME ${test_name} COMMAND ${test_name})
-  target_link_libraries(${test_name} PRIVATE Qt6::Test)
-  set_tests_properties(${test_name} PROPERTIES LABELS launcher)
-endfunction()
-
 function(add_launcher_unit_test _test_name)
   cmake_parse_arguments(PARSE_ARGV 1 ARG "" "LABELS;SOURCES" "")
   list(TRANSFORM ARG_SOURCES PREPEND "${CMAKE_SOURCE_DIR}/launcher/")
@@ -37,7 +26,8 @@ set(LAUNCHER_SOURCES
     "${CMAKE_SOURCE_DIR}/launcher/launcher.cpp"
     "${CMAKE_SOURCE_DIR}/launcher/config.cpp"
     "${CMAKE_SOURCE_DIR}/launcher/utils.cpp"
-    "${CMAKE_SOURCE_DIR}/launcher/applicationtablemodel.cpp"
+    "${CMAKE_SOURCE_DIR}/launcher/applicationmodel.cpp"
+    "${CMAKE_SOURCE_DIR}/launcher/app.cpp"
     "${CMAKE_SOURCE_DIR}/launcher/waitingspinnerwidget.cpp"
     "${CMAKE_SOURCE_DIR}/launcher/launcherwindow.ui"
     "${CMAKE_SOURCE_DIR}/launcher/common.cpp"
@@ -46,14 +36,8 @@ set(LAUNCHER_SOURCES
 add_library(tetradactyl-launcher-test-object OBJECT ${LAUNCHER_SOURCES})
 target_link_libraries(tetradactyl-launcher-test-object PUBLIC Qt::Widgets
                                                               Qt::Sql Qt::Test)
+pkg_config_add_to_target(tetradactyl-launcher-test-object GIOMM)
 
 add_launcher_unit_test(probe_test SOURCES probe.cpp common.cpp LABELS launcher)
 
-# TODO 18/10/20 psacawa: replace this legacy cmake
-add_launcher_basic_test(applicationtablemodel)
-target_sources(
-  applicationtablemodel_test
-  PRIVATE common.cpp "${CMAKE_SOURCE_DIR}/launcher/common.cpp"
-          "${CMAKE_SOURCE_DIR}/launcher/abi.cpp"
-          "${CMAKE_SOURCE_DIR}/launcher/utils.cpp")
-target_link_libraries(applicationtablemodel_test PRIVATE Qt6::Sql Qt6::Widgets)
+add_launcher_unit_test(app_test SOURCES probe.cpp common.cpp LABELS launcher)

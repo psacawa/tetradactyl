@@ -1,20 +1,29 @@
 // Copyright 2023 Paweł Sacawa. All rights reserved.
+#include <giomm.h>
+#include <glibmm.h>
+
 #include <QDebug>
 #include <QDir>
 #include <QException>
 #include <QProcess>
 #include <QRegularExpression>
+
 #include <cstdlib>
 #include <exception>
+#include <memory>
 
 #include "abi.h"
 #include "common.h"
 #include "launcher.h"
 #include "probe.h"
 
+using Gio::AppInfo;
+using Gio::DesktopAppInfo;
+using std::exception;
 using std::getenv;
 using std::invalid_argument;
 using std::runtime_error;
+using std::shared_ptr;
 
 // Probing an  executable to determine whether it uses a supported backend can
 // proceed in multiple ways:
@@ -72,15 +81,30 @@ ProbeThread::ProbeThread() : QThread() {
 }
 
 void ProbeThread::run() {
+  probeDesktopApps();
+  probeBinariesinPath();
+}
 
-  QRegularExpression qtWidgetsPattern("libQt.?Widgets");
+void ProbeThread::probeDesktopApps() {
+  for (auto appInfo : AppInfo::get_all()) {
+    shared_ptr<DesktopAppInfo> desktopApp =
+        std::static_pointer_cast<DesktopAppInfo>(appInfo);
+    QString filePath = QString::fromStdString(desktopApp->get_filename());
+    AbstractApp *app;
+    try {
+      app = XdgDesktopApp::fromDesktopFile(filePath);
+    } catch (exception &e) {
+      qWarning() << e.what();
+      continue;
+    }
+    if (app->backend() == Unknown)
+      continue;
 
-  QString s("libQt6Widgets.so.6");
-  auto match = qtWidgetsPattern.match(s);
-  if (match.hasMatch()) {
-    qInfo() << match;
+    emit foundTetradctylApp(app);
   }
+}
 
+void ProbeThread::probeBinariesinPath() {
   for (auto path : binaryPaths) {
     qDebug() << QString("Probing %1 for Tetradactyl apps").arg(path);
 
@@ -88,22 +112,15 @@ void ProbeThread::run() {
     QDir dir(path);
     QFileInfoList dentries = dir.entryInfoList();
     for (QFileInfo file : dentries) {
-      if (!file.isFile() || !file.isExecutable()) {
+      if (!file.isFile() || !file.isExecutable())
         continue;
-      }
 
-      // search for Qt?Widgets dependencies via ldd - not cross-platform
-      lddProc->start("/bin/ldd", {file.absoluteFilePath()});
-      lddProc->waitForFinished(-1);
-      if (lddProc->exitCode() != 0) {
+      AbstractApp *app = new ExecutableFileApp(file.filePath());
+
+      if (app->backend() == Unknown)
         continue;
-      }
 
-      QString out(lddProc->readAllStandardOutput());
-      if (qtWidgetsPattern.match(out).hasMatch()) {
-        qDebug() << lddProc->arguments();
-        emit foundTetradctylApp(file, WidgetBackend::Qt6);
-      }
+      emit foundTetradctylApp(app);
     }
   }
 }

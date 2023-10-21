@@ -2,16 +2,21 @@
 #include <QAbstractButton>
 #include <QFileDialog>
 #include <QItemSelectionModel>
+#include <QLineEdit>
 #include <QMessageBox>
-#include <qslider.h>
+#include <QSortFilterProxyModel>
+
+#include <exception>
 #include <stdexcept>
 
-#include "applicationtablemodel.h"
+#include "applicationmodel.h"
 #include "launcher.h"
 #include "probe.h"
 #include "ui_launcherwindow.h"
+#include "waitingspinnerwidget.h"
 
 using std::domain_error;
+using std::exception;
 using std::string;
 
 namespace Tetradactyl {
@@ -20,60 +25,69 @@ Launcher::Launcher() : ui(new Ui::LauncherWindow) {
   setWindowTitle("Tetradactyl Launcher");
 
   ui->setupUi(this);
-  model = ApplicationTableModel::createApplicationTableModel();
+  sourceModel = new ApplicationModel(this);
+  sourceModel->tryLoadDatabase();
+
+  displayModel = new QSortFilterProxyModel(this);
+  displayModel->setSourceModel(sourceModel);
 
   fixupUi();
 
-  ui->applicationView->setModel(model);
+  ui->applicationView->setModel(displayModel);
   // ui->applicationView->hideColumn(0);
 
   connect(ui->launchButton, &QAbstractButton::clicked, this, [=] {
     auto selection = ui->applicationView->selectionModel()->selection();
     auto indexList = selection.indexes();
     if (indexList.size() > 0) {
-      model->launch(indexList[0]);
+      sourceModel->launch(indexList[0]);
     }
   });
 
   connect(ui->addButton, &QAbstractButton::clicked, [this] {
     QFileDialog fileDialog(this, tr("Select Program"), "/");
-    fileDialog.setDirectory("/bin/");
+    fileDialog.setDirectory("/usr/local/bin/");
     fileDialog.setFilter(QDir::AllEntries);
     if (!fileDialog.exec())
       return;
 
     auto selected = fileDialog.selectedFiles();
-    qInfo() << "selected";
-    qInfo() << selected;
     if (selected.length()) {
-      // FIXME 15/08/20 psacawa: use Probe class
-      int added = model->probeAndAddApp(QFileInfo(selected[0]));
-      if (!added) {
-        QMessageBox::warning(
-            this, "Program not added",
-            "An error occured and the application could not be added");
+      try {
+        sourceModel->probeAndAddApp(selected[0]);
+      } catch (exception &e) {
+        QMessageBox::warning(this, "Program not added", e.what());
       }
     }
   });
 
-  connect(ui->applicationView->selectionModel(),
-          &QItemSelectionModel::selectionChanged,
-          [](const QItemSelection &selected, const QItemSelection &deselected) {
-            qInfo() << selected;
+  connect(ui->buildDatabaseButton, &QPushButton::clicked, this, [this] {
+    qobject_cast<WaitingSpinnerWidget *>(ui->spinner)->start();
+    sourceModel->initiateBuildAppDatabase();
+  });
+
+  connect(sourceModel, &ApplicationModel::appDatabaseBuilt, this,
+          [this](int numNewAppsAdded) {
+            qobject_cast<WaitingSpinnerWidget *>(ui->spinner)->stop();
+            QMessageBox::information(
+                this, "Scan finished",
+                QString("%1 new apps found").arg(numNewAppsAdded));
           });
 
-  connect(ui->exitButton, &QAbstractButton::clicked, qApp, &QApplication::quit);
+  connect(ui->applicationView, &QAbstractItemView::doubleClicked, sourceModel,
+          [this](const QModelIndex &index) {
+            try {
+              sourceModel->launch(index);
+            } catch (exception &e) {
+              QMessageBox::warning(this, "Error", "error launching app");
+            }
+          });
 }
 
 void Launcher::on_applicationView_activated(const QModelIndex &index) {
-  qInfo() << __PRETTY_FUNCTION__;
-  model->launch(index);
-}
-void Launcher::on_applicationView_doubleClicked(const QModelIndex &index) {
-  qInfo() << __PRETTY_FUNCTION__;
+  sourceModel->launch(index);
 }
 void Launcher::on_launchButton_clicked(bool checked) {
-  qInfo() << __PRETTY_FUNCTION__;
   QModelIndex currentIndex =
       ui->applicationView->selectionModel()->currentIndex();
   ui->applicationView->activated(currentIndex);
@@ -87,9 +101,12 @@ void Launcher::fixupUi() {
   ui->applicationView->setEditTriggers(QListView::NoEditTriggers);
 
   // groupbox
-  ui->label->setVisible(false);
   ui->cancelButton->setEnabled(false);
   // ui->launchButton->setEnabled(false);
+
+  // spinner
+  delete ui->spinner;
+  ui->spinner = new WaitingSpinnerWidget(ui->spinnerContainer);
 }
 
 } // namespace Tetradactyl

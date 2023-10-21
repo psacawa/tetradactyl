@@ -1,11 +1,28 @@
 // Copyright 2023 Paweł Sacawa. All rights reserved.
 
+#include <QIcon>
+
+#include <csignal>
+
+#include <backward.hpp>
+
 #include "common.h"
 #include "libnames.h"
 
 using std::vector;
 using Tetradactyl::BackendData;
 using Tetradactyl::WidgetBackend;
+
+#if DEBUG
+// n.b. failed asserts are SIGABRT
+backward::SignalHandling sh;
+#endif
+
+class QtInitTheme {
+public:
+  QtInitTheme() { QIcon::setThemeName("breeze"); }
+};
+QtInitTheme init;
 
 // Map of widget lib names to tetradactyl backend libnames.Note that this gets
 // used in a __attribute__((constructor)) context, so any C++ classes,

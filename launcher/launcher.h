@@ -1,6 +1,5 @@
 // Copyright 2023 Paweł Sacawa. All rights reserved.
 #pragma once
-
 #include <QAbstractListModel>
 #include <QFileInfo>
 #include <QJsonDocument>
@@ -8,6 +7,7 @@
 #include <QMainWindow>
 #include <QObject>
 #include <QPushButton>
+#include <QSortFilterProxyModel>
 #include <QString>
 #include <QTableView>
 #include <Qt>
@@ -29,7 +29,7 @@ class LauncherWindow;
 
 namespace Tetradactyl {
 
-class ApplicationTableModel;
+class ApplicationModel;
 
 class Launcher : public QMainWindow {
   Q_OBJECT
@@ -39,12 +39,11 @@ public:
 private slots:
 
   void on_applicationView_activated(const QModelIndex &index);
-  void
-  on_applicationView_doubleClicked(const QModelIndex &index = QModelIndex());
   void on_launchButton_clicked(bool clicked);
 
 private:
-  ApplicationTableModel *model;
+  ApplicationModel *sourceModel;
+  QSortFilterProxyModel *displayModel;
 
   void fixupUi();
 

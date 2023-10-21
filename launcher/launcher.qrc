@@ -1,0 +1,6 @@
+<!-- Copyright 2023 Paweł Sacawa. All rights reserved.  -->
+<RCC>
+  <qresource prefix="/launcher">
+    <file>images/executable.svg</file>
+  </qresource>
+</RCC>

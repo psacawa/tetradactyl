@@ -5,6 +5,7 @@
 #include <QThread>
 #include <Qt>
 
+#include "app.h"
 #include "common.h"
 
 namespace Tetradactyl {
@@ -18,9 +19,11 @@ public:
   ProbeThread();
   virtual ~ProbeThread() {}
   void run() override;
+  void probeDesktopApps();
+  void probeBinariesinPath();
 
 signals:
-  void foundTetradctylApp(QFileInfo, WidgetBackend);
+  void foundTetradctylApp(AbstractApp *app);
 
 private:
   QList<QString> binaryPaths;

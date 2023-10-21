@@ -36,10 +36,13 @@ class Launcher : public QMainWindow {
 public:
   Launcher();
   virtual ~Launcher() {}
-private slots:
 
-  void on_applicationView_activated(const QModelIndex &index);
-  void on_launchButton_clicked(bool clicked);
+private slots:
+  void onApplicationViewActivated(const QModelIndex &index);
+  void onLaunchButtonClicked(bool clicked);
+  void onAddButtonClicked(bool clicked);
+  void reportScanResults(int numNewAppsAdded);
+  void onSearchTextChanged(const QString &text);
 
 private:
   ApplicationModel *sourceModel;

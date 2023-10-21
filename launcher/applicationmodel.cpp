@@ -1,5 +1,6 @@
 // Copyright 2023 Paweł Sacawa. All rights reserved.
 #include <QAbstractListModel>
+#include <QDir>
 #include <QFileIconProvider>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -98,19 +99,22 @@ void ApplicationModel::initiateBuildAppDatabase() {
                    });
 }
 
-static QString dataDir() {
+static QDir tetradactylDataDir() {
   QString home = qEnvironmentVariable("HOME");
   if (home == "")
     throw std::runtime_error("no HOME environmental variable");
 
-  QString dataDir = qEnvironmentVariable("XDG_DATA_HOME",
-                                         QString("%1/.local/share").arg(home));
-  return dataDir + "/tetradactyl";
+  QDir dataDir(qEnvironmentVariable("XDG_DATA_HOME",
+                                    QString("%1/.local/share").arg(home)));
+  dataDir.mkdir("tetradactyl");
+  dataDir.cd("tetradactyl");
+  return dataDir;
 }
 
 static QFile appDatabaseFile() {
-  QString filePath = dataDir() + "/" TETRADACTYL_APPS_DB_FILE;
-  return QFile(filePath);
+  QDir dataDir = tetradactylDataDir();
+  QString filePath = dataDir.path() + "/" TETRADACTYL_APPS_DB_FILE;
+  return filePath;
 }
 
 void ApplicationModel::saveDatabase() {

@@ -30,83 +30,75 @@ Launcher::Launcher() : ui(new Ui::LauncherWindow) {
 
   displayModel = new QSortFilterProxyModel(this);
   displayModel->setSourceModel(sourceModel);
+  displayModel->setFilterCaseSensitivity(Qt::CaseSensitivity::CaseInsensitive);
 
   fixupUi();
 
   ui->applicationView->setModel(displayModel);
-  // ui->applicationView->hideColumn(0);
 
-  connect(ui->launchButton, &QAbstractButton::clicked, this, [=] {
-    auto selection = ui->applicationView->selectionModel()->selection();
-    auto indexList = selection.indexes();
-    if (indexList.size() > 0) {
-      sourceModel->launch(indexList[0]);
-    }
-  });
-
-  connect(ui->addButton, &QAbstractButton::clicked, [this] {
-    QFileDialog fileDialog(this, tr("Select Program"), "/");
-    fileDialog.setDirectory("/usr/local/bin/");
-    fileDialog.setFilter(QDir::AllEntries);
-    if (!fileDialog.exec())
-      return;
-
-    auto selected = fileDialog.selectedFiles();
-    if (selected.length()) {
-      try {
-        sourceModel->probeAndAddApp(selected[0]);
-      } catch (exception &e) {
-        QMessageBox::warning(this, "Program not added", e.what());
-      }
-    }
-  });
+  connect(ui->launchButton, &QAbstractButton::clicked, this,
+          &Launcher::onLaunchButtonClicked);
 
   connect(ui->buildDatabaseButton, &QPushButton::clicked, this, [this] {
-    qobject_cast<WaitingSpinnerWidget *>(ui->spinner)->start();
+    ui->spinner->start();
     sourceModel->initiateBuildAppDatabase();
   });
 
   connect(sourceModel, &ApplicationModel::appDatabaseBuilt, this,
-          [this](int numNewAppsAdded) {
-            qobject_cast<WaitingSpinnerWidget *>(ui->spinner)->stop();
-            QMessageBox::information(
-                this, "Scan finished",
-                QString("%1 new apps found").arg(numNewAppsAdded));
-          });
-
-  connect(ui->applicationView, &QAbstractItemView::doubleClicked, sourceModel,
-          [this](const QModelIndex &index) {
-            try {
-              sourceModel->launch(index);
-            } catch (exception &e) {
-              QMessageBox::warning(this, "Error", "error launching app");
-            }
-          });
+          &Launcher::reportScanResults);
+  connect(ui->applicationView, &QAbstractItemView::doubleClicked, this,
+          &Launcher::onApplicationViewActivated);
+  connect(ui->searchLineEdit, &QLineEdit::textChanged, this,
+          &Launcher::onSearchTextChanged);
 }
 
-void Launcher::on_applicationView_activated(const QModelIndex &index) {
-  sourceModel->launch(index);
+void Launcher::onApplicationViewActivated(const QModelIndex &index) {
+  try {
+    sourceModel->launch(index);
+  } catch (exception &e) {
+    QMessageBox::warning(this, "Error", "error launching app");
+  }
 }
-void Launcher::on_launchButton_clicked(bool checked) {
+
+void Launcher::onAddButtonClicked(bool checked) {
+  QFileDialog fileDialog(this, tr("Select Program"), "/");
+  fileDialog.setDirectory("/usr/local/bin/");
+  fileDialog.setFilter(QDir::AllEntries);
+  if (!fileDialog.exec())
+    return;
+
+  auto selected = fileDialog.selectedFiles();
+  if (selected.length()) {
+    try {
+      sourceModel->probeAndAddApp(selected[0]);
+    } catch (exception &e) {
+      QMessageBox::warning(this, "Program not added", e.what());
+    }
+  }
+}
+void Launcher::onLaunchButtonClicked(bool checked) {
   QModelIndex currentIndex =
       ui->applicationView->selectionModel()->currentIndex();
-  ui->applicationView->activated(currentIndex);
+  onApplicationViewActivated(currentIndex);
 }
+
+void Launcher::onSearchTextChanged(const QString &text) {
+  displayModel->setFilterFixedString(text);
+}
+
+void Launcher::reportScanResults(int numNewAppsAdded) {
+  ui->spinner->stop();
+  QMessageBox::information(this, "Scan finished",
+                           QString("%1 new apps found").arg(numNewAppsAdded));
+};
 
 // last-mile modifications to UI initalization that either can't do, or it's too
 // inconvenient
 void Launcher::fixupUi() {
-  // ui->applicationView->horizontalHeader()->setSectionResizeMode(
-  //     QHeaderView::ResizeMode::Stretch);
   ui->applicationView->setEditTriggers(QListView::NoEditTriggers);
 
   // groupbox
   ui->cancelButton->setEnabled(false);
-  // ui->launchButton->setEnabled(false);
-
-  // spinner
-  delete ui->spinner;
-  ui->spinner = new WaitingSpinnerWidget(ui->spinnerContainer);
 }
 
 } // namespace Tetradactyl

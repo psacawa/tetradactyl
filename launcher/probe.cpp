@@ -5,6 +5,7 @@
 #include <QDebug>
 #include <QDir>
 #include <QException>
+#include <QFile>
 #include <QProcess>
 #include <QRegularExpression>
 
@@ -66,12 +67,27 @@ WidgetBackend probeBackendFromElfFile(QString path) {
   return WidgetBackend::Unknown;
 }
 
+// identify ELF file via magic header \x7f\x45\x4c\x46
+static bool isElfExecutable(QFileInfo file) {
+  if (!file.isExecutable())
+    return false;
+  QFile fd(file.filePath());
+  fd.open(QFile::ReadOnly);
+  QByteArray prefix;
+  prefix.reserve(4);
+  int numRead = fd.read(prefix.data(), 4);
+  return numRead == 4 && prefix == "\x7f\x45\x4c\x46";
+}
+
 WidgetBackend probeBackendFromFile(QString path) {
   QFileInfo file(path);
   if (!file.exists())
     throw std::invalid_argument("file doesn't exist");
 
-  // TODO 18/10/20 psacawa: switch on types - for now assume ELF
+  if (!isElfExecutable(file))
+    return Unknown;
+
+  // switch on types? - for now only ELF supported
   return probeBackendFromElfFile(path);
 }
 

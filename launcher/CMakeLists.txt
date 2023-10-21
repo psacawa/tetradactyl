@@ -10,7 +10,8 @@ find_package(
 find_package(toml11 REQUIRED)
 find_package(fmt REQUIRED)
 
-# file(GENERATE_FILE tetradactyl-backend-dirs )
+# needed to help RCC generate header which can find launcher/waitingspinnerwidget.h
+include_directories("${CMAKE_SOURCE_DIR}")
 
 # Any header with Q_ENUM/Q_NAMESPACE etc. needs to by explicitly stated for MOC
 # detection - any header not in the form <source>.h or <source>_p.h and

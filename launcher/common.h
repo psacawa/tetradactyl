@@ -18,6 +18,7 @@
 
 #include "libnames.h"
 
+using namespace Qt::Literals::StringLiterals;
 using std::string;
 using std::vector;
 

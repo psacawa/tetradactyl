@@ -4,13 +4,14 @@
 #include <launcher/common.h>
 #include <launcher/probe.h>
 
-using Tetradactyl::WidgetBackend;
+namespace Tetradactyl {
 
 class LauncherProbeTest : public QObject {
   Q_OBJECT
 private slots:
   void basicProbeElfTest_data();
   void basicProbeElfTest();
+  void isExecutableTest();
 };
 
 void LauncherProbeTest::basicProbeElfTest_data() {
@@ -30,10 +31,20 @@ void LauncherProbeTest::basicProbeElfTest() {
   QFETCH(Tetradactyl::WidgetBackend, backend);
   QFileInfo info(file);
   if (!info.exists())
-    QSKIP(qUtf8Printable(QString("%1 not found").arg(file)));
+    QSKIP(qPrintable(u"%1 not found"_qs.arg(file)));
 
   QCOMPARE(Tetradactyl::probeBackendFromElfFile(file), backend);
 }
 
-QTEST_MAIN(LauncherProbeTest)
+void LauncherProbeTest::isExecutableTest() {
+  QFileInfo ls("/bin/ls");
+  QVERIFY(isElfExecutable(ls));
+
+  QFileInfo pip("/bin/pip");
+  QVERIFY(!isElfExecutable(pip));
+}
+
+} // namespace Tetradactyl
+
+QTEST_MAIN(Tetradactyl::LauncherProbeTest)
 #include "probe_test.moc"

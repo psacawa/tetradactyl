@@ -68,15 +68,13 @@ WidgetBackend probeBackendFromElfFile(QString path) {
 }
 
 // identify ELF file via magic header \x7f\x45\x4c\x46
-static bool isElfExecutable(QFileInfo file) {
+bool isElfExecutable(QFileInfo file) {
   if (!file.isExecutable())
     return false;
   QFile fd(file.filePath());
   fd.open(QFile::ReadOnly);
-  QByteArray prefix;
-  prefix.reserve(4);
-  int numRead = fd.read(prefix.data(), 4);
-  return numRead == 4 && prefix == "\x7f\x45\x4c\x46";
+  QByteArray prefix = fd.read(4);
+  return prefix == "\u007fELF";
 }
 
 WidgetBackend probeBackendFromFile(QString path) {
@@ -91,7 +89,7 @@ WidgetBackend probeBackendFromFile(QString path) {
   return probeBackendFromElfFile(path);
 }
 
-ProbeThread::ProbeThread() : QThread() {
+ProbeThread::ProbeThread(QObject *parent) : QThread(parent) {
   QString pathEnvVar = getenv("PATH");
   binaryPaths = pathEnvVar.split(':');
 }
@@ -103,6 +101,9 @@ void ProbeThread::run() {
 
 void ProbeThread::probeDesktopApps() {
   for (auto appInfo : AppInfo::get_all()) {
+    if (isInterruptionRequested())
+      break;
+
     shared_ptr<DesktopAppInfo> desktopApp =
         std::static_pointer_cast<DesktopAppInfo>(appInfo);
     QString filePath = QString::fromStdString(desktopApp->get_filename());
@@ -128,6 +129,9 @@ void ProbeThread::probeBinariesinPath() {
     QDir dir(path);
     QFileInfoList dentries = dir.entryInfoList();
     for (QFileInfo file : dentries) {
+      if (isInterruptionRequested())
+        return;
+
       if (!file.isFile() || !file.isExecutable())
         continue;
 

@@ -3,12 +3,22 @@
 
 #include <QAbstractListModel>
 #include <QFileInfo>
+#include <QScopedPointer>
 #include <Qt>
 
 #include "app.h"
 #include "common.h"
+#include "probe.h"
+
+using std::unique_ptr;
 
 #define TETRADACTYL_APPS_DB_FILE "apps.json"
+
+enum {
+  BackendRole = Qt::UserRole,
+};
+
+QFile appDatabaseFile();
 
 namespace Tetradactyl {
 
@@ -24,7 +34,7 @@ public:
 
   QVariant data(const QModelIndex &index,
                 int role = Qt::DisplayRole) const override;
-  int rowCount(const QModelIndex &parent) const override;
+  int rowCount(const QModelIndex &parent = QModelIndex()) const override;
 
   bool contains(AbstractApp *app);
 
@@ -32,8 +42,9 @@ signals:
   void appDatabaseBuilt(int numNewAppsAdded);
 
 public slots:
-  void probeAndAddApp(QString file);
+  WidgetBackend probeAndAddApp(QString file);
   void initiateBuildAppDatabase();
+  void cancelBuildAppDatabase();
   void saveDatabase();
   void tryLoadDatabase();
   void resetDatabase();
@@ -43,6 +54,7 @@ public slots:
 
 private:
   QList<AbstractApp *> p_apps;
+  unique_ptr<ProbeThread> probeThread = nullptr;
 };
 
 } // namespace Tetradactyl

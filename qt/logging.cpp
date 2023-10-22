@@ -10,7 +10,7 @@ extern "C" {
 #if DEBUG && QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
 // For printing in gdb
 const char *qObject2Cstr(void *qobj) {
-  return qUtf8Printable(QDebug::toString((QObject *)qobj));
+  return qPrintable(QDebug::toString((QObject *)qobj));
 }
 #endif
 }

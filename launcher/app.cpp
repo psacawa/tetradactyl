@@ -18,7 +18,6 @@
 #include "probe.h"
 #include "utils.h"
 
-using namespace Qt::Literals::StringLiterals;
 using Gio::DesktopAppInfo;
 using Glib::KeyFile;
 using std::invalid_argument;
@@ -91,12 +90,12 @@ void launchAppHelper(QList<QString> argv, WidgetBackend backend = Unknown) {
   QString preloadValue =
       QString("%1/../lib/%2").arg(launcherOrigin.path()).arg(preloadedLib);
 
-  DIE_IF_NEG(setenv("LD_PRELOAD", qUtf8Printable(preloadValue), true));
+  DIE_IF_NEG(setenv("LD_PRELOAD", qPrintable(preloadValue), true));
 
-  const char *execArgv0 = qUtf8Printable(argv.at(0));
+  const char *execArgv0 = qPrintable(argv.at(0));
   const char *argvCstr[argc + 1];
   for (int i = 0; i != argc; ++i)
-    argvCstr[i] = qUtf8Printable(argv.at(i));
+    argvCstr[i] = qPrintable(argv.at(i));
   argvCstr[argc] = nullptr;
 
   execvp(execArgv0, (char *const *)argvCstr);
@@ -156,7 +155,7 @@ QString XdgDesktopApp::absolutePath() const {
   auto path = which(p_executable);
   if (!path)
     throw invalid_argument(
-        qUtf8Printable(QString("no program %1 in PATH").arg(p_executable)));
+        qPrintable(QString("no program %1 in PATH").arg(p_executable)));
   return *path;
 };
 

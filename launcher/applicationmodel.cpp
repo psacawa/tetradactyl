@@ -6,16 +6,21 @@
 #include <QJsonDocument>
 #include <QJsonParseError>
 #include <QLoggingCategory>
+#include <QMessageBox>
+#include <QScopedPointer>
 
 #include <exception>
+#include <memory>
 
 #include "app.h"
 #include "applicationmodel.h"
 #include "probe.h"
+#include "utils.h"
 
 using std::exception;
 using std::invalid_argument;
 using std::runtime_error;
+using std::unique_ptr;
 using Tetradactyl::BackendData;
 
 Q_LOGGING_CATEGORY(lcThis, "tetradactyl.launcher.appmodel");
@@ -41,9 +46,10 @@ QVariant ApplicationModel::data(const QModelIndex &index, int role) const {
   case Qt::DecorationRole:
     // return QIcon::fromTheme("anki");
     return app->getIcon();
-  default:
-    return {};
+  case BackendRole:
+    return app->backend();
   }
+  return {};
 }
 
 bool ApplicationModel::contains(AbstractApp *app) {
@@ -56,11 +62,11 @@ bool ApplicationModel::contains(AbstractApp *app) {
   return false;
 }
 
-void ApplicationModel::probeAndAddApp(QString filePath) {
+WidgetBackend ApplicationModel::probeAndAddApp(QString filePath) {
   QFileInfo info(filePath);
   if (!info.exists())
     throw invalid_argument(
-        qUtf8Printable(QString("File %1 doesn't exist").arg(filePath)));
+        qPrintable(QString("File %1 doesn't exist").arg(filePath)));
   AbstractApp *newApp;
   if (info.isExecutable()) {
     newApp = new ExecutableFileApp(filePath);
@@ -70,18 +76,22 @@ void ApplicationModel::probeAndAddApp(QString filePath) {
     throw invalid_argument("File type not recognized");
 
   tryAddApp(newApp);
+  return newApp->backend();
 }
 
 void ApplicationModel::initiateBuildAppDatabase() {
-  ProbeThread *thread = new ProbeThread;
-  thread->start();
+  if (probeThread)
+    throw runtime_error("FS probe already active");
+
+  probeThread = unique_ptr<ProbeThread>(new ProbeThread(this));
+  probeThread->start();
 
   // This can't be stored on the stack, OTOH dynamic storage couples things in
   // an unfortunate way.
   int *numNewAppsAdded = new int;
   *numNewAppsAdded = 0;
 
-  connect(thread, &ProbeThread::foundTetradctylApp, this,
+  connect(probeThread.get(), &ProbeThread::foundTetradctylApp, this,
           [this, numNewAppsAdded](AbstractApp *app) {
             try {
               tryAddApp(app);
@@ -90,28 +100,42 @@ void ApplicationModel::initiateBuildAppDatabase() {
               qWarning() << e.what();
             }
           });
-  QObject::connect(thread, &QThread::finished, this,
-                   [this, thread, numNewAppsAdded] {
-                     delete thread;
+  QObject::connect(probeThread.get(), &QThread::finished, this,
+                   [this, numNewAppsAdded] {
+                     probeThread.reset();
                      emit appDatabaseBuilt(*numNewAppsAdded);
                      saveDatabase();
                      delete numNewAppsAdded;
                    });
 }
 
-static QDir tetradactylDataDir() {
-  QString home = qEnvironmentVariable("HOME");
-  if (home == "")
-    throw std::runtime_error("no HOME environmental variable");
-
-  QDir dataDir(qEnvironmentVariable("XDG_DATA_HOME",
-                                    QString("%1/.local/share").arg(home)));
-  dataDir.mkdir("tetradactyl");
-  dataDir.cd("tetradactyl");
-  return dataDir;
+void ApplicationModel::cancelBuildAppDatabase() {
+  if (!probeThread)
+    return;
+  probeThread->requestInterruption();
+  probeThread->wait();
+  probeThread.reset();
 }
 
-static QFile appDatabaseFile() {
+static QDir tetradactylDataDir() {
+  QDir home = QDir::homePath();
+  if (!home.exists())
+    throw std::runtime_error("no HOME environmental variable");
+
+  QString dataDirPath(qEnvironmentVariable("XDG_DATA_HOME"));
+  if (dataDirPath == "") {
+
+    QByteArray dataDirRelPath = ".local/share/tetradactyl";
+    mkdirRec(home, dataDirRelPath);
+    dataDirPath = QString("%1/%2").arg(home.path(), dataDirRelPath);
+  }
+
+  QDir ret(dataDirPath);
+  Q_ASSERT(ret.exists());
+  return ret;
+}
+
+QFile appDatabaseFile() {
   QDir dataDir = tetradactylDataDir();
   QString filePath = dataDir.path() + "/" TETRADACTYL_APPS_DB_FILE;
   return filePath;
@@ -145,7 +169,7 @@ void ApplicationModel::tryLoadDatabase() {
   QJsonParseError jsonErr;
   QJsonDocument document = QJsonDocument::fromJson(json, &jsonErr);
   if (jsonErr.error != QJsonParseError::NoError)
-    throw runtime_error(qUtf8Printable(jsonErr.errorString()));
+    throw runtime_error(qPrintable(jsonErr.errorString()));
 
   // better solution for schema validation?
   if (!document.isObject())
@@ -175,7 +199,7 @@ void ApplicationModel::resetDatabase() {
 
 void ApplicationModel::tryAddApp(AbstractApp *app) {
   if (contains(app))
-    throw AppAlreadyPresent(qUtf8Printable(app->name()));
+    throw AppAlreadyPresent(qPrintable(app->name()));
   beginResetModel();
   p_apps.append(app);
   endResetModel();

@@ -51,5 +51,7 @@ private:
   void fixupUi();
 
   Ui::LauncherWindow *ui;
+
+  friend class LauncherE2ETest;
 };
 } // namespace Tetradactyl

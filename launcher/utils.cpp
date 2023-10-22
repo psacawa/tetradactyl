@@ -1,8 +1,12 @@
 // Copyright 2023 Paweł Sacawa. All rights reserved.
+#include <QDir>
+
+#include <exception>
 #include <unistd.h>
 
 #include "utils.h"
 
+using std::runtime_error;
 using std::string;
 
 #define MIN(a, b) ((a) < (b)) ? (a) : (b)
@@ -37,4 +41,22 @@ QString getLocationOfThisProgram() {
   if (bytes >= 0)
     pathBuf[bytes] = '\0';
   return QString(pathBuf);
+}
+
+void mkdirRec(QDir dir, QString relPath) {
+  if (!dir.exists())
+    throw runtime_error(qPrintable(u"dir %1 doesn't exist"_qs.arg(dir.path())));
+
+  auto parts = relPath.split('/');
+  for (auto part : parts) {
+    if (!dir.exists(part)) {
+      bool success = dir.mkdir(part);
+      if (!success)
+        throw runtime_error(
+            qPrintable(u"couldn't write to  %1"_qs.arg(dir.path())));
+      success = dir.cd(part);
+      if (!success)
+        throw runtime_error(qPrintable(u"couldn't cd to  %1"_qs.arg(part)));
+    }
+  }
 }

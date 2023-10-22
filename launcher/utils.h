@@ -1,6 +1,7 @@
 // Copyright 2023 Paweł Sacawa. All rights reserved.
 #pragma once
 
+#include <QDir>
 #include <QList>
 #include <QMetaEnum>
 #include <QString>
@@ -18,3 +19,4 @@ void system_die(const char *msg);
 QList<QString> keysFromEnum(QMetaEnum &e_num);
 QString join(QList<QString> arr, QString sep);
 QString getLocationOfThisProgram();
+void mkdirRec(QDir dir, QString relPath);

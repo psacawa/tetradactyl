@@ -10,13 +10,15 @@
 
 namespace Tetradactyl {
 
+bool isElfExecutable(QFileInfo file);
+
 WidgetBackend probeBackendFromElfFile(QString path);
 WidgetBackend probeBackendFromFile(QString path);
 
 class ProbeThread : public QThread {
   Q_OBJECT
 public:
-  ProbeThread();
+  ProbeThread(QObject *parent = nullptr);
   virtual ~ProbeThread() {}
   void run() override;
   void probeDesktopApps();

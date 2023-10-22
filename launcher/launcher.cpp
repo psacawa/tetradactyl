@@ -36,12 +36,22 @@ Launcher::Launcher() : ui(new Ui::LauncherWindow) {
 
   ui->applicationView->setModel(displayModel);
 
+  connect(ui->addButton, &QAbstractButton::clicked, this,
+          &Launcher::onAddButtonClicked);
   connect(ui->launchButton, &QAbstractButton::clicked, this,
           &Launcher::onLaunchButtonClicked);
 
   connect(ui->buildDatabaseButton, &QPushButton::clicked, this, [this] {
-    ui->spinner->start();
     sourceModel->initiateBuildAppDatabase();
+    ui->spinner->start();
+    ui->buildDatabaseButton->setEnabled(false);
+    ui->cancelButton->setEnabled(true);
+  });
+  connect(ui->cancelButton, &QPushButton::clicked, this, [this] {
+    sourceModel->cancelBuildAppDatabase();
+    ui->spinner->stop();
+    ui->buildDatabaseButton->setEnabled(true);
+    ui->cancelButton->setEnabled(false);
   });
 
   connect(sourceModel, &ApplicationModel::appDatabaseBuilt, this,
@@ -50,13 +60,16 @@ Launcher::Launcher() : ui(new Ui::LauncherWindow) {
           &Launcher::onApplicationViewActivated);
   connect(ui->searchLineEdit, &QLineEdit::textChanged, this,
           &Launcher::onSearchTextChanged);
+
+  connect(qApp, &QCoreApplication::aboutToQuit, sourceModel,
+          [this]() { sourceModel->cancelBuildAppDatabase(); });
 }
 
 void Launcher::onApplicationViewActivated(const QModelIndex &index) {
   try {
     sourceModel->launch(index);
   } catch (exception &e) {
-    QMessageBox::warning(this, "Error", "error launching app");
+    QMessageBox::warning(this, "Error", "Error launching app");
   }
 }
 
@@ -70,7 +83,16 @@ void Launcher::onAddButtonClicked(bool checked) {
   auto selected = fileDialog.selectedFiles();
   if (selected.length()) {
     try {
-      sourceModel->probeAndAddApp(selected[0]);
+      WidgetBackend backend = sourceModel->probeAndAddApp(selected[0]);
+      // permit apps with unknown backend to be added, but show a warning
+      if (backend == Unknown) {
+        QMessageBox::warning(
+            this, "Unrecognized backend",
+            "Tetradactyl isn't able to determine if the selected program is "
+            "supported without running it. This doesn't mean it won't work. "
+            "It's backend will be determined when it's first run.");
+      }
+
     } catch (exception &e) {
       QMessageBox::warning(this, "Program not added", e.what());
     }
@@ -88,6 +110,7 @@ void Launcher::onSearchTextChanged(const QString &text) {
 
 void Launcher::reportScanResults(int numNewAppsAdded) {
   ui->spinner->stop();
+  ui->buildDatabaseButton->setEnabled(true);
   QMessageBox::information(this, "Scan finished",
                            QString("%1 new apps found").arg(numNewAppsAdded));
 };
@@ -97,7 +120,7 @@ void Launcher::reportScanResults(int numNewAppsAdded) {
 void Launcher::fixupUi() {
   ui->applicationView->setEditTriggers(QListView::NoEditTriggers);
 
-  // groupbox
+  ui->launchButton->setEnabled(false);
   ui->cancelButton->setEnabled(false);
 }
 

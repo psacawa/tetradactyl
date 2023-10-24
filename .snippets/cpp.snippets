@@ -1,0 +1,31 @@
+# c++ snippets specific to qt
+
+snippet QtTestBoilerPlate "QtTestBoilerPlate" b
+// Copyright 2023 Paweł Sacawa. All rights reserved.
+#include <QTest>
+#include <QObject>
+
+class ${1:SomeTest} : public QObject {
+	Q_OBJECT
+private:
+	
+private slots:
+	void init();
+	void cleanup();
+};
+
+void ${1:SomeTest}::init() {
+}
+void ${1:SomeTest}::cleanup() {
+}
+
+QTEST_MAIN(${1:SomeTest})
+#include "`!v expand("%:t:r")`.moc"
+endsnippet
+
+snippet QtTestCaseWithData "QtTestCaseWithData" b
+void ${1:SomeTest}::${2:doThisOrThatTest}_data () {
+}
+void ${1:SomeTest}::${2:doThisOrThatTest}() {
+}
+endsnippet

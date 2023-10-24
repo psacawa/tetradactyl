@@ -46,17 +46,17 @@ QString getLocationOfThisProgram() {
 void mkdirRec(QDir dir, QString relPath) {
   if (!dir.exists())
     throw runtime_error(qPrintable(u"dir %1 doesn't exist"_qs.arg(dir.path())));
-
   auto parts = relPath.split('/');
+  bool success;
   for (auto part : parts) {
     if (!dir.exists(part)) {
-      bool success = dir.mkdir(part);
+      success = dir.mkdir(part);
       if (!success)
         throw runtime_error(
             qPrintable(u"couldn't write to  %1"_qs.arg(dir.path())));
-      success = dir.cd(part);
-      if (!success)
-        throw runtime_error(qPrintable(u"couldn't cd to  %1"_qs.arg(part)));
     }
+    success = dir.cd(part);
+    if (!success)
+      throw runtime_error(qPrintable(u"couldn't cd to  %1"_qs.arg(part)));
   }
 }

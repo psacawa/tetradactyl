@@ -35,6 +35,7 @@ namespace Tetradactyl {
 
 // may be costly
 void AbstractApp::probe() { p_backend = probeBackendFromFile(absolutePath()); }
+
 AbstractApp *AbstractApp::fromJson(QJsonObject obj) {
   QString type = obj.value("type").toString();
   if (type == "executable") {
@@ -47,12 +48,21 @@ AbstractApp *AbstractApp::fromJson(QJsonObject obj) {
   }
 }
 
-ExecutableFileApp::ExecutableFileApp(QString path) : p_path(path) {
+ExecutableFileApp::ExecutableFileApp(QString path,
+                                     optional<WidgetBackend> backend)
+    : p_path(path) {
   QFileInfo info(path);
   if (!info.exists())
     throw invalid_argument(qPrintable(u"file %1 doesn't exist"_s.arg(path)));
-  probe();
+
+  if (backend.has_value()) {
+    p_backend = backend.value();
+  } else {
+    probe();
+  }
 }
+
+// ExecutableFileApp
 
 QString ExecutableFileApp::name() const {
   QFileInfo info(p_path);
@@ -60,23 +70,22 @@ QString ExecutableFileApp::name() const {
 }
 
 QIcon ExecutableFileApp::getIcon() const {
-  QIcon icon = QIcon("qrc:/launcher/images/executable.svg");
-  // qInfo() << icon.name() << icon.isNull();
-  // return icon;
-  return QIcon::fromTheme("anki");
+  return QIcon(":/launcher/images/executable.png");
 }
 
 QJsonObject ExecutableFileApp::toJson() const {
   QJsonObject obj;
   obj.insert("type", "executable");
   obj.insert("filePath", absolutePath());
-  obj.insert("backend", backend());
+  obj.insert("backend", enumValueToKey(p_backend));
   return obj;
 }
 
 ExecutableFileApp *ExecutableFileApp::fromJson(QJsonObject obj) {
   QString filePath = obj.value("filePath").toString();
-  return new ExecutableFileApp(filePath);
+  WidgetBackend backend =
+      enumKeyToValue<WidgetBackend>(obj.value("backend").toString());
+  return new ExecutableFileApp(filePath, backend);
 }
 
 void launchAppHelper(QList<QString> argv, WidgetBackend backend = Unknown) {
@@ -106,7 +115,18 @@ void ExecutableFileApp::launch() const {
   launchAppHelper(argv, backend());
 }
 
-XdgDesktopApp *XdgDesktopApp::fromDesktopFile(QString desktopFilePath) {
+// XdgDesktopApp
+
+XdgDesktopApp::XdgDesktopApp(QString id, QString desktopFilePath,
+                             QString executable, QString name,
+                             QString commandLine, QString description,
+                             QString iconName)
+    : p_id(id), p_desktopFilePath(desktopFilePath), p_executable(executable),
+      p_name(name), p_commandLine(commandLine), p_description(description),
+      p_iconName(iconName) {}
+
+XdgDesktopApp *XdgDesktopApp::fromDesktopFile(QString desktopFilePath,
+                                              bool probeExecutable) {
   QFileInfo info(desktopFilePath);
   if (!info.exists())
     throw invalid_argument(
@@ -131,9 +151,12 @@ XdgDesktopApp *XdgDesktopApp::fromDesktopFile(QString desktopFilePath) {
   } catch (const Glib::KeyFileError &e) {
     // TODO 21/10/20 psacawa: no icon entry, choose default
   }
-  app->p_icon = QIcon::fromTheme(QString::fromStdString(iconName));
+  app->p_iconName = QString::fromStdString(iconName);
+  app->p_icon = QIcon::fromTheme(app->p_iconName);
 
-  app->probe();
+  if (probeExecutable)
+    app->probe();
+
   return app;
 }
 
@@ -163,13 +186,20 @@ QJsonObject XdgDesktopApp::toJson() const {
   QJsonObject obj;
   obj.insert("type", "desktop");
   obj.insert("desktopFilePath", desktopPath());
-  obj.insert("backend", backend());
+  obj.insert("backend", enumValueToKey(p_backend));
   return obj;
 }
 
 XdgDesktopApp *XdgDesktopApp::fromJson(QJsonObject obj) {
   QString desktopFilePath = obj.value("desktopFilePath").toString();
-  return XdgDesktopApp::fromDesktopFile(desktopFilePath);
+  WidgetBackend backend =
+      enumKeyToValue<WidgetBackend>(obj.value("backend").toString());
+  // to save time in loading, we parse the desktop file, but don't probe
+  // if this becomes still to much, we will avoid parsing .desktop file
+  // altogether
+  XdgDesktopApp *app = XdgDesktopApp::fromDesktopFile(desktopFilePath, false);
+  app->setBackend(backend);
+  return app;
 }
 
 QIcon XdgDesktopApp::getIcon() const { return p_icon; }

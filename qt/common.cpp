@@ -1,5 +1,6 @@
 // Copyright 2023 Paweł Sacawa. All rights reserved.
 #include <QApplication>
+#include <QList>
 #include <QMetaEnum>
 #include <QMetaObject>
 #include <QString>

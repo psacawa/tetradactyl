@@ -50,6 +50,11 @@ endif()
 
 add_compile_definitions("TETRADACTYL_VERSION=${CMAKE_PROJECT_VERSION}")
 
+# some kind of local cmake configuration outside of version control
+if(EXISTS .local-config.cmake)
+  include(.local-config.cmake)
+endif()
+
 # TODO 16/08/20 psacawa: finish this add_subdirectory(common)
 # include_directories(common)
 

@@ -11,6 +11,8 @@
 #include <algorithm>
 #include <iterator>
 
+#include <launcher/utils.h>
+
 #include "action.h"
 #include "commandline.h"
 #include "common.h"
@@ -39,18 +41,18 @@ Overlay::Overlay(WindowController *windowController, QWidget *target,
   // only make status indicator and command line for main overlays
   if (isMain) {
     p_statusIndicator = new QLabel(
-        enumKeyToValue<ControllerMode>(windowController->controllerMode()),
+        enumValueToKey<ControllerMode>(windowController->controllerMode()),
         this);
     p_statusIndicator->setObjectName("overlay_status_indicator");
     p_statusIndicator->setStyleSheet(promptStylesheet);
     connect(windowController, &WindowController::modeChanged, p_statusIndicator,
             [this](ControllerMode mode) {
-              p_statusIndicator->setText(enumKeyToValue<ControllerMode>(mode));
+              p_statusIndicator->setText(enumValueToKey<ControllerMode>(mode));
             });
     connect(windowController, &WindowController::hinted, p_statusIndicator,
             [this](HintMode mode) {
               p_statusIndicator->setText("Hint " +
-                                         enumKeyToValue<HintMode>(mode));
+                                         enumValueToKey<HintMode>(mode));
             });
 
     p_commandLine = new CommandLine(this);

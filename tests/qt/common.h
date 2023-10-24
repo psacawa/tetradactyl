@@ -19,7 +19,6 @@ public:
 
 protected:
   void init() {
-    qInfo() << __PRETTY_FUNCTION__;
     Controller::createController();
     controller = Controller::instance();
     settings = &controller->settings;

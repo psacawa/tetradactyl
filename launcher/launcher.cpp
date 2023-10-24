@@ -35,6 +35,7 @@ Launcher::Launcher() : ui(new Ui::LauncherWindow) {
   fixupUi();
 
   ui->applicationView->setModel(displayModel);
+  ui->applicationView->setIconSize(QSize(32, 32));
 
   connect(ui->addButton, &QAbstractButton::clicked, this,
           &Launcher::onAddButtonClicked);
@@ -58,6 +59,10 @@ Launcher::Launcher() : ui(new Ui::LauncherWindow) {
           &Launcher::reportScanResults);
   connect(ui->applicationView, &QAbstractItemView::doubleClicked, this,
           &Launcher::onApplicationViewActivated);
+  connect(ui->applicationView->selectionModel(),
+          &QItemSelectionModel::selectionChanged, this,
+          [this] { ui->launchButton->setEnabled(true); });
+
   connect(ui->searchLineEdit, &QLineEdit::textChanged, this,
           &Launcher::onSearchTextChanged);
 

@@ -14,6 +14,7 @@
 #include <QMessageBox>
 #include <QPointer>
 #include <QShortcut>
+#include <QString>
 #include <QTextEdit>
 #include <QTimer>
 #include <QWindow>
@@ -21,13 +22,6 @@
 #include <algorithm>
 #include <csignal>
 #include <iterator>
-#include <qdebug.h>
-#include <qglobal.h>
-#include <qlist.h>
-#include <qnamespace.h>
-#include <qobject.h>
-#include <qt6/QtCore/qmap.h>
-#include <qvariant.h>
 #include <vector>
 
 #include "action.h"
@@ -40,6 +34,8 @@
 #include "overlay.h"
 
 LOGGING_CATEGORY_COLOR("tetradactyl.controller", Qt::blue);
+
+// using namespace Qt::Literals::StringLiterals;
 
 using Qt::WindowType;
 using std::copy_if;
@@ -504,12 +500,12 @@ void WindowController::initializeOverlays() {
 // descendants.
 Overlay *WindowController::mainOverlay() {
   for (auto overlay : p_overlays) {
-    if (overlay->parentWidget()->parentWidget() == nullptr) {
+    if (overlay->parentWidget()->parentWidget() == target()) {
       return overlay;
     }
   }
-  logCritical << "No Main overlay found with the following available: "
-              << p_overlays;
+  logCritical << "No Main overlay found for " << this
+              << " with the following available: " << p_overlays;
   return p_overlays.at(0);
 }
 
@@ -571,10 +567,6 @@ void WindowController::hint(HintMode hintMode) {
   // We say that no controller state change occured if the the action ended
   // immediately.
   setControllerMode(Hint);
-
-  // In hint mode, just disable shortcuts. Need something cleaner?
-  // for (auto sc : shortcuts)
-  //   sc->setEnabled(false);
 
   setCurrentHintMode(hintMode);
   emit hinted(hintMode);
@@ -746,12 +738,14 @@ QDebug operator<<(QDebug debug, const WindowController *controller) {
           << controller->p_controllerMode << ", ";
     if (controller->p_controllerMode == ControllerMode::Hint)
       debug << controller->p_currentHintMode << ", ";
-    debug << "overlays=" << controller->p_overlays.length() << ": ";
-    for (int i = 0; i != controller->p_overlays.length(); i++) {
-      auto overlay = controller->p_overlays.at(i);
-      if (i != 0)
-        debug << ", ";
-      debug << overlay->parentWidget();
+    if (debug.verbosity() > QDebug::DefaultVerbosity) {
+      debug << "overlays=" << controller->p_overlays.length() << ": ";
+      for (int i = 0; i != controller->p_overlays.length(); i++) {
+        auto overlay = controller->p_overlays.at(i);
+        if (i != 0)
+          debug << ", ";
+        debug << overlay->parentWidget();
+      }
     }
     debug << ")";
   }

@@ -4,7 +4,12 @@
 #include <QJsonObject>
 #include <QObject>
 
+#include <optional>
+
 #include "common.h"
+
+using std::nullopt;
+using std::optional;
 
 namespace Tetradactyl {
 
@@ -15,7 +20,7 @@ public:
   Q_PROPERTY(QString name READ name);
   // for equality comparison mainly (.desktop for XdgDesktopApp)
   Q_PROPERTY(QString absolutePath READ absolutePath);
-  Q_PROPERTY(WidgetBackend backend READ backend);
+  Q_PROPERTY(WidgetBackend backend READ backend WRITE setBackend);
   // Q_PROPERTY(QIcon icon READ getIcon);
 
   AbstractApp(WidgetBackend backend = WidgetBackend::Unknown)
@@ -28,6 +33,7 @@ public:
   virtual void launch() const = 0;
   void probe();
   WidgetBackend backend() const;
+  void setBackend(WidgetBackend backend);
 
   virtual QJsonObject toJson() const = 0;
   static AbstractApp *fromJson(QJsonObject obj);
@@ -37,16 +43,19 @@ public:
            QFileInfo(other.absolutePath()).canonicalFilePath();
   }
 
-private:
+protected:
   WidgetBackend p_backend;
 };
 
 inline WidgetBackend AbstractApp::backend() const { return p_backend; }
+inline void AbstractApp::setBackend(WidgetBackend backend) {
+  p_backend = backend;
+}
 
 class ExecutableFileApp : public AbstractApp {
   Q_OBJECT
 public:
-  ExecutableFileApp(QString path);
+  ExecutableFileApp(QString path, optional<WidgetBackend> backend = nullopt);
   virtual ~ExecutableFileApp() {}
 
   virtual QString name() const override;
@@ -81,12 +90,16 @@ public:
   QString desktopId() const;
 
   // static XdgDesktopApp fromAppId(QString appId);
-  static XdgDesktopApp *fromDesktopFile(QString desktopFilePath);
+  static XdgDesktopApp *fromDesktopFile(QString desktopFilePath,
+                                        bool probeExecutable = true);
   virtual QJsonObject toJson() const override;
   static XdgDesktopApp *fromJson(QJsonObject obj);
 
 private:
   XdgDesktopApp() {}
+  XdgDesktopApp(QString p_id, QString p_desktopFilePath, QString p_executable,
+                QString p_name, QString p_commandLine, QString p_description,
+                QString p_iconName);
 
 private:
   QString p_id;
@@ -96,6 +109,7 @@ private:
   QString p_name;
   QString p_commandLine;
   QString p_description;
+  QString p_iconName;
   QIcon p_icon;
 };
 

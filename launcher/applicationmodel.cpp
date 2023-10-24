@@ -130,9 +130,9 @@ static QDir tetradactylDataDir() {
     dataDirPath = QString("%1/%2").arg(home.path(), dataDirRelPath);
   }
 
-  QDir ret(dataDirPath);
-  Q_ASSERT(ret.exists());
-  return ret;
+  QDir dir(dataDirPath);
+  Q_ASSERT(dir.exists());
+  return dir;
 }
 
 QFile appDatabaseFile() {

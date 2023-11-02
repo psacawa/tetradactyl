@@ -8,9 +8,11 @@
 #include <QTimer>
 #include <QWindow>
 
-#include <QtCore/private/qhooks_p.h>
+// #include <QtCore/private/qhooks_p.h>
 
 namespace Tetradactyl {
+
+#define objProbe ObjectProbe::instance()
 
 // A singleton binding the Qt hooks to the information necessary for probing
 // created QObjects for QWindow etc. The class may well by superfluous.
@@ -32,6 +34,7 @@ public:
   void processCreatedObjects();
   static bool earlyFilterObject(QObject *obj);
   bool interestedObject(QObject *obj);
+  bool isClientWidget(QWidget *w);
 
   static ObjectProbe *instance();
 
@@ -45,6 +48,10 @@ private:
   // controls access to objectsBeingCreated
   QMutex mutex;
   QQueue<QObject *> objectsBeingCreated;
-  QSet<QObject *> initializedObjects;
+  QSet<QWidget *> clientAppWidgets;
 };
+
+inline bool ObjectProbe::isClientWidget(QWidget *w) {
+  return clientAppWidgets.contains(w);
+}
 } // namespace Tetradactyl

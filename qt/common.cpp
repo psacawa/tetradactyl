@@ -6,13 +6,23 @@
 #include <QString>
 
 #include "common.h"
+#include "controller.h"
 #include "hint.h"
 #include "overlay.h"
 
 namespace Tetradactyl {
 
+static QSet<const QMetaObject *> tetradactylMetaObjects = {
+    &HintLabel::staticMetaObject, &Overlay::staticMetaObject,
+    &Controller::staticMetaObject, &WindowController::staticMetaObject};
+
 bool isTetradactylMetaObject(const QMetaObject *mo) {
-  return mo == &HintLabel::staticMetaObject || mo == &Overlay::staticMetaObject;
+  return tetradactylMetaObjects.contains(mo);
+}
+
+bool isTetradactylObject(QObject *obj) {
+  const QMetaObject *mo = obj->metaObject();
+  return isTetradactylMetaObject(mo);
 }
 
 bool isDescendantOf(QObject *descendant, QObject *ancestor) {

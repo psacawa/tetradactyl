@@ -37,7 +37,7 @@ foreach(_version ${SUPPORTED_QT_VERSIONS})
 
   if(${_tetradactyl_backend_enabled})
     # tetradactyl version is enabled
-    message(STATUS "will build ${_tetradactyl_backend}")
+    message(STATUS "Will build ${_tetradactyl_backend}")
 
     find_package(
       ${_qt_version}

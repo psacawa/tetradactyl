@@ -32,6 +32,7 @@
 #include "hint.h"
 #include "logging.h"
 #include "overlay.h"
+#include "probe.h"
 
 LOGGING_CATEGORY_COLOR("tetradactyl.controller", Qt::blue);
 
@@ -75,7 +76,7 @@ struct ControllerSettings Controller::settings = baseTestSettings();
 
 QString Controller::stylesheet = "";
 
-Controller::Controller() {
+Controller::Controller() : resetPending(false) {
   Q_ASSERT(self == nullptr);
   // Having the application as the parent allows a tool like  gammaray to find
   // it on startup
@@ -89,7 +90,7 @@ Controller::Controller() {
       logInfo << win << win->activeOverlay();
     }
   });
-  timer->start();
+  // timer->start();
 
   Controller::stylesheet = fetchStylesheet();
   qApp->setStyleSheet(Controller::stylesheet);
@@ -123,8 +124,12 @@ void Controller::executeCommand(QString cmdline) {
 
 void Controller::resetWindows() {
   Q_ASSERT(tetradactyl);
+  Q_ASSERT(!resetPending);
+  logInfo << "Resetting WindowControllers";
+  resetPending = true;
   cleanupWindows();
   initWindows();
+  resetPending = false;
   emit reset();
 }
 
@@ -195,18 +200,24 @@ void Controller::attachControllerToWindow(QWidget *widget) {
   }
 }
 
-bool Controller::eventFilter(QObject *obj, QEvent *ev) {
+bool Controller::eventFilter(QObject *receiver, QEvent *ev) {
   QEvent::Type type = ev->type();
-  QWidget *widget = qobject_cast<QWidget *>(obj);
-  if (widget) {
+  if (receiver->isWidgetType()) {
+    QWidget *widget = qobject_cast<QWidget *>(receiver);
     if (type == QEvent::KeyPress) {
       QKeyEvent *kev = static_cast<QKeyEvent *>(ev);
       WindowController *windowController = findControllerForWidget(widget);
-      logInfo << "sending event to" << windowController;
+      logInfo << "sending KeyPress event to" << windowController;
       if (windowController) {
         bool accepted = windowController->earlyKeyEventFilter(kev);
         return accepted;
       }
+    } else if (type == QEvent::ParentChange && !resetPending &&
+               objProbe->isClientWidget(widget)) {
+      // POLICY TEST: Reset windows on QWidget reparented
+      logInfo << "ParentChange" << type << "for" << receiver
+              << "Resetting Controller";
+      QTimer::singleShot(0, [] { tetradactyl->resetWindows(); });
     }
   }
   return false;
@@ -500,7 +511,8 @@ void WindowController::initializeOverlays() {
 // descendants.
 Overlay *WindowController::mainOverlay() {
   for (auto overlay : p_overlays) {
-    if (overlay->parentWidget()->parentWidget() == target()) {
+    if (overlay->host() == p_target ||
+        overlay->host()->parentWidget() == p_target) {
       return overlay;
     }
   }
@@ -652,14 +664,15 @@ void WindowController::popKey() {
 
 void WindowController::focusPrompt() { mainOverlay()->commandLine()->open(); }
 
-QWidget *WindowController::target() {
-  return dynamic_cast<QWidget *>(this->p_target);
-}
+QWidget *WindowController::target() { return this->p_target; }
 
 void WindowController::cleanupHints() {
   logDebug << __PRETTY_FUNCTION__;
   for (auto overlay : p_overlays)
-    overlay->clear();
+    if (overlay)
+      overlay->clear();
+    else
+      logWarning << "WindowController had overlay deleted:" << this;
 
   hintBuffer = "";
 }
@@ -735,9 +748,9 @@ QDebug operator<<(QDebug debug, const WindowController *controller) {
     debug << "(0x0)";
   } else {
     debug << "(" << (void *)controller << " " << controller->p_target << ", "
-          << controller->p_controllerMode << ", ";
+          << controller->p_controllerMode;
     if (controller->p_controllerMode == ControllerMode::Hint)
-      debug << controller->p_currentHintMode << ", ";
+      debug << ", " << controller->p_currentHintMode;
     if (debug.verbosity() > QDebug::DefaultVerbosity) {
       debug << "overlays=" << controller->p_overlays.length() << ": ";
       for (int i = 0; i != controller->p_overlays.length(); i++) {

@@ -113,6 +113,7 @@ void launchAppHelper(QList<QString> argv, WidgetBackend backend = Unknown) {
 void ExecutableFileApp::launch() const {
   QList<QString> argv = {absolutePath()};
   launchAppHelper(argv, backend());
+  Q_UNREACHABLE();
 }
 
 // XdgDesktopApp

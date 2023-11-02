@@ -30,12 +30,14 @@ public:
   Q_PROPERTY(QWidget *selectedWidget READ selectedWidget);
   Q_PROPERTY(CommandLine *commandLine READ commandLine CONSTANT);
   Q_PROPERTY(WindowController *windowController MEMBER controller);
+  Q_PROPERTY(QWidget *host READ host);
 
   Overlay(WindowController *controller, QWidget *target, bool isMain = true);
   virtual ~Overlay();
 
   OverlayLayout *overlayLayout();
 
+  QWidget *host();
   const QList<HintLabel *> &hints();
   const QLabel *statusIndicator();
   CommandLine *commandLine();
@@ -69,6 +71,7 @@ private:
   friend QDebug operator<<(QDebug debug, const Overlay *overlay);
 };
 
+inline QWidget *Overlay::host() { return parentWidget(); }
 inline const QList<HintLabel *> &Overlay::hints() { return p_hints; }
 inline const QLabel *Overlay::statusIndicator() { return p_statusIndicator; }
 inline CommandLine *Overlay::commandLine() { return p_commandLine; }

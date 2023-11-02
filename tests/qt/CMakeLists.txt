@@ -44,7 +44,8 @@ set(CMAKE_AUTORCC ON)
 function(add_qt6_test _test_name)
   cmake_parse_arguments(PARSE_ARGV 0 arg "" LABELS "")
   add_executable(${_test_name} ${_test_name}.cpp common.cpp)
-  target_link_libraries(${_test_name} PRIVATE Qt::Test Qt::Widgets)
+  target_link_libraries(${_test_name} PRIVATE Qt6::Test Qt6::Widgets
+                                              Qt6::CorePrivate)
 
   set(_test_env "QT_QPA_PLATFORM=offscreen")
   # LD_PRELOAD=libtetradactyl-qt6.so if inject is a label
@@ -95,6 +96,7 @@ if(TETRADACTYL_QT6)
 
   set(TETRADACTYL_SOURCES
       "${CMAKE_SOURCE_DIR}/qt/action.cpp"
+      "${CMAKE_SOURCE_DIR}/qt/probe.cpp"
       "${CMAKE_SOURCE_DIR}/qt/common.cpp"
       "${CMAKE_SOURCE_DIR}/qt/controller.cpp"
       "${CMAKE_SOURCE_DIR}/qt/filter.cpp"
@@ -107,7 +109,8 @@ if(TETRADACTYL_QT6)
       "${CMAKE_SOURCE_DIR}/qt/tetradactyl.qrc")
 
   add_library(tetradactyl-qt6-test-object OBJECT ${TETRADACTYL_SOURCES})
-  target_link_libraries(tetradactyl-qt6-test-object PUBLIC Qt::Widgets Qt::Test)
+  target_link_libraries(tetradactyl-qt6-test-object
+                        PUBLIC Qt6::Widgets Qt6::Test Qt6::CorePrivate)
 
   find_package(Qt6 REQUIRED COMPONENTS Widgets Test)
   import_qt6_examples(widgets)

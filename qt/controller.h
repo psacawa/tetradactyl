@@ -125,6 +125,8 @@ private:
       hintableMetaObjects;
   QList<WindowController *> windowControllers;
 
+  bool resetPending;
+
   static Controller *self;
 
   friend QDebug operator<<(QDebug debug, const Controller *controller);

@@ -13,6 +13,7 @@
 
 namespace Tetradactyl {
 
+bool isTetradactylObject(QObject *obj);
 bool isTetradactylMetaObject(const QMetaObject *mo);
 
 bool isDescendantOf(QObject *descendant, QObject *ancestor);

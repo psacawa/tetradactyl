@@ -8,6 +8,8 @@
 #include <QMutex>
 #include <QMutexLocker>
 #include <QObject>
+#include <QPointer>
+#include <QSet>
 #include <QTextStream>
 #include <QThread>
 #include <QTimer>
@@ -21,6 +23,7 @@
 
 #include <common/backtrace.h>
 
+#include "common.h"
 #include "controller.h"
 #include "logging.h"
 #include "probe.h"
@@ -106,7 +109,7 @@ void ObjectProbe::addQObjectCallback(QObject *obj) {
     return;
 
   {
-    TETRA_MUTEX_LOCKER locker(&self->mutex);
+    TetraMutexLocker locker(&self->mutex);
     instance()->objectsBeingCreated.push_back(obj);
     if (!instance()->timer.isActive()) {
       instance()->timer.start();
@@ -124,7 +127,7 @@ void ObjectProbe::removeQObjectCallback(QObject *obj) {
   // if object is queued to be processed in objectsBeingCreated, we must remove
   // it, else segfault later
   {
-    TETRA_MUTEX_LOCKER locker(&instance()->mutex);
+    TetraMutexLocker locker(&instance()->mutex);
     int index = self->objectsBeingCreated.indexOf(obj);
     if (index >= 0)
       self->objectsBeingCreated.removeAt(index);
@@ -165,8 +168,11 @@ void ObjectProbe::processCreatedObjects() {
   Q_ASSERT(QThread::currentThread() == self->thread());
   {
     logDebug << "Processing created objects";
-    TETRA_MUTEX_LOCKER locker(&mutex);
+    TetraMutexLocker locker(&mutex);
     for (auto obj : objectsBeingCreated) {
+      if (obj->isWidgetType() && !isTetradactylObject(obj)) {
+        clientAppWidgets.insert(static_cast<QWidget *>(obj));
+      }
       if (interestedObject(obj)) {
         // can't use QDebug with QObjects here
         fprintf(stderr, "Client created object %s(%p)\n",
